@@ -8,8 +8,8 @@ import type { LoginFieldName } from '../model/login-validation'
 import type { LoginFormValues } from '../model/types'
 
 const initialValues: LoginFormValues = {
-  email: 'frano.gugic8@gmail.com',
-  password: '#Franooo8',
+  email: '',
+  password: '',
 }
 
 export function LoginForm() {

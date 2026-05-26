@@ -15,7 +15,11 @@ const initialValues: RegisterFormValues = {
   password: '',
 }
 
-export function RegisterForm() {
+type RegisterFormProps = {
+  onRegistered: () => void
+}
+
+export function RegisterForm({ onRegistered }: RegisterFormProps) {
   const [values, setValues] = useState<RegisterFormValues>(initialValues)
   const [touchedFields, setTouchedFields] = useState<Partial<Record<RegisterFieldName, boolean>>>({})
 
@@ -48,7 +52,10 @@ export function RegisterForm() {
       return
     }
 
-    await register(values)
+    const user = await register(values)
+    if (user) {
+      onRegistered()
+    }
   }
 
   return (

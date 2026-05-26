@@ -3,6 +3,7 @@ import { ApiError } from '../../../shared/api/http-client'
 import {
   getCurrentUser,
   loginUser,
+  logoutUser,
   registerUser,
   resendEmailVerification,
   verifyEmail,
@@ -13,12 +14,17 @@ type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
 type AsyncStatus = 'idle' | 'submitting' | 'success' | 'error'
 type SessionStatus = 'checking' | 'authenticated' | 'unauthenticated'
 
+const getAccountStatus = (user: AuthUser): AccountStatus =>
+  user.isEmailVerified === false ? 'pendingVerification' : 'active'
+
 type AuthState = {
   currentUser: AuthUser | null
   accountStatus: AccountStatus | null
   sessionStatus: SessionStatus
   loginStatus: AuthStatus
   loginError: string | null
+  logoutStatus: AsyncStatus
+  logoutError: string | null
   registerStatus: AuthStatus
   registerError: string | null
   resendStatus: AsyncStatus
@@ -28,6 +34,7 @@ type AuthState = {
   verifyEmailMessage: string | null
   verifyEmailError: string | null
   login: (values: LoginFormValues) => Promise<AuthUser | null>
+  logout: () => Promise<void>
   loadCurrentUser: () => Promise<void>
   register: (values: RegisterFormValues) => Promise<AuthUser | null>
   resendVerificationEmail: () => Promise<void>
@@ -45,6 +52,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   sessionStatus: 'checking',
   loginStatus: 'idle',
   loginError: null,
+  logoutStatus: 'idle',
+  logoutError: null,
   registerStatus: 'idle',
   registerError: null,
   resendStatus: 'idle',
@@ -60,7 +69,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await loginUser(values)
       set({
         currentUser: user,
-        accountStatus: 'active',
+        accountStatus: getAccountStatus(user),
         sessionStatus: 'authenticated',
         loginStatus: 'success',
         loginError: null,
@@ -76,6 +85,29 @@ export const useAuthStore = create<AuthState>((set) => ({
       return null
     }
   },
+  logout: async () => {
+    set({ logoutStatus: 'submitting', logoutError: null })
+
+    try {
+      await logoutUser()
+      set({
+        currentUser: null,
+        accountStatus: null,
+        sessionStatus: 'unauthenticated',
+        logoutStatus: 'success',
+        logoutError: null,
+        loginStatus: 'idle',
+        loginError: null,
+      })
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'We could not sign you out. Please try again.'
+
+      set({ logoutStatus: 'error', logoutError: message })
+    }
+  },
   loadCurrentUser: async () => {
     set({ sessionStatus: 'checking' })
 
@@ -83,7 +115,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await getCurrentUser()
       set({
         currentUser: user,
-        accountStatus: 'active',
+        accountStatus: getAccountStatus(user),
         sessionStatus: 'authenticated',
       })
     } catch {
@@ -100,7 +132,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await registerUser(values)
       set({
-        currentUser: user,
+        currentUser: null,
         accountStatus: 'pendingVerification',
         sessionStatus: 'unauthenticated',
         registerStatus: 'success',
@@ -185,6 +217,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       sessionStatus: 'unauthenticated',
       loginStatus: 'idle',
       loginError: null,
+      logoutStatus: 'idle',
+      logoutError: null,
       registerStatus: 'idle',
       registerError: null,
       resendStatus: 'idle',

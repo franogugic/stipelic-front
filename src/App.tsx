@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useAuthStore } from './features/auth/model/auth-store'
 import { HomePage } from './features/auth/pages/HomePage'
 import { LoginPage } from './features/auth/pages/LoginPage'
@@ -8,17 +8,17 @@ import { VerifyEmailPage } from './features/auth/pages/VerifyEmailPage'
 function App() {
   const [locationKey, setLocationKey] = useState(() => window.location.href)
   const currentUser = useAuthStore((state) => state.currentUser)
-  const accountStatus = useAuthStore((state) => state.accountStatus)
   const sessionStatus = useAuthStore((state) => state.sessionStatus)
   const loadCurrentUser = useAuthStore((state) => state.loadCurrentUser)
   const pathname = window.location.pathname
   const token = new URLSearchParams(window.location.search).get('token')
+  const isAuthenticated = sessionStatus === 'authenticated' && currentUser !== null
 
   useEffect(() => {
-    if (window.location.pathname !== '/verify-email') {
+    if (pathname !== '/verify-email' && sessionStatus === 'checking') {
       void loadCurrentUser()
     }
-  }, [loadCurrentUser])
+  }, [loadCurrentUser, pathname, sessionStatus])
 
   useEffect(() => {
     const syncLocation = () => {
@@ -32,10 +32,15 @@ function App() {
     }
   }, [])
 
-  const navigateTo = (path: string) => {
+  const navigateTo = useCallback((path: string) => {
     window.history.pushState(null, '', path)
     setLocationKey(window.location.href)
-  }
+  }, [])
+
+  const replaceWith = useCallback((path: string) => {
+    window.history.replaceState(null, '', path)
+    setLocationKey(window.location.href)
+  }, [])
 
   if (pathname === '/verify-email') {
     return (
@@ -43,8 +48,7 @@ function App() {
         key={locationKey}
         token={token}
         onContinue={() => {
-          window.history.replaceState(null, '', '/')
-          window.dispatchEvent(new PopStateEvent('popstate'))
+          replaceWith('/')
         }}
       />
     )
@@ -61,12 +65,21 @@ function App() {
     )
   }
 
-  if (currentUser || accountStatus === 'active') {
+  if (isAuthenticated) {
+    if (pathname === '/login' || pathname === '/register') {
+      window.history.replaceState(null, '', '/')
+    }
+
     return <HomePage user={currentUser} />
   }
 
   if (pathname === '/register') {
-    return <RegisterPage onSignIn={() => navigateTo('/login')} />
+    return (
+      <RegisterPage
+        onSignIn={() => navigateTo('/login')}
+        onRegistered={() => replaceWith('/login')}
+      />
+    )
   }
 
   return <LoginPage onCreateAccount={() => navigateTo('/register')} />

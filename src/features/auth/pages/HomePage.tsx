@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Loader2, MailCheck, RefreshCw } from 'lucide-react'
+import { CheckCircle2, Loader2, LogOut, MailCheck, RefreshCw } from 'lucide-react'
 import { useAuthStore } from '../model/auth-store'
 import type { AuthUser } from '../model/types'
 
@@ -12,10 +12,13 @@ export function HomePage({ user }: HomePageProps) {
   const resendMessage = useAuthStore((state) => state.resendMessage)
   const resendError = useAuthStore((state) => state.resendError)
   const resendVerificationEmail = useAuthStore((state) => state.resendVerificationEmail)
-  const resetAuth = useAuthStore((state) => state.resetAuth)
+  const logout = useAuthStore((state) => state.logout)
+  const logoutStatus = useAuthStore((state) => state.logoutStatus)
+  const logoutError = useAuthStore((state) => state.logoutError)
 
   const isPendingVerification = accountStatus === 'pendingVerification'
   const isResending = resendStatus === 'submitting'
+  const isLoggingOut = logoutStatus === 'submitting'
   const displayName = user?.firstName ? `, ${user.firstName}` : ''
 
   return (
@@ -31,14 +34,23 @@ export function HomePage({ user }: HomePageProps) {
             </div>
 
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50"
+              className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
               type="button"
-              onClick={resetAuth}
+              disabled={isLoggingOut}
+              onClick={() => {
+                void logout()
+              }}
             >
-              <ArrowLeft size={16} />
-              Use another email
+              {isLoggingOut ? <Loader2 className="animate-spin" size={16} /> : <LogOut size={16} />}
+              Logout
             </button>
           </div>
+
+          {logoutError ? (
+            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {logoutError}
+            </div>
+          ) : null}
 
           {isPendingVerification && user ? (
             <div className="mt-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">

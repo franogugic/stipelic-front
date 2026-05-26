@@ -1,5 +1,6 @@
 import { apiRequest } from '../../../shared/api/http-client'
 import type {
+  LogoutResponse,
   LoginUserRequest,
   LoginUserResponse,
   RegisterUserRequest,
@@ -32,6 +33,12 @@ export function loginUser(request: LoginUserRequest) {
 
 export function getCurrentUser() {
   return apiRequest<LoginUserResponse>('/api/auth/me')
+}
+
+export function logoutUser() {
+  return apiRequest<LogoutResponse>('/api/auth/logout', {
+    method: 'POST',
+  })
 }
 
 export function resendEmailVerification(email: string) {

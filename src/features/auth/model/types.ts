@@ -15,6 +15,8 @@ export type AuthUser = {
   firstName: string
   lastName: string
   email: string
+  isEmailVerified?: boolean
+  status?: string
 }
 
 export type AccountStatus = 'pendingVerification' | 'active'
@@ -40,5 +42,9 @@ export type VerifyEmailRequest = {
 }
 
 export type VerifyEmailResponse = {
+  message: string
+}
+
+export type LogoutResponse = {
   message: string
 }
