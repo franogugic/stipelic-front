@@ -5,6 +5,11 @@ export type RegisterFormValues = {
   password: string
 }
 
+export type LoginFormValues = {
+  email: string
+  password: string
+}
+
 export type AuthUser = {
   publicId: string
   firstName: string
@@ -17,6 +22,10 @@ export type AccountStatus = 'pendingVerification' | 'active'
 export type RegisterUserRequest = RegisterFormValues
 
 export type RegisterUserResponse = AuthUser
+
+export type LoginUserRequest = LoginFormValues
+
+export type LoginUserResponse = AuthUser
 
 export type ResendEmailVerificationRequest = {
   email: string

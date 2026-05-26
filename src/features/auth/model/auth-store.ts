@@ -1,14 +1,24 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
-import { registerUser, resendEmailVerification, verifyEmail } from '../api/auth-api'
-import type { AccountStatus, AuthUser, RegisterFormValues } from './types'
+import {
+  getCurrentUser,
+  loginUser,
+  registerUser,
+  resendEmailVerification,
+  verifyEmail,
+} from '../api/auth-api'
+import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues } from './types'
 
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
 type AsyncStatus = 'idle' | 'submitting' | 'success' | 'error'
+type SessionStatus = 'checking' | 'authenticated' | 'unauthenticated'
 
 type AuthState = {
   currentUser: AuthUser | null
   accountStatus: AccountStatus | null
+  sessionStatus: SessionStatus
+  loginStatus: AuthStatus
+  loginError: string | null
   registerStatus: AuthStatus
   registerError: string | null
   resendStatus: AsyncStatus
@@ -17,9 +27,12 @@ type AuthState = {
   verifyEmailStatus: AsyncStatus
   verifyEmailMessage: string | null
   verifyEmailError: string | null
+  login: (values: LoginFormValues) => Promise<AuthUser | null>
+  loadCurrentUser: () => Promise<void>
   register: (values: RegisterFormValues) => Promise<AuthUser | null>
   resendVerificationEmail: () => Promise<void>
   verifyEmailToken: (token: string) => Promise<void>
+  resetLoginFeedback: () => void
   resetRegisterFeedback: () => void
   resetResendFeedback: () => void
   resetVerifyEmailFeedback: () => void
@@ -29,6 +42,9 @@ type AuthState = {
 export const useAuthStore = create<AuthState>((set) => ({
   currentUser: null,
   accountStatus: null,
+  sessionStatus: 'checking',
+  loginStatus: 'idle',
+  loginError: null,
   registerStatus: 'idle',
   registerError: null,
   resendStatus: 'idle',
@@ -37,6 +53,47 @@ export const useAuthStore = create<AuthState>((set) => ({
   verifyEmailStatus: 'idle',
   verifyEmailMessage: null,
   verifyEmailError: null,
+  login: async (values) => {
+    set({ loginStatus: 'submitting', loginError: null })
+
+    try {
+      const user = await loginUser(values)
+      set({
+        currentUser: user,
+        accountStatus: 'active',
+        sessionStatus: 'authenticated',
+        loginStatus: 'success',
+        loginError: null,
+      })
+      return user
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'We could not sign you in. Please try again.'
+
+      set({ loginStatus: 'error', loginError: message })
+      return null
+    }
+  },
+  loadCurrentUser: async () => {
+    set({ sessionStatus: 'checking' })
+
+    try {
+      const user = await getCurrentUser()
+      set({
+        currentUser: user,
+        accountStatus: 'active',
+        sessionStatus: 'authenticated',
+      })
+    } catch {
+      set({
+        currentUser: null,
+        accountStatus: null,
+        sessionStatus: 'unauthenticated',
+      })
+    }
+  },
   register: async (values) => {
     set({ registerStatus: 'submitting', registerError: null })
 
@@ -45,6 +102,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({
         currentUser: user,
         accountStatus: 'pendingVerification',
+        sessionStatus: 'unauthenticated',
         registerStatus: 'success',
         registerError: null,
       })
@@ -108,6 +166,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ verifyEmailStatus: 'error', verifyEmailMessage: null, verifyEmailError: message })
     }
   },
+  resetLoginFeedback: () => {
+    set({ loginStatus: 'idle', loginError: null })
+  },
   resetRegisterFeedback: () => {
     set({ registerStatus: 'idle', registerError: null })
   },
@@ -121,6 +182,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({
       currentUser: null,
       accountStatus: null,
+      sessionStatus: 'unauthenticated',
+      loginStatus: 'idle',
+      loginError: null,
       registerStatus: 'idle',
       registerError: null,
       resendStatus: 'idle',

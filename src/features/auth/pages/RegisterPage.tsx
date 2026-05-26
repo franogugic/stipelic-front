@@ -1,7 +1,11 @@
 import { Sparkles } from 'lucide-react'
 import { RegisterForm } from '../components/RegisterForm'
 
-export function RegisterPage() {
+type RegisterPageProps = {
+  onSignIn: () => void
+}
+
+export function RegisterPage({ onSignIn }: RegisterPageProps) {
   return (
     <main className="min-h-screen bg-[#f5f5f7] text-neutral-950">
       <div className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-10 px-5 py-8 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
@@ -33,6 +37,17 @@ export function RegisterPage() {
           </div>
 
           <RegisterForm />
+
+          <div className="mt-6 border-t border-neutral-200 pt-5 text-center text-sm text-neutral-500">
+            Already have an account?{' '}
+            <button
+              className="font-semibold text-neutral-950 transition hover:text-neutral-600"
+              type="button"
+              onClick={onSignIn}
+            >
+              Sign in
+            </button>
+          </div>
         </section>
       </div>
     </main>

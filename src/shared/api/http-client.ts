@@ -19,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-type RequestOptions = Omit<RequestInit, 'body'> & {
+type RequestOptions = Omit<RequestInit, 'body' | 'credentials'> & {
   body?: unknown
 }
 
@@ -32,12 +32,12 @@ export async function apiRequest<TResponse>(
   const { body, headers, ...requestInit } = options
 
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...headers,
     },
     ...requestInit,
+    credentials: 'include',
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 
