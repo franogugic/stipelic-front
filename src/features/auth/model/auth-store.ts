@@ -13,6 +13,7 @@ import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues } fro
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
 type AsyncStatus = 'idle' | 'submitting' | 'success' | 'error'
 type SessionStatus = 'checking' | 'authenticated' | 'unauthenticated'
+const resendCooldownMs = 60_000
 
 const getAccountStatus = (user: AuthUser): AccountStatus =>
   user.isEmailVerified === false ? 'pendingVerification' : 'active'
@@ -30,6 +31,7 @@ type AuthState = {
   resendStatus: AsyncStatus
   resendMessage: string | null
   resendError: string | null
+  resendAvailableAt: number | null
   verifyEmailStatus: AsyncStatus
   verifyEmailMessage: string | null
   verifyEmailError: string | null
@@ -59,6 +61,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   resendStatus: 'idle',
   resendMessage: null,
   resendError: null,
+  resendAvailableAt: null,
   verifyEmailStatus: 'idle',
   verifyEmailMessage: null,
   verifyEmailError: null,
@@ -137,6 +140,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         sessionStatus: 'unauthenticated',
         registerStatus: 'success',
         registerError: null,
+        resendAvailableAt: Date.now() + resendCooldownMs,
       })
       return user
     } catch (error) {
@@ -150,8 +154,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
   resendVerificationEmail: async () => {
-    const currentUser = useAuthStore.getState().currentUser
+    const { currentUser, resendAvailableAt } = useAuthStore.getState()
     if (!currentUser) {
+      return
+    }
+
+    if (resendAvailableAt && resendAvailableAt > Date.now()) {
       return
     }
 
@@ -159,7 +167,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const response = await resendEmailVerification(currentUser.email)
-      set({ resendStatus: 'success', resendMessage: response.message, resendError: null })
+      set({
+        resendStatus: 'success',
+        resendMessage: response.message,
+        resendError: null,
+        resendAvailableAt: Date.now() + resendCooldownMs,
+      })
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -224,6 +237,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       resendStatus: 'idle',
       resendMessage: null,
       resendError: null,
+      resendAvailableAt: null,
       verifyEmailStatus: 'idle',
       verifyEmailMessage: null,
       verifyEmailError: null,

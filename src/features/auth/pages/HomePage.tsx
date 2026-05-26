@@ -1,25 +1,42 @@
 import { CheckCircle2, Loader2, LogOut, MailCheck, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useAuthStore } from '../model/auth-store'
-import type { AuthUser } from '../model/types'
 
-type HomePageProps = {
-  user: AuthUser | null
-}
-
-export function HomePage({ user }: HomePageProps) {
+export function HomePage() {
+  const user = useAuthStore((state) => state.currentUser)
   const accountStatus = useAuthStore((state) => state.accountStatus)
   const resendStatus = useAuthStore((state) => state.resendStatus)
   const resendMessage = useAuthStore((state) => state.resendMessage)
   const resendError = useAuthStore((state) => state.resendError)
+  const resendAvailableAt = useAuthStore((state) => state.resendAvailableAt)
   const resendVerificationEmail = useAuthStore((state) => state.resendVerificationEmail)
   const logout = useAuthStore((state) => state.logout)
   const logoutStatus = useAuthStore((state) => state.logoutStatus)
   const logoutError = useAuthStore((state) => state.logoutError)
+  const [now, setNow] = useState(() => Date.now())
 
   const isPendingVerification = accountStatus === 'pendingVerification'
   const isResending = resendStatus === 'submitting'
   const isLoggingOut = logoutStatus === 'submitting'
+  const resendCooldownSeconds = resendAvailableAt
+    ? Math.max(0, Math.ceil((resendAvailableAt - now) / 1000))
+    : 0
+  const isResendCoolingDown = resendCooldownSeconds > 0
   const displayName = user?.firstName ? `, ${user.firstName}` : ''
+
+  useEffect(() => {
+    if (!resendAvailableAt) {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      setNow(Date.now())
+    }, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [resendAvailableAt])
 
   return (
     <main className="min-h-screen bg-[#f5f5f7] text-neutral-950">
@@ -72,7 +89,7 @@ export function HomePage({ user }: HomePageProps) {
                   <button
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500"
                     type="button"
-                    disabled={isResending}
+                    disabled={isResending || isResendCoolingDown}
                     onClick={resendVerificationEmail}
                   >
                     {isResending ? (
@@ -88,6 +105,16 @@ export function HomePage({ user }: HomePageProps) {
                     )}
                   </button>
                 </div>
+
+                {isResendCoolingDown ? (
+                  <p className="mt-3 text-sm font-medium text-neutral-500">
+                    You can request another verification email in {resendCooldownSeconds} seconds.
+                  </p>
+                ) : (
+                  <p className="mt-3 text-sm font-medium text-neutral-500">
+                    If the email did not arrive, you can request a new verification link now.
+                  </p>
+                )}
 
                 {resendMessage ? (
                   <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">

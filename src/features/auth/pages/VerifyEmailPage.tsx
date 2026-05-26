@@ -1,13 +1,11 @@
 import { ArrowRight, CheckCircle2, Loader2, MailWarning, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../model/auth-store'
 
-type VerifyEmailPageProps = {
-  token: string | null
-  onContinue: () => void
-}
-
-export function VerifyEmailPage({ token, onContinue }: VerifyEmailPageProps) {
+export function VerifyEmailPage() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const verifiedTokenRef = useRef<string | null>(null)
   const verifyEmailStatus = useAuthStore((state) => state.verifyEmailStatus)
   const verifyEmailMessage = useAuthStore((state) => state.verifyEmailMessage)
@@ -15,6 +13,7 @@ export function VerifyEmailPage({ token, onContinue }: VerifyEmailPageProps) {
   const verifyEmailToken = useAuthStore((state) => state.verifyEmailToken)
   const resetVerifyEmailFeedback = useAuthStore((state) => state.resetVerifyEmailFeedback)
 
+  const token = searchParams.get('token')
   const normalizedToken = useMemo(() => token?.trim() ?? '', [token])
 
   useEffect(() => {
@@ -67,7 +66,7 @@ export function VerifyEmailPage({ token, onContinue }: VerifyEmailPageProps) {
             className="mx-auto mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500"
             type="button"
             disabled={isLoading}
-            onClick={onContinue}
+            onClick={() => navigate('/', { replace: true })}
           >
             Continue
             <ArrowRight size={18} />

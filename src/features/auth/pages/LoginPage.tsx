@@ -1,11 +1,10 @@
 import { BarChart3, LayoutTemplate, Sparkles } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { LoginForm } from '../components/LoginForm'
 
-type LoginPageProps = {
-  onCreateAccount: () => void
-}
+export function LoginPage() {
+  const navigate = useNavigate()
 
-export function LoginPage({ onCreateAccount }: LoginPageProps) {
   return (
     <main className="min-h-screen bg-[#f5f5f7] text-neutral-950">
       <div className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-10 px-5 py-8 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
@@ -53,7 +52,7 @@ export function LoginPage({ onCreateAccount }: LoginPageProps) {
             <button
               className="font-semibold text-neutral-950 transition hover:text-neutral-600"
               type="button"
-              onClick={onCreateAccount}
+              onClick={() => navigate('/register')}
             >
               Create an account
             </button>
