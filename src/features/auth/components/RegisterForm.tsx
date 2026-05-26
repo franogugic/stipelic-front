@@ -1,4 +1,4 @@
-import { ArrowRight, Loader2, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Loader2 } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
 import { TextField } from '../../../shared/ui/TextField'
@@ -107,15 +107,6 @@ export function RegisterForm() {
       {registerError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {registerError}
-        </div>
-      ) : null}
-
-      {registerStatus === 'success' ? (
-        <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          <ShieldCheck className="mt-0.5 shrink-0" size={18} />
-          <span>
-            Account created. Check your inbox to verify your email before signing in.
-          </span>
         </div>
       ) : null}
 
