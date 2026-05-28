@@ -1,4 +1,5 @@
 import type { CreateCreatorFormValues } from './types'
+import { creatorConstraints } from './creator-constraints'
 
 export type CreatorStep = 'identity' | 'plan' | 'setup' | 'settings' | 'review'
 export type CreateCreatorFieldName = keyof CreateCreatorFormValues
@@ -31,16 +32,16 @@ export function validateCreateCreatorForm(
   const slug = values.slug.trim()
   const fieldErrors: CreateCreatorValidation['fieldErrors'] = {}
 
-  if (name.length < 2) {
-    fieldErrors.name = 'Creator name needs at least 2 characters.'
-  } else if (name.length > 100) {
-    fieldErrors.name = 'Creator name can be up to 100 characters.'
+  if (name.length < creatorConstraints.name.minLength) {
+    fieldErrors.name = `Creator name needs at least ${creatorConstraints.name.minLength} characters.`
+  } else if (name.length > creatorConstraints.name.maxLength) {
+    fieldErrors.name = `Creator name can be up to ${creatorConstraints.name.maxLength} characters.`
   }
 
-  if (slug.length < 3) {
-    fieldErrors.slug = 'Creator URL needs at least 3 characters.'
-  } else if (slug.length > 100) {
-    fieldErrors.slug = 'Creator URL can be up to 100 characters.'
+  if (slug.length < creatorConstraints.slug.minLength) {
+    fieldErrors.slug = `Creator URL needs at least ${creatorConstraints.slug.minLength} characters.`
+  } else if (slug.length > creatorConstraints.slug.maxLength) {
+    fieldErrors.slug = `Creator URL can be up to ${creatorConstraints.slug.maxLength} characters.`
   } else if (!slugPattern.test(slug)) {
     fieldErrors.slug = 'Use lowercase letters, numbers, and dashes only.'
   }
@@ -58,16 +59,16 @@ export function validateCreateCreatorForm(
       fieldErrors.supportEmail = 'Enter a valid support email.'
     }
 
-    if (values.supportEmail.trim().length > 100) {
-      fieldErrors.supportEmail = 'Support email can be up to 100 characters.'
+    if (values.supportEmail.trim().length > creatorConstraints.supportEmail.maxLength) {
+      fieldErrors.supportEmail = `Support email can be up to ${creatorConstraints.supportEmail.maxLength} characters.`
     }
 
-    if (values.brandName.trim().length > 100) {
-      fieldErrors.brandName = 'Brand name can be up to 100 characters.'
+    if (values.brandName.trim().length > creatorConstraints.brandName.maxLength) {
+      fieldErrors.brandName = `Brand name can be up to ${creatorConstraints.brandName.maxLength} characters.`
     }
 
-    if (values.logoUrl.trim().length > 500) {
-      fieldErrors.logoUrl = 'Logo URL can be up to 500 characters.'
+    if (values.logoUrl.trim().length > creatorConstraints.logoUrl.maxLength) {
+      fieldErrors.logoUrl = `Logo URL can be up to ${creatorConstraints.logoUrl.maxLength} characters.`
     }
 
     if (values.logoUrl.trim()) {
@@ -85,8 +86,12 @@ export function validateCreateCreatorForm(
       fieldErrors.primaryColor = 'Primary color must be a hex color, like #111827.'
     }
 
-    if (values.timezone.trim().length > 100) {
-      fieldErrors.timezone = 'Timezone can be up to 100 characters.'
+    if (values.timezone.trim().length > creatorConstraints.timezone.maxLength) {
+      fieldErrors.timezone = `Timezone can be up to ${creatorConstraints.timezone.maxLength} characters.`
+    }
+
+    if (values.language.trim().toLowerCase() !== 'en') {
+      fieldErrors.language = 'English is the only language available right now.'
     }
   }
 
@@ -98,7 +103,8 @@ export function validateCreateCreatorForm(
     !fieldErrors.brandName &&
     !fieldErrors.logoUrl &&
     !fieldErrors.primaryColor &&
-    !fieldErrors.timezone
+    !fieldErrors.timezone &&
+    !fieldErrors.language
 
   return {
     fieldErrors,

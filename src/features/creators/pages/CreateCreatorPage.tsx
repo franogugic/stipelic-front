@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TextField } from '../../../shared/ui/TextField'
 import { CreatorStepIndicator } from '../components/CreatorStepIndicator'
+import { creatorConstraints } from '../model/creator-constraints'
 import {
   createSlug,
   validateCreateCreatorForm,
@@ -34,6 +35,7 @@ const initialValues: CreateCreatorFormValues = {
   logoUrl: '',
   primaryColor: '#111827',
   timezone: 'Europe/Sarajevo',
+  language: 'en',
 }
 
 export function CreateCreatorPage() {
@@ -118,6 +120,7 @@ export function CreateCreatorPage() {
       logoUrl: true,
       primaryColor: true,
       timezone: true,
+      language: true,
     }))
 
     if (validation.isSettingsValid) {
@@ -137,12 +140,16 @@ export function CreateCreatorPage() {
       logoUrl: true,
       primaryColor: true,
       timezone: true,
+      language: true,
     })
     if (!validation.isValid) {
       return
     }
 
-    await createCreatorProfile(values)
+    const creator = await createCreatorProfile(values)
+    if (creator) {
+      navigate('/')
+    }
   }
 
   return (
@@ -197,6 +204,7 @@ export function CreateCreatorPage() {
                 <TextField
                   label="Creator name"
                   name="name"
+                  maxLength={creatorConstraints.name.maxLength}
                   placeholder="Ana Studio"
                   value={values.name}
                   error={getVisibleError('name')}
@@ -207,6 +215,7 @@ export function CreateCreatorPage() {
                 <TextField
                   label="Creator URL"
                   name="slug"
+                  maxLength={creatorConstraints.slug.maxLength}
                   placeholder="ana-studio"
                   value={values.slug}
                   error={getVisibleError('slug')}
@@ -238,7 +247,7 @@ export function CreateCreatorPage() {
                       const Icon = getPlanIcon(plan.code)
                       const isSelected = values.planCode === plan.code
                       const isAvailable = plan.code === 'free'
-                      const features = parsePlanFeatures(plan.featuresJson)
+                      const limits = formatPlanLimits(plan.limits)
 
                       return (
                         <button
@@ -296,16 +305,17 @@ export function CreateCreatorPage() {
                               isSelected ? 'text-white/70' : 'text-neutral-500'
                             }`}
                           >
-                            {plan.description}
+                            {plan.description ??
+                              'Clean starter plan for your first creator workspace.'}
                           </span>
-                          {features.length > 0 ? (
+                          {limits.length > 0 ? (
                             <span
                               className={`mt-3 grid gap-1 text-xs ${
                                 isSelected ? 'text-white/70' : 'text-neutral-500'
                               }`}
                             >
-                              {features.slice(0, 3).map((feature) => (
-                                <span key={feature}>- {feature}</span>
+                              {limits.slice(0, 3).map((limit) => (
+                                <span key={limit}>- {limit}</span>
                               ))}
                             </span>
                           ) : null}
@@ -398,6 +408,7 @@ export function CreateCreatorPage() {
                   <TextField
                     label="Brand name"
                     name="brandName"
+                    maxLength={creatorConstraints.brandName.maxLength}
                     placeholder={values.name || 'Ana Studio'}
                     value={values.brandName}
                     error={getVisibleError('brandName')}
@@ -410,6 +421,7 @@ export function CreateCreatorPage() {
                     name="supportEmail"
                     type="email"
                     inputMode="email"
+                    maxLength={creatorConstraints.supportEmail.maxLength}
                     placeholder="hello@example.com"
                     value={values.supportEmail}
                     error={getVisibleError('supportEmail')}
@@ -423,6 +435,7 @@ export function CreateCreatorPage() {
                     label="Logo URL"
                     name="logoUrl"
                     type="url"
+                    maxLength={creatorConstraints.logoUrl.maxLength}
                     placeholder="https://example.com/logo.png"
                     value={values.logoUrl}
                     error={getVisibleError('logoUrl')}
@@ -441,6 +454,7 @@ export function CreateCreatorPage() {
                       />
                       <input
                         className="min-w-0 flex-1 text-[15px] text-neutral-950 outline-none"
+                        maxLength={creatorConstraints.primaryColor.maxLength}
                         value={values.primaryColor}
                         onBlur={() => touchField('primaryColor')}
                         onChange={(event) => updateField('primaryColor', event.target.value)}
@@ -457,30 +471,39 @@ export function CreateCreatorPage() {
                 <div>
                   <p className="text-sm font-semibold text-neutral-900">Timezone</p>
                   <div className="mt-2 grid gap-3 sm:grid-cols-3">
-                    {(['Europe/Sarajevo', 'Europe/Berlin', 'America/New_York'] as const).map((timezone) => (
-                      <button
-                        className={`rounded-2xl border p-4 text-left transition ${
-                          values.timezone === timezone
-                            ? 'border-neutral-950 bg-neutral-950 text-white'
-                            : 'border-neutral-200 bg-white text-neutral-950 hover:border-neutral-300'
-                        }`}
-                        key={timezone}
-                        type="button"
-                        onClick={() => updateField('timezone', timezone)}
-                      >
-                        <span className="block text-sm font-semibold">
-                          {formatTimezoneLabel(timezone)}
-                        </span>
-                        <span
-                          className={`mt-2 block text-sm leading-5 ${
-                            values.timezone === timezone ? 'text-white/70' : 'text-neutral-500'
+                    {(['Europe/Sarajevo', 'Europe/Berlin', 'America/New_York'] as const).map(
+                      (timezone) => (
+                        <button
+                          className={`rounded-2xl border p-4 text-left transition ${
+                            values.timezone === timezone
+                              ? 'border-neutral-950 bg-neutral-950 text-white'
+                              : 'border-neutral-200 bg-white text-neutral-950 hover:border-neutral-300'
                           }`}
+                          key={timezone}
+                          type="button"
+                          onClick={() => updateField('timezone', timezone)}
                         >
-                          {timezone}
-                        </span>
-                      </button>
-                    ))}
+                          <span className="block text-sm font-semibold">
+                            {formatTimezoneLabel(timezone)}
+                          </span>
+                          <span
+                            className={`mt-2 block text-sm leading-5 ${
+                              values.timezone === timezone
+                                ? 'text-white/70'
+                                : 'text-neutral-500'
+                            }`}
+                          >
+                            {timezone}
+                          </span>
+                        </button>
+                      ),
+                    )}
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                  <p className="text-sm font-semibold text-neutral-900">Language</p>
+                  <p className="mt-2 text-sm leading-5 text-neutral-500">English</p>
                 </div>
               </div>
             ) : null}
@@ -511,6 +534,7 @@ export function CreateCreatorPage() {
                     />
                     <ReviewRow label="Primary color" value={values.primaryColor} />
                     <ReviewRow label="Timezone" value={values.timezone} />
+                    <ReviewRow label="Language" value="English" />
                   </>
                 ) : null}
 
@@ -655,25 +679,32 @@ function getPlanIcon(code: string) {
 }
 
 function formatPlanPrice(plan: CreatorPlan) {
-  if (plan.monthlyPriceCents <= 0) {
+  if (plan.priceCents <= 0) {
     return `${plan.currency} 0`
   }
 
-  return `${plan.currency} ${(plan.monthlyPriceCents / 100).toFixed(2)} / month`
+  return `${plan.currency} ${(plan.priceCents / 100).toFixed(2)} / ${formatBillingInterval(
+    plan.billingInterval,
+  )}`
 }
 
-function parsePlanFeatures(featuresJson: string) {
-  try {
-    const parsed = JSON.parse(featuresJson) as unknown
+function formatBillingInterval(interval: string) {
+  return interval.trim().toLowerCase() || 'month'
+}
 
-    if (Array.isArray(parsed)) {
-      return parsed
-        .map((feature) => (typeof feature === 'string' ? feature : null))
-        .filter((feature): feature is string => feature !== null)
-    }
-  } catch {
-    return []
-  }
+function formatPlanLimits(limits: CreatorPlan['limits']) {
+  return Object.entries(limits).map(
+    ([key, value]) => `${formatLimitKey(key)}: ${formatLimitValue(value)}`,
+  )
+}
 
-  return []
+function formatLimitKey(key: string) {
+  return key
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function formatLimitValue(value: number) {
+  return value < 0 ? 'Unlimited' : value.toLocaleString()
 }

@@ -9,6 +9,7 @@ export type CreateCreatorFormValues = {
   logoUrl: string
   primaryColor: string
   timezone: string
+  language: string
 }
 
 export type CreateCreatorRequest = CreateCreatorFormValues
@@ -23,14 +24,26 @@ export type Creator = {
 }
 
 export type CreatorPlan = {
-  publicId: string
   code: string
   name: string
-  description: string
+  description: string | null
+  status: string
   currency: string
-  monthlyPriceCents: number
-  yearlyPriceCents: number
-  limitsJson: string
-  featuresJson: string
-  sortOrder: number
+  priceCents: number
+  billingInterval: string
+  platformFeeBasisPoints: number
+  limits: Record<string, number>
+}
+
+export type CreatorSettings = {
+  creatorPublicId: string
+  creatorName: string
+  slug: string
+  defaultCurrency: string
+  supportEmail: string
+  brandName: string
+  logoUrl: string
+  primaryColor: string
+  timezone: string
+  language: string
 }
