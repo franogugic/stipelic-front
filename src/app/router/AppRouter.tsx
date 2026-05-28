@@ -3,6 +3,7 @@ import { HomePage } from '../../features/auth/pages/HomePage'
 import { LoginPage } from '../../features/auth/pages/LoginPage'
 import { RegisterPage } from '../../features/auth/pages/RegisterPage'
 import { VerifyEmailPage } from '../../features/auth/pages/VerifyEmailPage'
+import { CreateCreatorPage } from '../../features/creators/pages/CreateCreatorPage'
 import { AuthBootstrap } from './AuthBootstrap'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
@@ -20,6 +21,7 @@ export function AppRouter() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/creators/new" element={<CreateCreatorPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

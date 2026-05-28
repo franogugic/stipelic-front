@@ -1,8 +1,11 @@
-import { CheckCircle2, Loader2, LogOut, MailCheck, RefreshCw } from 'lucide-react'
+import { CheckCircle2, Loader2, LogOut, MailCheck, Plus, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../model/auth-store'
+import { useCreatorStore } from '../../creators/model/creator-store'
 
 export function HomePage() {
+  const navigate = useNavigate()
   const user = useAuthStore((state) => state.currentUser)
   const accountStatus = useAuthStore((state) => state.accountStatus)
   const resendStatus = useAuthStore((state) => state.resendStatus)
@@ -13,11 +16,16 @@ export function HomePage() {
   const logout = useAuthStore((state) => state.logout)
   const logoutStatus = useAuthStore((state) => state.logoutStatus)
   const logoutError = useAuthStore((state) => state.logoutError)
+  const currentCreator = useCreatorStore((state) => state.currentCreator)
+  const currentCreatorStatus = useCreatorStore((state) => state.currentCreatorStatus)
+  const loadCurrentCreator = useCreatorStore((state) => state.loadCurrentCreator)
   const [now, setNow] = useState(() => Date.now())
 
   const isPendingVerification = accountStatus === 'pendingVerification'
   const isResending = resendStatus === 'submitting'
   const isLoggingOut = logoutStatus === 'submitting'
+  const isCreatorLoading = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
+  const hasCreator = currentCreator !== null
   const resendCooldownSeconds = resendAvailableAt
     ? Math.max(0, Math.ceil((resendAvailableAt - now) / 1000))
     : 0
@@ -37,6 +45,12 @@ export function HomePage() {
       window.clearInterval(intervalId)
     }
   }, [resendAvailableAt])
+
+  useEffect(() => {
+    if (!isPendingVerification && currentCreatorStatus === 'idle') {
+      void loadCurrentCreator()
+    }
+  }, [currentCreatorStatus, isPendingVerification, loadCurrentCreator])
 
   return (
     <main className="min-h-screen bg-[#f5f5f7] text-neutral-950">
@@ -130,15 +144,50 @@ export function HomePage() {
               </div>
             </div>
           ) : (
-            <div className="mt-10 flex items-start gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
-              <CheckCircle2 className="mt-0.5 shrink-0" size={24} />
-              <div>
-                <h2 className="text-xl font-semibold tracking-normal">
-                  Welcome home{displayName}.
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-emerald-800">
-                  Your creator workspace is ready. Landing pages and stats will live here.
-                </p>
+            <div className="mt-10 grid gap-4">
+              <div className="flex items-start gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+                <CheckCircle2 className="mt-0.5 shrink-0" size={24} />
+                <div>
+                  <h2 className="text-xl font-semibold tracking-normal">
+                    Welcome home{displayName}.
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-emerald-800">
+                    Your creator workspace is ready. Landing pages and stats will live here.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:w-fit">
+                {hasCreator ? (
+                  <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-neutral-950">
+                      Creator already created
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-neutral-500">
+                      You already have {currentCreator.name}. One creator workspace is allowed for
+                      now.
+                    </p>
+                  </div>
+                ) : currentCreatorStatus === 'error' ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm font-semibold text-amber-900">
+                      Could not check creator status
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-amber-800">
+                      Try again before creating a new workspace.
+                    </p>
+                  </div>
+                ) : null}
+
+                <button
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500"
+                  type="button"
+                  disabled={hasCreator || isCreatorLoading || currentCreatorStatus === 'error'}
+                  onClick={() => navigate('/creators/new')}
+                >
+                  {isCreatorLoading ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
+                  {hasCreator ? 'Creator already exists' : 'Create creator'}
+                </button>
               </div>
             </div>
           )}
