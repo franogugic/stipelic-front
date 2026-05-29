@@ -1,9 +1,11 @@
 import { apiRequest } from '../../../shared/api/http-client'
 import type {
   CreateCreatorRequest,
+  CreateCreatorResult,
   Creator,
   CreatorPlan,
   CreatorSettings,
+  CreatorSubscriptionCheckoutResult,
   UpdateCreatorSettingsRequest,
 } from '../model/types'
 
@@ -50,7 +52,7 @@ export function updateCreatorSettings(slug: string, request: UpdateCreatorSettin
 }
 
 export function createCreator(request: CreateCreatorRequest) {
-  return apiRequest<ApiResponse<Creator>>('/api/creators', {
+  return apiRequest<ApiResponse<CreateCreatorResult>>('/api/creators', {
     method: 'POST',
     body: {
       name: request.name.trim(),
@@ -65,6 +67,15 @@ export function createCreator(request: CreateCreatorRequest) {
       language: request.configureSettingsOnStart ? request.language.trim() || null : null,
     },
   }).then(unwrapApiResponse)
+}
+
+export function startCreatorSubscriptionCheckout() {
+  return apiRequest<ApiResponse<CreatorSubscriptionCheckoutResult>>(
+    '/api/creators/current/subscription/checkout',
+    {
+      method: 'POST',
+    },
+  ).then(unwrapApiResponse)
 }
 
 export function deleteCurrentCreator() {

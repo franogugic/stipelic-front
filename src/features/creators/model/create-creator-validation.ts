@@ -30,6 +30,7 @@ export function validateCreateCreatorForm(
 ): CreateCreatorValidation {
   const name = values.name.trim()
   const slug = values.slug.trim()
+  const planCode = values.planCode.trim()
   const fieldErrors: CreateCreatorValidation['fieldErrors'] = {}
 
   if (name.length < creatorConstraints.name.minLength) {
@@ -46,8 +47,10 @@ export function validateCreateCreatorForm(
     fieldErrors.slug = 'Use lowercase letters, numbers, and dashes only.'
   }
 
-  if (values.planCode !== 'free') {
-    fieldErrors.planCode = 'Only the free plan is available right now.'
+  if (!planCode) {
+    fieldErrors.planCode = 'Choose a creator plan.'
+  } else if (planCode.length > creatorConstraints.planCode.maxLength) {
+    fieldErrors.planCode = `Plan code can be up to ${creatorConstraints.planCode.maxLength} characters.`
   }
 
   if (values.defaultCurrency !== 'EUR' && values.defaultCurrency !== 'USD') {

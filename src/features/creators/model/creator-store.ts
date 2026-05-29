@@ -6,13 +6,16 @@ import {
   getCreatorSettings,
   getCurrentCreator,
   listCreatorPlans,
+  startCreatorSubscriptionCheckout,
   updateCreatorSettings,
 } from '../api/creators-api'
 import type {
   CreateCreatorFormValues,
+  CreateCreatorResult,
   Creator,
   CreatorPlan,
   CreatorSettings,
+  CreatorSubscriptionCheckoutResult,
   UpdateCreatorSettingsRequest,
 } from './types'
 
@@ -20,6 +23,7 @@ type CreatorCreateStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreatorLoadStatus = 'idle' | 'loading' | 'success' | 'error'
 type CreatorDeleteStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreatorUpdateStatus = 'idle' | 'submitting' | 'success' | 'error'
+type CreatorCheckoutStatus = 'idle' | 'submitting' | 'success' | 'error'
 
 type CreatorState = {
   createdCreator: Creator | null
@@ -35,6 +39,9 @@ type CreatorState = {
   updateSettingsError: string | null
   createStatus: CreatorCreateStatus
   createError: string | null
+  checkoutResult: CreatorSubscriptionCheckoutResult | null
+  checkoutStatus: CreatorCheckoutStatus
+  checkoutError: string | null
   deleteStatus: CreatorDeleteStatus
   deleteError: string | null
   loadCurrentCreator: () => Promise<Creator | null>
@@ -44,9 +51,11 @@ type CreatorState = {
     slug: string,
     values: UpdateCreatorSettingsRequest,
   ) => Promise<CreatorSettings | null>
-  createCreatorProfile: (values: CreateCreatorFormValues) => Promise<Creator | null>
+  createCreatorProfile: (values: CreateCreatorFormValues) => Promise<CreateCreatorResult | null>
+  startCreatorCheckout: () => Promise<CreatorSubscriptionCheckoutResult | null>
   deleteCreatorProfile: () => Promise<boolean>
   resetCreateCreatorFeedback: () => void
+  resetCreatorCheckoutFeedback: () => void
   resetDeleteCreatorFeedback: () => void
   resetUpdateCreatorSettingsFeedback: () => void
 }
@@ -65,6 +74,9 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   updateSettingsError: null,
   createStatus: 'idle',
   createError: null,
+  checkoutResult: null,
+  checkoutStatus: 'idle',
+  checkoutError: null,
   deleteStatus: 'idle',
   deleteError: null,
   loadCurrentCreator: async () => {
@@ -160,15 +172,23 @@ export const useCreatorStore = create<CreatorState>((set) => ({
     set({ createStatus: 'submitting', createError: null })
 
     try {
-      const creator = await createCreator(values)
+      const result = await createCreator(values)
+      const { creator } = result
       set({
         createdCreator: creator,
         currentCreator: creator,
         currentCreatorStatus: 'success',
+        checkoutResult: result.requiresPayment
+          ? {
+              requiresPayment: result.requiresPayment,
+              paymentStatus: result.paymentStatus,
+              checkoutUrl: result.checkoutUrl,
+            }
+          : null,
         createStatus: 'success',
         createError: null,
       })
-      return creator
+      return result
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -176,6 +196,27 @@ export const useCreatorStore = create<CreatorState>((set) => ({
           : 'We could not create this creator profile. Please try again.'
 
       set({ createStatus: 'error', createError: message })
+      return null
+    }
+  },
+  startCreatorCheckout: async () => {
+    set({ checkoutStatus: 'submitting', checkoutError: null })
+
+    try {
+      const checkout = await startCreatorSubscriptionCheckout()
+      set({
+        checkoutResult: checkout,
+        checkoutStatus: 'success',
+        checkoutError: null,
+      })
+      return checkout
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'We could not start checkout. Please try again.'
+
+      set({ checkoutStatus: 'error', checkoutError: message })
       return null
     }
   },
@@ -190,6 +231,9 @@ export const useCreatorStore = create<CreatorState>((set) => ({
         creatorSettings: null,
         creatorSettingsStatus: 'idle',
         creatorSettingsError: null,
+        checkoutResult: null,
+        checkoutStatus: 'idle',
+        checkoutError: null,
         currentCreatorStatus: 'success',
         deleteStatus: 'success',
         deleteError: null,
@@ -207,6 +251,9 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
   resetCreateCreatorFeedback: () => {
     set({ createStatus: 'idle', createError: null })
+  },
+  resetCreatorCheckoutFeedback: () => {
+    set({ checkoutStatus: 'idle', checkoutError: null })
   },
   resetDeleteCreatorFeedback: () => {
     set({ deleteStatus: 'idle', deleteError: null })

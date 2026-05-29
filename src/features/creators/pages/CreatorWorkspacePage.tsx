@@ -1,4 +1,4 @@
-import { ArrowLeft, Loader2, Settings, Trash2 } from 'lucide-react'
+import { ArrowLeft, CreditCard, Loader2, Settings, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DeleteCreatorDialog } from '../components/DeleteCreatorDialog'
@@ -9,12 +9,19 @@ export function CreatorWorkspacePage() {
   const { slug } = useParams()
   const currentCreator = useCreatorStore((state) => state.currentCreator)
   const currentCreatorStatus = useCreatorStore((state) => state.currentCreatorStatus)
+  const checkoutResult = useCreatorStore((state) => state.checkoutResult)
+  const checkoutStatus = useCreatorStore((state) => state.checkoutStatus)
+  const checkoutError = useCreatorStore((state) => state.checkoutError)
   const loadCurrentCreator = useCreatorStore((state) => state.loadCurrentCreator)
+  const startCreatorCheckout = useCreatorStore((state) => state.startCreatorCheckout)
   const resetDeleteCreatorFeedback = useCreatorStore((state) => state.resetDeleteCreatorFeedback)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const isLoadingCreator = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
   const isCurrentSlug = currentCreator?.slug === slug
+  const requiresPayment =
+    currentCreator?.status.toLowerCase() === 'pendingpayment' && isCurrentSlug
+  const isStartingCheckout = checkoutStatus === 'submitting'
 
   useEffect(() => {
     if (currentCreatorStatus === 'idle') {
@@ -25,6 +32,13 @@ export function CreatorWorkspacePage() {
   const openDeleteDialog = () => {
     resetDeleteCreatorFeedback()
     setIsDeleteDialogOpen(true)
+  }
+
+  const startCheckout = async () => {
+    const checkout = await startCreatorCheckout()
+    if (checkout?.checkoutUrl) {
+      window.location.assign(checkout.checkoutUrl)
+    }
   }
 
   return (
@@ -100,6 +114,49 @@ export function CreatorWorkspacePage() {
                 <CreatorWorkspaceMeta label="Currency" value={currentCreator.defaultCurrency} />
                 <CreatorWorkspaceMeta label="Plan" value={currentCreator.planCode || 'Free'} />
               </div>
+
+              {requiresPayment ? (
+                <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-amber-900">Payment required</p>
+                      <p className="mt-1 text-sm leading-6 text-amber-800">
+                        Complete checkout before this creator workspace becomes active.
+                      </p>
+                    </div>
+                    <button
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500"
+                      type="button"
+                      disabled={isStartingCheckout}
+                      onClick={() => {
+                        void startCheckout()
+                      }}
+                    >
+                      {isStartingCheckout ? (
+                        <Loader2 className="animate-spin" size={17} />
+                      ) : (
+                        <CreditCard size={17} />
+                      )}
+                      Pay now
+                    </button>
+                  </div>
+
+                  {checkoutError ? (
+                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                      {checkoutError}
+                    </div>
+                  ) : null}
+
+                  {checkoutStatus === 'success' &&
+                  checkoutResult?.requiresPayment &&
+                  !checkoutResult.checkoutUrl ? (
+                    <div className="mt-4 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm font-medium text-amber-800">
+                      Checkout is not ready yet. Please try again after the payment provider is
+                      configured.
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </section>
 
             <aside className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">

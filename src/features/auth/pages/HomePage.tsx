@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   CheckCircle2,
+  CreditCard,
   Globe2,
   Loader2,
   LogOut,
@@ -27,19 +28,32 @@ export function HomePage() {
   const logoutError = useAuthStore((state) => state.logoutError)
   const currentCreator = useCreatorStore((state) => state.currentCreator)
   const currentCreatorStatus = useCreatorStore((state) => state.currentCreatorStatus)
+  const checkoutResult = useCreatorStore((state) => state.checkoutResult)
+  const checkoutStatus = useCreatorStore((state) => state.checkoutStatus)
+  const checkoutError = useCreatorStore((state) => state.checkoutError)
   const loadCurrentCreator = useCreatorStore((state) => state.loadCurrentCreator)
+  const startCreatorCheckout = useCreatorStore((state) => state.startCreatorCheckout)
   const [now, setNow] = useState(() => Date.now())
 
   const isPendingVerification = accountStatus === 'pendingVerification'
   const isResending = resendStatus === 'submitting'
   const isLoggingOut = logoutStatus === 'submitting'
+  const isStartingCheckout = checkoutStatus === 'submitting'
   const isCreatorLoading = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
   const hasCreator = currentCreator !== null
+  const requiresPayment = currentCreator?.status.toLowerCase() === 'pendingpayment'
   const resendCooldownSeconds = resendAvailableAt
     ? Math.max(0, Math.ceil((resendAvailableAt - now) / 1000))
     : 0
   const isResendCoolingDown = resendCooldownSeconds > 0
   const displayName = user?.firstName ? `, ${user.firstName}` : ''
+
+  const startCheckout = async () => {
+    const checkout = await startCreatorCheckout()
+    if (checkout?.checkoutUrl) {
+      window.location.assign(checkout.checkoutUrl)
+    }
+  }
 
   useEffect(() => {
     if (!resendAvailableAt) {
@@ -217,6 +231,50 @@ export function HomePage() {
                     <p className="mt-1 text-sm leading-6 text-amber-800">
                       Try again before creating a new workspace.
                     </p>
+                  </div>
+                ) : null}
+
+                {hasCreator && requiresPayment ? (
+                  <div className="rounded-3xl border border-amber-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-lg font-semibold tracking-normal text-neutral-950">
+                          Complete plan payment
+                        </p>
+                        <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-500">
+                          Your creator is created, but the selected plan needs payment before the
+                          workspace becomes active.
+                        </p>
+                      </div>
+                      <button
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500"
+                        type="button"
+                        disabled={isStartingCheckout}
+                        onClick={() => {
+                          void startCheckout()
+                        }}
+                      >
+                        {isStartingCheckout ? (
+                          <Loader2 className="animate-spin" size={18} />
+                        ) : (
+                          <CreditCard size={18} />
+                        )}
+                        Continue to payment
+                      </button>
+                    </div>
+
+                    {checkoutError ? (
+                      <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                        {checkoutError}
+                      </div>
+                    ) : null}
+
+                    {checkoutStatus === 'success' && checkoutResult?.requiresPayment && !checkoutResult.checkoutUrl ? (
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                        Checkout is not ready yet. Please try again after the payment provider is
+                        configured.
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 

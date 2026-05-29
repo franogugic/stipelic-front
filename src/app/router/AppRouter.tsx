@@ -6,6 +6,7 @@ import { VerifyEmailPage } from '../../features/auth/pages/VerifyEmailPage'
 import { CreateCreatorPage } from '../../features/creators/pages/CreateCreatorPage'
 import { CreatorSettingsPage } from '../../features/creators/pages/CreatorSettingsPage'
 import { CreatorWorkspacePage } from '../../features/creators/pages/CreatorWorkspacePage'
+import { PaymentStatusPage } from '../../features/creators/pages/PaymentStatusPage'
 import { AuthBootstrap } from './AuthBootstrap'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
@@ -15,6 +16,8 @@ export function AppRouter() {
     <Routes>
       <Route element={<AuthBootstrap />}>
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/payment/success" element={<PaymentStatusPage status="success" />} />
+        <Route path="/payment/cancel" element={<PaymentStatusPage status="cancel" />} />
 
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />

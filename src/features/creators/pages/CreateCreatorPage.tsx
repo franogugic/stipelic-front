@@ -6,7 +6,6 @@ import {
   Check,
   Crown,
   Loader2,
-  Lock,
   Rocket,
   Settings,
   Sparkles,
@@ -61,6 +60,7 @@ export function CreateCreatorPage() {
     () => creatorPlans.find((plan) => plan.code === values.planCode),
     [creatorPlans, values.planCode],
   )
+  const canContinueFromPlan = selectedPlan?.status.toLowerCase() === 'active'
   const isSubmitting = createStatus === 'submitting'
 
   useEffect(() => {
@@ -146,8 +146,13 @@ export function CreateCreatorPage() {
       return
     }
 
-    const creator = await createCreatorProfile(values)
-    if (creator) {
+    const result = await createCreatorProfile(values)
+    if (result?.checkoutUrl) {
+      window.location.assign(result.checkoutUrl)
+      return
+    }
+
+    if (result) {
       navigate('/')
     }
   }
@@ -243,10 +248,16 @@ export function CreateCreatorPage() {
                       </div>
                     ) : null}
 
+                    {creatorPlansStatus === 'success' && creatorPlans.length === 0 ? (
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm font-medium text-neutral-500 sm:col-span-2">
+                        No creator plans are available right now.
+                      </div>
+                    ) : null}
+
                     {creatorPlans.map((plan) => {
                       const Icon = getPlanIcon(plan.code)
                       const isSelected = values.planCode === plan.code
-                      const isAvailable = plan.code === 'free'
+                      const isAvailable = plan.status.toLowerCase() === 'active'
                       const limits = formatPlanLimits(plan.limits)
 
                       return (
@@ -275,20 +286,18 @@ export function CreateCreatorPage() {
                             >
                               <Icon size={19} />
                             </span>
-                            {isAvailable ? (
-                              <span
-                                className={`grid size-6 place-items-center rounded-full ${
-                                  isSelected
-                                    ? 'bg-white text-neutral-950'
-                                    : 'bg-neutral-100 text-neutral-500'
-                                }`}
-                              >
+                            {isSelected ? (
+                              <span className="grid size-6 place-items-center rounded-full bg-white text-neutral-950">
                                 <Check size={14} />
                               </span>
+                            ) : null}
+                            {!isAvailable ? (
+                              <span className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-neutral-400">
+                                Unavailable
+                              </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-xs font-semibold text-neutral-400">
-                                <Lock size={12} />
-                                Locked
+                              <span className="rounded-full bg-neutral-100 px-2 py-1 text-xs font-semibold text-neutral-500">
+                                {plan.billingInterval}
                               </span>
                             )}
                           </span>
@@ -591,7 +600,11 @@ export function CreateCreatorPage() {
                 <button
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500"
                   type="button"
-                  disabled={creatorPlansStatus === 'loading' || creatorPlansStatus === 'error'}
+                  disabled={
+                    creatorPlansStatus === 'loading' ||
+                    creatorPlansStatus === 'error' ||
+                    !canContinueFromPlan
+                  }
                   onClick={goToSetup}
                 >
                   Continue

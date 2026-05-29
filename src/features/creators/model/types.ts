@@ -14,6 +14,19 @@ export type CreateCreatorFormValues = {
 
 export type CreateCreatorRequest = CreateCreatorFormValues
 
+export type CreateCreatorResult = {
+  creator: Creator
+  requiresPayment: boolean
+  paymentStatus: string
+  checkoutUrl: string | null
+}
+
+export type CreatorSubscriptionCheckoutResult = {
+  requiresPayment: boolean
+  paymentStatus: string
+  checkoutUrl: string | null
+}
+
 export type Creator = {
   publicId: string
   name: string
