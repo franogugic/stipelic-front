@@ -6,12 +6,20 @@ import {
   getCreatorSettings,
   getCurrentCreator,
   listCreatorPlans,
+  updateCreatorSettings,
 } from '../api/creators-api'
-import type { CreateCreatorFormValues, Creator, CreatorPlan, CreatorSettings } from './types'
+import type {
+  CreateCreatorFormValues,
+  Creator,
+  CreatorPlan,
+  CreatorSettings,
+  UpdateCreatorSettingsRequest,
+} from './types'
 
 type CreatorCreateStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreatorLoadStatus = 'idle' | 'loading' | 'success' | 'error'
 type CreatorDeleteStatus = 'idle' | 'submitting' | 'success' | 'error'
+type CreatorUpdateStatus = 'idle' | 'submitting' | 'success' | 'error'
 
 type CreatorState = {
   createdCreator: Creator | null
@@ -23,6 +31,8 @@ type CreatorState = {
   creatorSettings: CreatorSettings | null
   creatorSettingsStatus: CreatorLoadStatus
   creatorSettingsError: string | null
+  updateSettingsStatus: CreatorUpdateStatus
+  updateSettingsError: string | null
   createStatus: CreatorCreateStatus
   createError: string | null
   deleteStatus: CreatorDeleteStatus
@@ -30,10 +40,15 @@ type CreatorState = {
   loadCurrentCreator: () => Promise<Creator | null>
   loadCreatorPlans: () => Promise<void>
   loadCreatorSettings: (slug: string) => Promise<CreatorSettings | null>
+  updateCreatorSettingsProfile: (
+    slug: string,
+    values: UpdateCreatorSettingsRequest,
+  ) => Promise<CreatorSettings | null>
   createCreatorProfile: (values: CreateCreatorFormValues) => Promise<Creator | null>
   deleteCreatorProfile: () => Promise<boolean>
   resetCreateCreatorFeedback: () => void
   resetDeleteCreatorFeedback: () => void
+  resetUpdateCreatorSettingsFeedback: () => void
 }
 
 export const useCreatorStore = create<CreatorState>((set) => ({
@@ -46,6 +61,8 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   creatorSettings: null,
   creatorSettingsStatus: 'idle',
   creatorSettingsError: null,
+  updateSettingsStatus: 'idle',
+  updateSettingsError: null,
   createStatus: 'idle',
   createError: null,
   deleteStatus: 'idle',
@@ -89,6 +106,29 @@ export const useCreatorStore = create<CreatorState>((set) => ({
         creatorSettingsStatus: 'error',
         creatorSettingsError: message,
       })
+      return null
+    }
+  },
+  updateCreatorSettingsProfile: async (slug, values) => {
+    set({ updateSettingsStatus: 'submitting', updateSettingsError: null })
+
+    try {
+      const settings = await updateCreatorSettings(slug, values)
+      set({
+        creatorSettings: settings,
+        creatorSettingsStatus: 'success',
+        creatorSettingsError: null,
+        updateSettingsStatus: 'success',
+        updateSettingsError: null,
+      })
+      return settings
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'We could not update creator settings. Please try again.'
+
+      set({ updateSettingsStatus: 'error', updateSettingsError: message })
       return null
     }
   },
@@ -170,5 +210,8 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
   resetDeleteCreatorFeedback: () => {
     set({ deleteStatus: 'idle', deleteError: null })
+  },
+  resetUpdateCreatorSettingsFeedback: () => {
+    set({ updateSettingsStatus: 'idle', updateSettingsError: null })
   },
 }))

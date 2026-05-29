@@ -10,8 +10,8 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../model/auth-store'
 import { useCreatorStore } from '../../creators/model/creator-store'
+import { useAuthStore } from '../model/auth-store'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -113,8 +113,9 @@ export function HomePage() {
                   Verify your account before using the platform.
                 </h2>
                 <p className="mt-4 max-w-xl text-sm leading-6 text-neutral-600">
-                  We sent a verification link to <span className="font-semibold text-neutral-950">{user.email}</span>.
-                  Open that email and verify your account before creating landing pages or viewing stats.
+                  We sent a verification link to{' '}
+                  <span className="font-semibold text-neutral-950">{user.email}</span>. Open that
+                  email and verify your account before creating landing pages or viewing stats.
                 </p>
 
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -168,9 +169,7 @@ export function HomePage() {
               <div className="flex items-start gap-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
                 <CheckCircle2 className="mt-0.5 shrink-0" size={24} />
                 <div>
-                  <h2 className="text-xl font-semibold tracking-normal">
-                    Account is ready.
-                  </h2>
+                  <h2 className="text-xl font-semibold tracking-normal">Account is ready.</h2>
                   <p className="mt-2 text-sm leading-6 text-emerald-800">
                     Your creator workspace is ready. Landing pages and stats will live here.
                   </p>
@@ -260,7 +259,6 @@ export function HomePage() {
                   <p className="mt-1 font-semibold text-neutral-950">{accountStatus}</p>
                 </div>
               </div>
-
             </aside>
           </div>
         )}

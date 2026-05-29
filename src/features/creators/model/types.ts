@@ -47,3 +47,12 @@ export type CreatorSettings = {
   timezone: string
   language: string
 }
+
+export type UpdateCreatorSettingsRequest = {
+  supportEmail: string
+  brandName: string
+  logoUrl: string
+  primaryColor: string
+  timezone: string
+  language: string
+}

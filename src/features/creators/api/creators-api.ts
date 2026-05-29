@@ -1,5 +1,11 @@
 import { apiRequest } from '../../../shared/api/http-client'
-import type { CreateCreatorRequest, Creator, CreatorPlan, CreatorSettings } from '../model/types'
+import type {
+  CreateCreatorRequest,
+  Creator,
+  CreatorPlan,
+  CreatorSettings,
+  UpdateCreatorSettingsRequest,
+} from '../model/types'
 
 type ApiResponse<TData> = {
   statusCode: number
@@ -23,6 +29,23 @@ export function listCreatorPlans() {
 export function getCreatorSettings(slug: string) {
   return apiRequest<ApiResponse<CreatorSettings>>(
     `/api/creators/${encodeURIComponent(slug)}/settings`,
+  ).then(unwrapApiResponse)
+}
+
+export function updateCreatorSettings(slug: string, request: UpdateCreatorSettingsRequest) {
+  return apiRequest<ApiResponse<CreatorSettings>>(
+    `/api/creators/${encodeURIComponent(slug)}/settings`,
+    {
+      method: 'PUT',
+      body: {
+        supportEmail: request.supportEmail.trim() || null,
+        brandName: request.brandName.trim() || null,
+        logoUrl: request.logoUrl.trim() || null,
+        primaryColor: request.primaryColor.trim() || null,
+        timezone: request.timezone.trim() || null,
+        language: request.language.trim() || null,
+      },
+    },
   ).then(unwrapApiResponse)
 }
 
