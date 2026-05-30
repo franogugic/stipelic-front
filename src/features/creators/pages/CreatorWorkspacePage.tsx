@@ -1,4 +1,15 @@
-import { ArrowLeft, CreditCard, Loader2, Settings, Trash2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  CheckCircle2,
+  CircleDollarSign,
+  CreditCard,
+  Globe,
+  Hash,
+  Loader2,
+  Settings,
+  Trash2,
+  Zap,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DeleteCreatorDialog } from '../components/DeleteCreatorDialog'
@@ -7,193 +18,288 @@ import { useCreatorStore } from '../model/creator-store'
 export function CreatorWorkspacePage() {
   const navigate = useNavigate()
   const { slug } = useParams()
-  const currentCreator = useCreatorStore((state) => state.currentCreator)
-  const currentCreatorStatus = useCreatorStore((state) => state.currentCreatorStatus)
-  const checkoutResult = useCreatorStore((state) => state.checkoutResult)
-  const checkoutStatus = useCreatorStore((state) => state.checkoutStatus)
-  const checkoutError = useCreatorStore((state) => state.checkoutError)
-  const loadCurrentCreator = useCreatorStore((state) => state.loadCurrentCreator)
-  const startCreatorCheckout = useCreatorStore((state) => state.startCreatorCheckout)
-  const resetDeleteCreatorFeedback = useCreatorStore((state) => state.resetDeleteCreatorFeedback)
+  const currentCreator = useCreatorStore((s) => s.currentCreator)
+  const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
+  const checkoutStatus = useCreatorStore((s) => s.checkoutStatus)
+  const checkoutError = useCreatorStore((s) => s.checkoutError)
+  const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
+  const startCreatorCheckout = useCreatorStore((s) => s.startCreatorCheckout)
+  const resetDeleteCreatorFeedback = useCreatorStore((s) => s.resetDeleteCreatorFeedback)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
-  const isLoadingCreator = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
+  const isLoading = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
   const isCurrentSlug = currentCreator?.slug === slug
-  const requiresPayment =
-    currentCreator?.status.toLowerCase() === 'pendingpayment' && isCurrentSlug
+  const creator = isCurrentSlug ? currentCreator : null
+  const requiresPayment = creator?.status.toLowerCase() === 'pendingpayment'
+  const isActive = creator?.status.toLowerCase() === 'active'
+  const isSuspended = creator?.status.toLowerCase() === 'suspended'
   const isStartingCheckout = checkoutStatus === 'submitting'
 
-  useEffect(() => {
-    if (currentCreatorStatus === 'idle') {
-      void loadCurrentCreator()
-    }
-  }, [currentCreatorStatus, loadCurrentCreator])
+  const planName = formatPlanName(creator?.planCode ?? '')
 
-  const openDeleteDialog = () => {
-    resetDeleteCreatorFeedback()
-    setIsDeleteDialogOpen(true)
-  }
+  useEffect(() => {
+    if (currentCreatorStatus === 'idle') void loadCurrentCreator()
+  }, [currentCreatorStatus, loadCurrentCreator])
 
   const startCheckout = async () => {
     const checkout = await startCreatorCheckout()
-    if (checkout?.checkoutUrl) {
-      window.location.assign(checkout.checkoutUrl)
-    }
+    if (checkout?.checkoutUrl) window.location.assign(checkout.checkoutUrl)
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f5f7] text-neutral-950">
-      <div className="border-b border-neutral-200/80 bg-white/80 backdrop-blur-xl">
-        <header className="mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
-          <div>
-            <p className="text-sm font-semibold text-neutral-950">Creator Platform</p>
-            <p className="mt-1 text-xs font-medium text-neutral-500">/{slug}</p>
+    <div className="min-h-screen bg-neutral-50 text-neutral-950">
+      {/* Header */}
+      <header className="border-b border-neutral-200 bg-white">
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-5 lg:px-8">
+          <div className="flex items-center gap-2">
+            <span className="grid size-7 place-items-center rounded-lg bg-neutral-950 text-white">
+              <span className="text-xs font-bold">CP</span>
+            </span>
+            <span className="text-sm text-neutral-300">/</span>
+            <span className="text-sm font-medium text-neutral-950">{slug}</span>
           </div>
-
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
             type="button"
             onClick={() => navigate('/')}
           >
-            <ArrowLeft size={16} />
-            Home
+            <ArrowLeft size={14} />
+            Dashboard
           </button>
-        </header>
-      </div>
-
-      <section className="mx-auto w-full max-w-7xl px-5 py-8 lg:px-8 lg:py-10">
-        <div>
-          <p className="text-sm font-semibold text-neutral-500">Creator workspace</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-normal sm:text-4xl">
-            {currentCreator && isCurrentSlug ? currentCreator.name : `/${slug}`}
-          </h1>
-          <p className="mt-4 max-w-xl text-sm leading-6 text-neutral-500">
-            Landing page editing and stats will live here.
-          </p>
         </div>
+      </header>
 
-        {isLoadingCreator ? (
-          <div className="mt-8 flex items-center gap-3 rounded-3xl border border-neutral-200 bg-white p-5 text-sm font-medium text-neutral-500 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
-            <Loader2 className="animate-spin" size={18} />
-            Loading creator workspace
+      <main className="mx-auto w-full max-w-5xl px-5 py-10 lg:px-8">
+
+        {/* Loading */}
+        {isLoading ? (
+          <div className="flex h-32 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-6 text-sm text-neutral-400 shadow-sm">
+            <Loader2 className="animate-spin" size={17} />
+            Loading workspace
           </div>
         ) : null}
 
-        {!isLoadingCreator && (!currentCreator || !isCurrentSlug) ? (
-          <div className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
-            <p className="text-sm font-semibold">Creator workspace not found</p>
-            <p className="mt-2 text-sm leading-6 text-amber-800">
-              Go back home and open your current creator workspace.
-            </p>
+        {/* Not found */}
+        {!isLoading && !creator ? (
+          <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <p className="font-semibold">Workspace not found</p>
+            <p className="mt-1 text-sm text-neutral-500">This slug doesn't match your workspace.</p>
+            <button
+              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+              type="button"
+              onClick={() => navigate('/')}
+            >
+              <ArrowLeft size={14} />
+              Back to dashboard
+            </button>
           </div>
         ) : null}
 
-        {currentCreator && isCurrentSlug ? (
-          <div className="mt-8 grid gap-6 xl:grid-cols-[1.45fr_0.55fr]">
-            <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-lg font-semibold tracking-normal text-neutral-950">
-                    /{currentCreator.slug}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-neutral-500">
-                    Open settings to review the backend settings for this creator.
-                  </p>
+        {creator ? (
+          <div className="grid gap-5 lg:grid-cols-[1fr_260px]">
+            <div className="grid gap-4">
+
+              {/* Hero card */}
+              <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+                {/* Top band */}
+                <div className="bg-neutral-950 px-6 py-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-white/10 text-white text-xl font-bold">
+                        {creator.name[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-lg font-semibold text-white">{creator.name}</p>
+                        <p className="mt-0.5 text-sm text-white/50">/{creator.slug}</p>
+                      </div>
+                    </div>
+                    <StatusBadge status={creator.status} />
+                  </div>
                 </div>
-                <button
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50"
-                  type="button"
-                  onClick={() => navigate(`/app/${currentCreator.slug}/settings`)}
-                >
-                  <Settings size={17} />
-                  Settings
-                </button>
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <CreatorWorkspaceMeta label="Status" value={currentCreator.status} />
-                <CreatorWorkspaceMeta label="Currency" value={currentCreator.defaultCurrency} />
-                <CreatorWorkspaceMeta label="Plan" value={currentCreator.planCode || 'Free'} />
+
+                {/* Info rows */}
+                <div className="grid divide-y divide-neutral-100">
+                  <InfoRow icon={Zap} label="Plan" value={planName} highlight />
+                  <InfoRow icon={CircleDollarSign} label="Currency" value={creator.defaultCurrency} />
+                  <InfoRow icon={Globe} label="Slug" value={`/${creator.slug}`} />
+                  <InfoRow icon={Hash} label="Workspace ID" value={creator.publicId} mono />
+                </div>
+
+                {/* Actions footer */}
+                <div className="flex items-center justify-end gap-2 border-t border-neutral-100 px-6 py-4">
+                  <button
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+                    type="button"
+                    onClick={() => navigate(`/app/${creator.slug}/settings`)}
+                  >
+                    <Settings size={15} />
+                    Settings
+                  </button>
+                </div>
               </div>
 
+              {/* Payment required */}
               {requiresPayment ? (
-                <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm font-semibold text-amber-900">Payment required</p>
-                      <p className="mt-1 text-sm leading-6 text-amber-800">
-                        Complete checkout before this creator workspace becomes active.
+                      <p className="mt-1 text-sm text-amber-700">
+                        Complete checkout to activate this workspace.
                       </p>
                     </div>
                     <button
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500"
+                      className="inline-flex h-10 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40"
                       type="button"
                       disabled={isStartingCheckout}
-                      onClick={() => {
-                        void startCheckout()
-                      }}
+                      onClick={() => void startCheckout()}
                     >
-                      {isStartingCheckout ? (
-                        <Loader2 className="animate-spin" size={17} />
-                      ) : (
-                        <CreditCard size={17} />
-                      )}
+                      {isStartingCheckout
+                        ? <Loader2 className="animate-spin" size={16} />
+                        : <CreditCard size={16} />}
                       Pay now
                     </button>
                   </div>
-
                   {checkoutError ? (
-                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-                      {checkoutError}
-                    </div>
-                  ) : null}
-
-                  {checkoutStatus === 'success' &&
-                  checkoutResult?.requiresPayment &&
-                  !checkoutResult.checkoutUrl ? (
-                    <div className="mt-4 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm font-medium text-amber-800">
-                      Checkout is not ready yet. Please try again after the payment provider is
-                      configured.
-                    </div>
+                    <p className="mt-3 text-sm text-red-600">{checkoutError}</p>
                   ) : null}
                 </div>
               ) : null}
-            </section>
 
-            <aside className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
-              <p className="text-sm font-semibold text-neutral-950">Danger zone</p>
-              <p className="mt-2 text-sm leading-6 text-neutral-500">
-                Delete this creator workspace and return to home.
-              </p>
-              <button
-                className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100"
-                type="button"
-                onClick={openDeleteDialog}
-              >
-                <Trash2 size={17} />
-                Delete creator
-              </button>
-            </aside>
+              {/* Active notice */}
+              {isActive ? (
+                <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+                  <CheckCircle2 size={18} className="shrink-0 text-emerald-600" />
+                  <p className="text-sm font-medium text-emerald-800">
+                    Workspace is active. Landing pages and analytics are ready.
+                  </p>
+                </div>
+              ) : null}
+
+              {/* Suspended notice */}
+              {isSuspended ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
+                  <p className="text-sm font-semibold text-red-800">Workspace suspended</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    Your subscription may have lapsed. Check billing to reactivate.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Sidebar */}
+            <div className="grid gap-4 h-fit">
+              {/* Plan card */}
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Current plan</p>
+                <p className="mt-3 text-2xl font-semibold text-neutral-950">{planName}</p>
+                <p className="mt-1 text-sm text-neutral-500">
+                  {creator.planCode === 'free' ? 'Free forever' : 'Monthly billing'}
+                </p>
+                {requiresPayment ? (
+                  <div className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                    Awaiting payment
+                  </div>
+                ) : isActive ? (
+                  <div className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                    Active subscription
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Danger zone */}
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Danger zone</p>
+                <p className="mt-3 text-sm text-neutral-500">Permanently disable this workspace.</p>
+                <button
+                  className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                  type="button"
+                  onClick={() => { resetDeleteCreatorFeedback(); setIsDeleteDialogOpen(true) }}
+                >
+                  <Trash2 size={15} />
+                  Delete workspace
+                </button>
+              </div>
+            </div>
           </div>
         ) : null}
-      </section>
+      </main>
 
-      {currentCreator && isCurrentSlug ? (
+      {creator ? (
         <DeleteCreatorDialog
-          creator={currentCreator}
+          creator={creator}
           isOpen={isDeleteDialogOpen}
           onClose={() => setIsDeleteDialogOpen(false)}
           onDeleted={() => navigate('/')}
         />
       ) : null}
-    </main>
+    </div>
   )
 }
 
-function CreatorWorkspaceMeta({ label, value }: { label: string; value: string }) {
+/* ─── Sub-components ─────────────────────────────────────────── */
+
+function StatusBadge({ status }: { status: string }) {
+  const s = status.toLowerCase()
+  if (s === 'active')
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
+        <span className="size-1.5 rounded-full bg-emerald-400" />
+        Active
+      </span>
+    )
+  if (s === 'pendingpayment')
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-300">
+        <span className="size-1.5 rounded-full bg-amber-400" />
+        Pending payment
+      </span>
+    )
   return (
-    <span className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-      <span className="block text-xs font-semibold uppercase text-neutral-400">{label}</span>
-      <span className="mt-1 block text-sm font-semibold text-neutral-950">{value}</span>
+    <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/60">
+      {status}
     </span>
   )
+}
+
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+  highlight,
+  mono,
+}: {
+  icon: typeof Hash
+  label: string
+  value: string
+  highlight?: boolean
+  mono?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-6 py-3.5">
+      <div className="flex items-center gap-2.5 text-sm text-neutral-400">
+        <Icon size={15} />
+        {label}
+      </div>
+      <span
+        className={`text-sm font-semibold ${
+          highlight ? 'text-neutral-950' : mono ? 'truncate font-mono text-xs text-neutral-500' : 'text-neutral-700'
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  )
+}
+
+/* ─── Helpers ────────────────────────────────────────────────── */
+
+function formatPlanName(code: string) {
+  switch (code.toLowerCase()) {
+    case 'free':  return 'Free'
+    case 'basic': return 'Basic'
+    case 'pro':   return 'Pro'
+    case 'plus':  return 'Pro Plus'
+    default:      return code || 'Free'
+  }
 }

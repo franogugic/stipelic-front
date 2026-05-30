@@ -24,6 +24,10 @@ type CreatorLoadStatus = 'idle' | 'loading' | 'success' | 'error'
 type CreatorDeleteStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreatorUpdateStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreatorCheckoutStatus = 'idle' | 'submitting' | 'success' | 'error'
+type PollActivationStatus = 'idle' | 'polling' | 'activated' | 'timeout'
+
+const POLL_MAX_ATTEMPTS = 15
+const POLL_INTERVAL_MS = 2000
 
 type CreatorState = {
   createdCreator: Creator | null
@@ -44,6 +48,7 @@ type CreatorState = {
   checkoutError: string | null
   deleteStatus: CreatorDeleteStatus
   deleteError: string | null
+  pollActivationStatus: PollActivationStatus
   loadCurrentCreator: () => Promise<Creator | null>
   loadCreatorPlans: () => Promise<void>
   loadCreatorSettings: (slug: string) => Promise<CreatorSettings | null>
@@ -54,10 +59,12 @@ type CreatorState = {
   createCreatorProfile: (values: CreateCreatorFormValues) => Promise<CreateCreatorResult | null>
   startCreatorCheckout: () => Promise<CreatorSubscriptionCheckoutResult | null>
   deleteCreatorProfile: () => Promise<boolean>
+  pollCreatorActivation: () => Promise<Creator | null>
   resetCreateCreatorFeedback: () => void
   resetCreatorCheckoutFeedback: () => void
   resetDeleteCreatorFeedback: () => void
   resetUpdateCreatorSettingsFeedback: () => void
+  resetPollActivation: () => void
 }
 
 export const useCreatorStore = create<CreatorState>((set) => ({
@@ -79,6 +86,8 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   checkoutError: null,
   deleteStatus: 'idle',
   deleteError: null,
+  pollActivationStatus: 'idle',
+
   loadCurrentCreator: async () => {
     set({ currentCreatorStatus: 'loading' })
 
@@ -96,6 +105,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
       return null
     }
   },
+
   loadCreatorSettings: async (slug) => {
     set({ creatorSettingsStatus: 'loading', creatorSettingsError: null })
 
@@ -121,6 +131,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
       return null
     }
   },
+
   updateCreatorSettingsProfile: async (slug, values) => {
     set({ updateSettingsStatus: 'submitting', updateSettingsError: null })
 
@@ -144,6 +155,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
       return null
     }
   },
+
   loadCreatorPlans: async () => {
     const currentStatus = useCreatorStore.getState().creatorPlansStatus
     if (currentStatus === 'loading' || currentStatus === 'success') {
@@ -168,6 +180,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
       set({ creatorPlansStatus: 'error', creatorPlansError: message })
     }
   },
+
   createCreatorProfile: async (values) => {
     set({ createStatus: 'submitting', createError: null })
 
@@ -199,6 +212,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
       return null
     }
   },
+
   startCreatorCheckout: async () => {
     set({ checkoutStatus: 'submitting', checkoutError: null })
 
@@ -220,6 +234,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
       return null
     }
   },
+
   deleteCreatorProfile: async () => {
     set({ deleteStatus: 'submitting', deleteError: null })
 
@@ -249,6 +264,32 @@ export const useCreatorStore = create<CreatorState>((set) => ({
       return false
     }
   },
+
+  pollCreatorActivation: async () => {
+    set({ pollActivationStatus: 'polling' })
+
+    for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
+      await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+
+      try {
+        const creator = await getCurrentCreator()
+        if (creator) {
+          set({ currentCreator: creator, createdCreator: creator })
+
+          if (creator.status.toLowerCase() === 'active') {
+            set({ pollActivationStatus: 'activated' })
+            return creator
+          }
+        }
+      } catch {
+        // Silently continue polling on transient errors
+      }
+    }
+
+    set({ pollActivationStatus: 'timeout' })
+    return null
+  },
+
   resetCreateCreatorFeedback: () => {
     set({ createStatus: 'idle', createError: null })
   },
@@ -260,5 +301,8 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
   resetUpdateCreatorSettingsFeedback: () => {
     set({ updateSettingsStatus: 'idle', updateSettingsError: null })
+  },
+  resetPollActivation: () => {
+    set({ pollActivationStatus: 'idle' })
   },
 }))

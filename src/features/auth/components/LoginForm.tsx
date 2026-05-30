@@ -8,8 +8,8 @@ import type { LoginFieldName } from '../model/login-validation'
 import type { LoginFormValues } from '../model/types'
 
 const initialValues: LoginFormValues = {
-  email: 'frano.gugic8@gmail.com',
-  password: '#Franooo8',
+  email: '',
+  password: '',
 }
 
 export function LoginForm() {
@@ -49,14 +49,14 @@ export function LoginForm() {
   }
 
   return (
-    <form className="grid gap-5" onSubmit={handleSubmit} noValidate>
+    <form className="grid gap-4" onSubmit={handleSubmit} noValidate>
       <TextField
         label="Email"
         name="email"
         type="email"
         autoComplete="email"
         inputMode="email"
-        placeholder="ana@example.com"
+        placeholder="you@example.com"
         value={values.email}
         error={getVisibleError('email')}
         onBlur={() => touchField('email')}
@@ -68,7 +68,7 @@ export function LoginForm() {
         name="password"
         type="password"
         autoComplete="current-password"
-        placeholder="Enter your password"
+        placeholder="Your password"
         value={values.password}
         error={getVisibleError('password')}
         onBlur={() => touchField('password')}
@@ -77,25 +77,25 @@ export function LoginForm() {
 
       {loginError ? (
         <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          <LockKeyhole className="mt-0.5 shrink-0" size={17} />
-          <span>{loginError}</span>
+          <LockKeyhole className="mt-0.5 shrink-0" size={16} />
+          {loginError}
         </div>
       ) : null}
 
       <button
-        className="flex h-12 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500"
+        className="mt-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
         type="submit"
         disabled={!canSubmit}
       >
         {isSubmitting ? (
           <>
-            <Loader2 className="animate-spin" size={18} />
+            <Loader2 className="animate-spin" size={17} />
             Signing in
           </>
         ) : (
           <>
             Sign in
-            <ArrowRight size={18} />
+            <ArrowRight size={17} />
           </>
         )}
       </button>
