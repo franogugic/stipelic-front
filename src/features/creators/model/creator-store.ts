@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
 import {
+  cancelCreatorSubscription,
   createCreator,
   deleteCurrentCreator,
   getCreatorSettings,
@@ -22,6 +23,7 @@ import type {
 type CreatorCreateStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreatorLoadStatus = 'idle' | 'loading' | 'success' | 'error'
 type CreatorDeleteStatus = 'idle' | 'submitting' | 'success' | 'error'
+type CreatorCancelSubscriptionStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreatorUpdateStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreatorCheckoutStatus = 'idle' | 'submitting' | 'success' | 'error'
 type PollActivationStatus = 'idle' | 'polling' | 'activated' | 'timeout'
@@ -48,6 +50,8 @@ type CreatorState = {
   checkoutError: string | null
   deleteStatus: CreatorDeleteStatus
   deleteError: string | null
+  cancelSubscriptionStatus: CreatorCancelSubscriptionStatus
+  cancelSubscriptionError: string | null
   pollActivationStatus: PollActivationStatus
   loadCurrentCreator: () => Promise<Creator | null>
   loadCreatorPlans: () => Promise<void>
@@ -59,8 +63,10 @@ type CreatorState = {
   createCreatorProfile: (values: CreateCreatorFormValues) => Promise<CreateCreatorResult | null>
   startCreatorCheckout: () => Promise<CreatorSubscriptionCheckoutResult | null>
   deleteCreatorProfile: () => Promise<boolean>
+  cancelSubscription: () => Promise<boolean>
   pollCreatorActivation: () => Promise<Creator | null>
   resetCreateCreatorFeedback: () => void
+  resetCancelSubscriptionFeedback: () => void
   resetCreatorCheckoutFeedback: () => void
   resetDeleteCreatorFeedback: () => void
   resetUpdateCreatorSettingsFeedback: () => void
@@ -86,6 +92,8 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   checkoutError: null,
   deleteStatus: 'idle',
   deleteError: null,
+  cancelSubscriptionStatus: 'idle',
+  cancelSubscriptionError: null,
   pollActivationStatus: 'idle',
 
   loadCurrentCreator: async () => {
@@ -265,6 +273,27 @@ export const useCreatorStore = create<CreatorState>((set) => ({
     }
   },
 
+  cancelSubscription: async () => {
+    set({ cancelSubscriptionStatus: 'submitting', cancelSubscriptionError: null })
+    try {
+      await cancelCreatorSubscription()
+      const creator = await getCurrentCreator()
+      set({
+        currentCreator: creator ?? null,
+        cancelSubscriptionStatus: 'success',
+        cancelSubscriptionError: null,
+      })
+      return true
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'We could not cancel the subscription. Please try again.'
+      set({ cancelSubscriptionStatus: 'error', cancelSubscriptionError: message })
+      return false
+    }
+  },
+
   pollCreatorActivation: async () => {
     set({ pollActivationStatus: 'polling' })
 
@@ -301,6 +330,9 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
   resetUpdateCreatorSettingsFeedback: () => {
     set({ updateSettingsStatus: 'idle', updateSettingsError: null })
+  },
+  resetCancelSubscriptionFeedback: () => {
+    set({ cancelSubscriptionStatus: 'idle', cancelSubscriptionError: null })
   },
   resetPollActivation: () => {
     set({ pollActivationStatus: 'idle' })

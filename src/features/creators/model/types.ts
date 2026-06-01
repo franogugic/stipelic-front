@@ -34,6 +34,7 @@ export type Creator = {
   status: string
   defaultCurrency: string
   planCode: string
+  cancelAtPeriodEnd: boolean
 }
 
 export type CreatorPlan = {

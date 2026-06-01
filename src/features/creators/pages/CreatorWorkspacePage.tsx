@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   CircleDollarSign,
@@ -8,6 +9,7 @@ import {
   Loader2,
   Settings,
   Trash2,
+  XCircle,
   Zap,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -22,10 +24,15 @@ export function CreatorWorkspacePage() {
   const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
   const checkoutStatus = useCreatorStore((s) => s.checkoutStatus)
   const checkoutError = useCreatorStore((s) => s.checkoutError)
+  const cancelSubscriptionStatus = useCreatorStore((s) => s.cancelSubscriptionStatus)
+  const cancelSubscriptionError = useCreatorStore((s) => s.cancelSubscriptionError)
   const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
   const startCreatorCheckout = useCreatorStore((s) => s.startCreatorCheckout)
+  const cancelSubscription = useCreatorStore((s) => s.cancelSubscription)
   const resetDeleteCreatorFeedback = useCreatorStore((s) => s.resetDeleteCreatorFeedback)
+  const resetCancelSubscriptionFeedback = useCreatorStore((s) => s.resetCancelSubscriptionFeedback)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
 
   const isLoading = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
   const isCurrentSlug = currentCreator?.slug === slug
@@ -33,7 +40,9 @@ export function CreatorWorkspacePage() {
   const requiresPayment = creator?.status.toLowerCase() === 'pendingpayment'
   const isActive = creator?.status.toLowerCase() === 'active'
   const isSuspended = creator?.status.toLowerCase() === 'suspended'
+  const isCancelledAtPeriodEnd = creator?.cancelAtPeriodEnd === true
   const isStartingCheckout = checkoutStatus === 'submitting'
+  const isCancellingSubscription = cancelSubscriptionStatus === 'submitting'
 
   const planName = formatPlanName(creator?.planCode ?? '')
 
@@ -196,14 +205,39 @@ export function CreatorWorkspacePage() {
                 <p className="mt-1 text-sm text-neutral-500">
                   {creator.planCode === 'free' ? 'Free forever' : 'Monthly billing'}
                 </p>
+
+                {/* Status badges */}
                 {requiresPayment ? (
                   <div className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
                     Awaiting payment
+                  </div>
+                ) : isCancelledAtPeriodEnd ? (
+                  <div className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                    Cancelled — active until end of billing period
                   </div>
                 ) : isActive ? (
                   <div className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
                     Active subscription
                   </div>
+                ) : null}
+
+                {/* Cancel button — only shown when active, not free, not already cancelling */}
+                {isActive && !isCancelledAtPeriodEnd && creator.planCode !== 'free' ? (
+                  <button
+                    className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-600 transition hover:bg-neutral-50 disabled:opacity-40"
+                    type="button"
+                    disabled={isCancellingSubscription}
+                    onClick={() => { resetCancelSubscriptionFeedback(); setIsCancelDialogOpen(true) }}
+                  >
+                    {isCancellingSubscription
+                      ? <Loader2 className="animate-spin" size={15} />
+                      : <XCircle size={15} />}
+                    Cancel plan
+                  </button>
+                ) : null}
+
+                {cancelSubscriptionError ? (
+                  <p className="mt-3 text-xs text-red-600">{cancelSubscriptionError}</p>
                 ) : null}
               </div>
 
@@ -231,6 +265,17 @@ export function CreatorWorkspacePage() {
           isOpen={isDeleteDialogOpen}
           onClose={() => setIsDeleteDialogOpen(false)}
           onDeleted={() => navigate('/')}
+        />
+      ) : null}
+
+      {isCancelDialogOpen ? (
+        <CancelSubscriptionDialog
+          isSubmitting={isCancellingSubscription}
+          onClose={() => setIsCancelDialogOpen(false)}
+          onConfirm={async () => {
+            const ok = await cancelSubscription()
+            if (ok) setIsCancelDialogOpen(false)
+          }}
         />
       ) : null}
     </div>
@@ -288,6 +333,50 @@ function InfoRow({
       >
         {value}
       </span>
+    </div>
+  )
+}
+
+function CancelSubscriptionDialog({
+  isSubmitting,
+  onClose,
+  onConfirm,
+}: {
+  isSubmitting: boolean
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl">
+        <div className="grid size-11 place-items-center rounded-xl bg-amber-50 text-amber-600">
+          <AlertTriangle size={22} />
+        </div>
+        <h2 className="mt-4 text-lg font-semibold text-neutral-950">Cancel subscription?</h2>
+        <p className="mt-2 text-sm leading-6 text-neutral-500">
+          Your plan will remain active until the end of the current billing period. After that, your
+          workspace will be suspended.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <button
+            className="inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+            type="button"
+            disabled={isSubmitting}
+            onClick={onClose}
+          >
+            Keep subscription
+          </button>
+          <button
+            className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40"
+            type="button"
+            disabled={isSubmitting}
+            onClick={onConfirm}
+          >
+            {isSubmitting ? <Loader2 className="animate-spin" size={15} /> : null}
+            Confirm cancel
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

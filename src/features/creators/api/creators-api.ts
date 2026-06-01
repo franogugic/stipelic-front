@@ -78,6 +78,12 @@ export function startCreatorSubscriptionCheckout() {
   ).then(unwrapApiResponse)
 }
 
+export function cancelCreatorSubscription() {
+  return apiRequest<ApiResponse<null>>('/api/creators/current/subscription', {
+    method: 'DELETE',
+  })
+}
+
 export function deleteCurrentCreator() {
   return apiRequest<ApiResponse<null>>('/api/creators/current', {
     method: 'DELETE',
