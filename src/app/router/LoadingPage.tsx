@@ -1,10 +1,14 @@
+import { Loader2 } from 'lucide-react'
+
 export function LoadingPage() {
   return (
-    <main className="grid min-h-screen place-items-center bg-[#f5f5f7] px-5 text-neutral-950">
-      <section className="w-full max-w-sm rounded-[28px] border border-white/70 bg-white/85 p-8 text-center shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-        <p className="text-sm font-semibold text-neutral-500">Creator Platform</p>
-        <h1 className="mt-3 text-2xl font-semibold tracking-normal">Preparing workspace</h1>
-      </section>
+    <main className="grid min-h-screen place-items-center bg-neutral-50 px-5">
+      <div className="flex flex-col items-center gap-4">
+        <span className="grid size-10 place-items-center rounded-xl bg-neutral-950 text-white">
+          <span className="text-sm font-bold">CP</span>
+        </span>
+        <Loader2 className="animate-spin text-neutral-400" size={20} />
+      </div>
     </main>
   )
 }
