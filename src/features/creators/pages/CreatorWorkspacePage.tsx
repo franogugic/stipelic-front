@@ -4,8 +4,10 @@ import {
   CheckCircle2,
   CircleDollarSign,
   CreditCard,
+  ExternalLink,
   Globe,
   Hash,
+  LayoutTemplate,
   Loader2,
   Settings,
   Trash2,
@@ -22,6 +24,8 @@ export function CreatorWorkspacePage() {
   const { slug } = useParams()
   const currentCreator = useCreatorStore((s) => s.currentCreator)
   const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
+  const creatorPlans = useCreatorStore((s) => s.creatorPlans)
+  const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
   const checkoutStatus = useCreatorStore((s) => s.checkoutStatus)
   const checkoutError = useCreatorStore((s) => s.checkoutError)
   const cancelSubscriptionStatus = useCreatorStore((s) => s.cancelSubscriptionStatus)
@@ -29,6 +33,7 @@ export function CreatorWorkspacePage() {
   const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
   const startCreatorCheckout = useCreatorStore((s) => s.startCreatorCheckout)
   const cancelSubscription = useCreatorStore((s) => s.cancelSubscription)
+  const openBillingPortal = useCreatorStore((s) => s.openBillingPortal)
   const resetDeleteCreatorFeedback = useCreatorStore((s) => s.resetDeleteCreatorFeedback)
   const resetCancelSubscriptionFeedback = useCreatorStore((s) => s.resetCancelSubscriptionFeedback)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -49,6 +54,13 @@ export function CreatorWorkspacePage() {
   useEffect(() => {
     if (currentCreatorStatus === 'idle') void loadCurrentCreator()
   }, [currentCreatorStatus, loadCurrentCreator])
+
+  useEffect(() => {
+    void loadCreatorPlans()
+  }, [loadCreatorPlans])
+
+  const currentPlan = creatorPlans.find((p) => p.code === creator?.planCode)
+  const maxLandingPages = currentPlan?.limits['max_landing_pages'] ?? null
 
   const startCheckout = async () => {
     const checkout = await startCreatorCheckout()
@@ -132,6 +144,13 @@ export function CreatorWorkspacePage() {
                   <InfoRow icon={CircleDollarSign} label="Currency" value={creator.defaultCurrency} />
                   <InfoRow icon={Globe} label="Slug" value={`/${creator.slug}`} />
                   <InfoRow icon={Hash} label="Workspace ID" value={creator.publicId} mono />
+                  {maxLandingPages !== null ? (
+                    <InfoRow
+                      icon={LayoutTemplate}
+                      label="Landing pages"
+                      value={maxLandingPages < 0 ? 'Unlimited' : `Up to ${maxLandingPages}`}
+                    />
+                  ) : null}
                 </div>
 
                 {/* Actions footer */}
@@ -219,6 +238,18 @@ export function CreatorWorkspacePage() {
                   <div className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
                     Active subscription
                   </div>
+                ) : null}
+
+                {/* Manage billing */}
+                {isActive && creator.planCode !== 'free' ? (
+                  <button
+                    className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+                    type="button"
+                    onClick={() => void openBillingPortal()}
+                  >
+                    <ExternalLink size={15} />
+                    Manage billing
+                  </button>
                 ) : null}
 
                 {/* Cancel button — only shown when active, not free, not already cancelling */}

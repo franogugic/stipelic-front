@@ -78,6 +78,12 @@ export function startCreatorSubscriptionCheckout() {
   ).then(unwrapApiResponse)
 }
 
+export function getCreatorBillingPortalUrl() {
+  return apiRequest<ApiResponse<string>>('/api/creators/current/billing-portal', {
+    method: 'POST',
+  }).then(unwrapApiResponse)
+}
+
 export function cancelCreatorSubscription() {
   return apiRequest<ApiResponse<null>>('/api/creators/current/subscription', {
     method: 'DELETE',

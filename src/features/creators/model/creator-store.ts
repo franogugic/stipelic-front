@@ -3,6 +3,7 @@ import { ApiError } from '../../../shared/api/http-client'
 import {
   cancelCreatorSubscription,
   createCreator,
+  getCreatorBillingPortalUrl,
   deleteCurrentCreator,
   getCreatorSettings,
   getCurrentCreator,
@@ -63,6 +64,7 @@ type CreatorState = {
   createCreatorProfile: (values: CreateCreatorFormValues) => Promise<CreateCreatorResult | null>
   startCreatorCheckout: () => Promise<CreatorSubscriptionCheckoutResult | null>
   deleteCreatorProfile: () => Promise<boolean>
+  openBillingPortal: () => Promise<void>
   cancelSubscription: () => Promise<boolean>
   pollCreatorActivation: () => Promise<Creator | null>
   resetCreateCreatorFeedback: () => void
@@ -270,6 +272,19 @@ export const useCreatorStore = create<CreatorState>((set) => ({
 
       set({ deleteStatus: 'error', deleteError: message })
       return false
+    }
+  },
+
+  openBillingPortal: async () => {
+    try {
+      const url = await getCreatorBillingPortalUrl()
+      window.location.assign(url)
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'Could not open billing portal. Please try again.'
+      console.error(message)
     }
   },
 
