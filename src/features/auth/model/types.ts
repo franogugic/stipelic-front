@@ -1,0 +1,50 @@
+export type RegisterFormValues = {
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+}
+
+export type LoginFormValues = {
+  email: string
+  password: string
+}
+
+export type AuthUser = {
+  publicId: string
+  firstName: string
+  lastName: string
+  email: string
+  isEmailVerified?: boolean
+  status?: string
+}
+
+export type AccountStatus = 'pendingVerification' | 'active'
+
+export type RegisterUserRequest = RegisterFormValues
+
+export type RegisterUserResponse = AuthUser
+
+export type LoginUserRequest = LoginFormValues
+
+export type LoginUserResponse = AuthUser
+
+export type ResendEmailVerificationRequest = {
+  email: string
+}
+
+export type ResendEmailVerificationResponse = {
+  message: string
+}
+
+export type VerifyEmailRequest = {
+  token: string
+}
+
+export type VerifyEmailResponse = {
+  message: string
+}
+
+export type LogoutResponse = {
+  message: string
+}
