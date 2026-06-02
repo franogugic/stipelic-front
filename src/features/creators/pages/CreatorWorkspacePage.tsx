@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  ArrowLeft,
   CheckCircle2,
   CircleDollarSign,
   CreditCard,
@@ -71,7 +70,7 @@ export function CreatorWorkspacePage() {
     <div className="min-h-screen bg-neutral-50 text-neutral-950">
       {/* Header */}
       <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-5 lg:px-8">
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center px-5 lg:px-8">
           <div className="flex items-center gap-2">
             <span className="grid size-7 place-items-center rounded-lg bg-neutral-950 text-white">
               <span className="text-xs font-bold">CP</span>
@@ -79,14 +78,6 @@ export function CreatorWorkspacePage() {
             <span className="text-sm text-neutral-300">/</span>
             <span className="text-sm font-medium text-neutral-950">{slug}</span>
           </div>
-          <button
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
-            type="button"
-            onClick={() => navigate('/')}
-          >
-            <ArrowLeft size={14} />
-            Dashboard
-          </button>
         </div>
       </header>
 
@@ -110,8 +101,7 @@ export function CreatorWorkspacePage() {
               type="button"
               onClick={() => navigate('/')}
             >
-              <ArrowLeft size={14} />
-              Back to dashboard
+              Go home
             </button>
           </div>
         ) : null}
