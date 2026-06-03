@@ -1,6 +1,6 @@
 export type LandingPageType = 'LeadGen' | 'Sales'
 export type LandingPageStatus = 'Draft' | 'Published' | 'Archived'
-export type SectionType = 'Hero' | 'Features' | 'ProductDetails' | 'Cta'
+export type SectionType = 'Navbar' | 'Hero' | 'Features' | 'ProductDetails' | 'Cta' | 'Footer'
 
 export type LandingPageSection = {
   publicId: string
@@ -79,4 +79,13 @@ export type CtaContent = {
   heading: string
   subheading: string
   buttonText: string
+}
+
+export type NavbarContent = {
+  brandName: string
+  links: { label: string; href: string }[]
+}
+
+export type FooterContent = {
+  copyright: string
 }

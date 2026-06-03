@@ -6,10 +6,12 @@ import { getPublishedLandingPage } from '../api/public-landing-page-api'
 import type {
   CtaContent,
   FeaturesContent,
+  FooterContent,
   HeroContent,
   LandingPageSection,
   LandingPageType,
   LandingPageWithSections,
+  NavbarContent,
   ProductDetailsContent,
   SectionType,
 } from '../model/types'
@@ -70,6 +72,29 @@ function PublicSection({ section, pageType }: { section: LandingPageSection; pag
   const content = parseJson(section.contentJson)
 
   switch (section.type as SectionType) {
+    case 'Navbar': {
+      const c = content as Partial<NavbarContent>
+      return (
+        <nav style={{ backgroundColor: section.backgroundColor }} className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+          <p className="font-bold text-neutral-950">{c.brandName || 'My Brand'}</p>
+          {c.links && c.links.length > 0 ? (
+            <div className="flex gap-6">
+              {c.links.map((link, i) => (
+                <a key={i} href={link.href} className="text-sm text-neutral-600 hover:text-neutral-950 transition">{link.label}</a>
+              ))}
+            </div>
+          ) : null}
+        </nav>
+      )
+    }
+    case 'Footer': {
+      const c = content as Partial<FooterContent>
+      return (
+        <footer style={{ backgroundColor: section.backgroundColor }} className="px-6 py-10 text-center border-t border-neutral-100">
+          <p className="text-sm text-neutral-400">{c.copyright || '© 2025 My Brand'}</p>
+        </footer>
+      )
+    }
     case 'Hero': {
       const c = content as Partial<HeroContent>
       return (
@@ -81,7 +106,12 @@ function PublicSection({ section, pageType }: { section: LandingPageSection; pag
             {c.subheading ? (
               <p className="mx-auto mt-5 max-w-xl text-lg text-neutral-600">{c.subheading}</p>
             ) : null}
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col items-center gap-4">
+              {pageType === 'Sales' ? (
+                <button type="button" className="inline-flex h-12 items-center rounded-xl bg-neutral-950 px-8 text-sm font-semibold text-white transition hover:bg-neutral-800">
+                  Buy now
+                </button>
+              ) : null}
               <CtaButton label={c.ctaText ?? 'Get started'} pageType={pageType} />
             </div>
           </div>
@@ -149,7 +179,12 @@ function PublicSection({ section, pageType }: { section: LandingPageSection; pag
             {c.subheading ? (
               <p className="mt-4 text-lg text-neutral-600">{c.subheading}</p>
             ) : null}
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col items-center gap-4">
+              {pageType === 'Sales' ? (
+                <button type="button" className="inline-flex h-12 items-center rounded-xl bg-neutral-950 px-8 text-sm font-semibold text-white transition hover:bg-neutral-800">
+                  Buy now
+                </button>
+              ) : null}
               <CtaButton label={c.buttonText ?? 'Get started'} pageType={pageType} />
             </div>
           </div>
