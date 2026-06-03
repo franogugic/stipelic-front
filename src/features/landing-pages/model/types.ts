@@ -35,6 +35,18 @@ export type SectionTemplate = {
   defaultBackgroundColor: string
 }
 
+export type PeriodStats = {
+  totalViews: number
+  uniqueVisitors: number
+}
+
+export type LandingPageAnalytics = {
+  allTime: PeriodStats
+  today: PeriodStats
+  last7Days: PeriodStats
+  last30Days: PeriodStats
+}
+
 export type CreateLandingPageRequest = {
   title: string
   slug: string

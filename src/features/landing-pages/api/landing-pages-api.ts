@@ -2,6 +2,7 @@ import { apiRequest } from '../../../shared/api/http-client'
 import type {
   CreateLandingPageRequest,
   LandingPage,
+  LandingPageAnalytics,
   LandingPageWithSections,
   SaveEditorRequest,
   SectionTemplate,
@@ -46,5 +47,10 @@ export async function saveEditor(slug: string, pageId: string, request: SaveEdit
 
 export async function getSectionTemplates(slug: string): Promise<SectionTemplate[]> {
   const res = await apiRequest<ApiResponse<SectionTemplate[]>>(`/api/creators/${slug}/landing-pages/section-templates`)
+  return res.data
+}
+
+export async function getLandingPageAnalytics(slug: string, pageId: string): Promise<LandingPageAnalytics> {
+  const res = await apiRequest<ApiResponse<LandingPageAnalytics>>(`/api/creators/${slug}/landing-pages/${pageId}/analytics`)
   return res.data
 }

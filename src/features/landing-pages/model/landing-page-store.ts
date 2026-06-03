@@ -4,6 +4,7 @@ import {
   archiveLandingPage,
   createLandingPage,
   getLandingPage,
+  getLandingPageAnalytics,
   getSectionTemplates,
   listLandingPages,
   publishLandingPage,
@@ -13,6 +14,7 @@ import {
 import type {
   CreateLandingPageRequest,
   LandingPage,
+  LandingPageAnalytics,
   LandingPageWithSections,
   SaveEditorRequest,
   SectionTemplate,
@@ -25,6 +27,7 @@ type LandingPageState = {
   pages: LandingPage[]
   currentPage: LandingPageWithSections | null
   templates: SectionTemplate[]
+  analytics: Record<string, LandingPageAnalytics>
   listStatus: LoadStatus
   pageStatus: LoadStatus
   pageError: string | null
@@ -34,6 +37,7 @@ type LandingPageState = {
   loadPages: (slug: string) => Promise<void>
   loadPage: (slug: string, pageId: string) => Promise<void>
   loadTemplates: (slug: string) => Promise<void>
+  loadAnalytics: (slug: string, pageId: string) => Promise<void>
   createPage: (slug: string, request: CreateLandingPageRequest) => Promise<LandingPage | null>
   publishPage: (slug: string, pageId: string) => Promise<boolean>
   unpublishPage: (slug: string, pageId: string) => Promise<boolean>
@@ -46,6 +50,7 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
   pages: [],
   currentPage: null,
   templates: [],
+  analytics: {},
   listStatus: 'idle',
   pageStatus: 'idle',
   pageError: null,
@@ -70,6 +75,15 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to load landing page.'
       set({ pageStatus: 'error', pageError: message })
+    }
+  },
+
+  loadAnalytics: async (slug, pageId) => {
+    try {
+      const data = await getLandingPageAnalytics(slug, pageId)
+      set((s) => ({ analytics: { ...s.analytics, [pageId]: data } }))
+    } catch {
+      // non-critical
     }
   },
 

@@ -1,9 +1,11 @@
 import {
   AlertTriangle,
+  Eye,
   FileText,
   Globe,
   Loader2,
   Plus,
+  Users,
   X,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -14,6 +16,7 @@ import { useLandingPageStore } from '../model/landing-page-store'
 import type {
   CreateLandingPageRequest,
   LandingPage,
+  LandingPageAnalytics,
   LandingPageStatus,
   LandingPageType,
 } from '../model/types'
@@ -31,6 +34,8 @@ export function LandingPagesPage() {
   const pages = useLandingPageStore((s) => s.pages)
   const listStatus = useLandingPageStore((s) => s.listStatus)
   const loadPages = useLandingPageStore((s) => s.loadPages)
+  const analytics = useLandingPageStore((s) => s.analytics)
+  const loadAnalytics = useLandingPageStore((s) => s.loadAnalytics)
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
 
@@ -51,6 +56,15 @@ export function LandingPagesPage() {
   useEffect(() => {
     if (slug && listStatus === 'idle') void loadPages(slug)
   }, [slug, listStatus, loadPages])
+
+  useEffect(() => {
+    if (!slug || listStatus !== 'success') return
+    pages
+      .filter((p) => p.status === 'Published')
+      .forEach((p) => {
+        if (!analytics[p.publicId]) void loadAnalytics(slug, p.publicId)
+      })
+  }, [slug, listStatus, pages, analytics, loadAnalytics])
 
   if (!slug) return null
 
@@ -141,10 +155,11 @@ export function LandingPagesPage() {
             ) : (
               <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_120px_120px_40px] items-center border-b border-neutral-100 px-5 py-3">
+                <div className="grid grid-cols-[1fr_120px_120px_160px_40px] items-center border-b border-neutral-100 px-5 py-3">
                   <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Page</p>
                   <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Type</p>
                   <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Status</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Views</p>
                   <span />
                 </div>
 
@@ -154,6 +169,7 @@ export function LandingPagesPage() {
                       key={page.publicId}
                       page={page}
                       slug={slug}
+                      pageAnalytics={analytics[page.publicId] ?? null}
                       onClick={() =>
                         navigate(`/app/${slug}/landing-pages/${page.publicId}`)
                       }
@@ -181,12 +197,22 @@ export function LandingPagesPage() {
 
 /* ─── Sub-components ─────────────────────────────────────────── */
 
-function PageRow({ page, slug, onClick }: { page: LandingPage; slug: string; onClick: () => void }) {
+function PageRow({
+  page,
+  slug,
+  pageAnalytics,
+  onClick,
+}: {
+  page: LandingPage
+  slug: string
+  pageAnalytics: LandingPageAnalytics | null
+  onClick: () => void
+}) {
   const publicUrl = `/p/${slug}/${page.slug}`
 
   return (
     <li>
-      <div className="grid w-full grid-cols-[1fr_120px_120px_40px] items-center px-5 py-4">
+      <div className="grid w-full grid-cols-[1fr_120px_120px_160px_40px] items-center px-5 py-4">
         <button
           type="button"
           onClick={onClick}
@@ -202,6 +228,22 @@ function PageRow({ page, slug, onClick }: { page: LandingPage; slug: string; onC
         </button>
         <p className="text-xs font-medium text-neutral-600">{page.type}</p>
         <StatusBadge status={page.status} />
+        <div className="flex items-center gap-3">
+          {page.status === 'Published' && pageAnalytics !== null ? (
+            <>
+              <span className="flex items-center gap-1 text-xs text-neutral-500" title="Total views">
+                <Eye size={12} className="text-neutral-400" />
+                {pageAnalytics.allTime.totalViews.toLocaleString()}
+              </span>
+              <span className="flex items-center gap-1 text-xs text-neutral-500" title="Unique visitors">
+                <Users size={12} className="text-neutral-400" />
+                {pageAnalytics.allTime.uniqueVisitors.toLocaleString()}
+              </span>
+            </>
+          ) : page.status === 'Published' ? (
+            <span className="text-xs text-neutral-300">—</span>
+          ) : null}
+        </div>
         {page.status === 'Published' ? (
           <a
             href={publicUrl}
