@@ -5,6 +5,7 @@ import {
   CircleDollarSign,
   CreditCard,
   ExternalLink,
+  FileText,
   Globe,
   Hash,
   LayoutTemplate,
@@ -169,6 +170,14 @@ export function CreatorWorkspacePage() {
 
                 {/* Actions footer */}
                 <div className="flex items-center justify-end gap-2 border-t border-neutral-100 px-6 py-4">
+                  <button
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+                    type="button"
+                    onClick={() => navigate(`/app/${creator.slug}/landing-pages`)}
+                  >
+                    <FileText size={15} />
+                    Landing pages
+                  </button>
                   <button
                     className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
                     type="button"

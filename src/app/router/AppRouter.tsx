@@ -7,6 +7,8 @@ import { CreateCreatorPage } from '../../features/creators/pages/CreateCreatorPa
 import { CreatorSettingsPage } from '../../features/creators/pages/CreatorSettingsPage'
 import { CreatorWorkspacePage } from '../../features/creators/pages/CreatorWorkspacePage'
 import { PaymentStatusPage } from '../../features/creators/pages/PaymentStatusPage'
+import { LandingPageEditorPage } from '../../features/landing-pages/pages/LandingPageEditorPage'
+import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPagesPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { AuthBootstrap } from './AuthBootstrap'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -29,6 +31,8 @@ export function AppRouter() {
           <Route path="/" element={<HomePage />} />
           <Route path="/app/:slug" element={<CreatorWorkspacePage />} />
           <Route path="/app/:slug/products" element={<ProductsPage />} />
+          <Route path="/app/:slug/landing-pages" element={<LandingPagesPage />} />
+          <Route path="/app/:slug/landing-pages/:pageId" element={<LandingPageEditorPage />} />
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />
           <Route path="/creators/new" element={<CreateCreatorPage />} />
         </Route>
