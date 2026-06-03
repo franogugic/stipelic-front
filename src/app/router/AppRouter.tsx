@@ -9,6 +9,7 @@ import { CreatorWorkspacePage } from '../../features/creators/pages/CreatorWorks
 import { PaymentStatusPage } from '../../features/creators/pages/PaymentStatusPage'
 import { LandingPageEditorPage } from '../../features/landing-pages/pages/LandingPageEditorPage'
 import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPagesPage'
+import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { AuthBootstrap } from './AuthBootstrap'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -18,6 +19,7 @@ export function AppRouter() {
   return (
     <Routes>
       <Route element={<AuthBootstrap />}>
+        <Route path="/p/:creatorSlug/:pageSlug" element={<PublicLandingPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/payment/success" element={<PaymentStatusPage status="success" />} />
         <Route path="/payment/cancel" element={<PaymentStatusPage status="cancel" />} />

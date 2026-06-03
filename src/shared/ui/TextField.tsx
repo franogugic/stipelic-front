@@ -1,30 +1,38 @@
-import type { ComponentPropsWithoutRef } from 'react'
+import type { InputHTMLAttributes } from 'react'
 
-type TextFieldProps = ComponentPropsWithoutRef<'input'> & {
+type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string
   error?: string
+  hint?: string
 }
 
-export function TextField({ label, error, id, className = '', ...props }: TextFieldProps) {
-  const inputId = id ?? props.name
+export function TextField({ label, error, hint, id, className, ...inputProps }: TextFieldProps) {
+  const fieldId = id ?? label.toLowerCase().replace(/\s+/g, '-')
+  const hasError = Boolean(error)
 
   return (
-    <label className="grid gap-2 text-sm font-medium text-neutral-900" htmlFor={inputId}>
-      <span>{label}</span>
+    <div className="grid gap-1.5">
+      <label htmlFor={fieldId} className="block text-sm font-medium text-neutral-700">
+        {label}
+      </label>
       <input
-        className={`h-12 rounded-xl border bg-white px-4 text-[15px] text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-950 focus:ring-4 focus:ring-neutral-950/10 ${
-          error ? 'border-red-300 bg-red-50/50' : 'border-neutral-200'
-        } ${className}`}
-        id={inputId}
-        aria-invalid={error ? 'true' : 'false'}
-        aria-describedby={error ? `${inputId}-error` : undefined}
-        {...props}
+        id={fieldId}
+        {...inputProps}
+        className={[
+          'w-full rounded-xl border px-3.5 py-2.5 text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400',
+          'focus:ring-2',
+          hasError
+            ? 'border-red-300 bg-red-50/50 focus:border-red-400 focus:ring-red-100'
+            : 'border-neutral-200 bg-white focus:border-neutral-400 focus:ring-neutral-100',
+          'disabled:cursor-not-allowed disabled:opacity-60',
+          className ?? '',
+        ].join(' ')}
       />
       {error ? (
-        <span className="text-xs font-medium text-red-600" id={`${inputId}-error`}>
-          {error}
-        </span>
+        <p className="text-xs font-medium text-red-600">{error}</p>
+      ) : hint ? (
+        <p className="text-xs text-neutral-400">{hint}</p>
       ) : null}
-    </label>
+    </div>
   )
 }

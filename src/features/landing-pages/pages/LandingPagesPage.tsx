@@ -1,9 +1,22 @@
-import { AlertTriangle, FileText, Loader2, Plus, Globe, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  FileText,
+  Globe,
+  Loader2,
+  Plus,
+  X,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { AppShell } from '../../../shared/ui/AppShell'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useLandingPageStore } from '../model/landing-page-store'
-import type { CreateLandingPageRequest, LandingPage, LandingPageStatus, LandingPageType } from '../model/types'
+import type {
+  CreateLandingPageRequest,
+  LandingPage,
+  LandingPageStatus,
+  LandingPageType,
+} from '../model/types'
 
 export function LandingPagesPage() {
   const navigate = useNavigate()
@@ -39,119 +52,184 @@ export function LandingPagesPage() {
     if (slug && listStatus === 'idle') void loadPages(slug)
   }, [slug, listStatus, loadPages])
 
-  return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-950">
-      <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-5 lg:px-8">
-          <div className="flex items-center gap-2">
-            <button type="button" className="grid size-7 place-items-center rounded-lg bg-neutral-950 text-white" onClick={() => navigate(`/app/${slug ?? ''}`)}>
-              <span className="text-xs font-bold">CP</span>
-            </button>
-            <span className="text-sm text-neutral-300">/</span>
-            <button type="button" className="text-sm font-medium text-neutral-500 hover:text-neutral-950 transition" onClick={() => navigate(`/app/${slug ?? ''}`)}>
-              {slug}
-            </button>
-            <span className="text-sm text-neutral-300">/</span>
-            <span className="text-sm font-medium text-neutral-950">Landing pages</span>
-          </div>
-        </div>
-      </header>
+  if (!slug) return null
 
-      <main className="mx-auto w-full max-w-5xl px-5 py-10 lg:px-8">
+  return (
+    <AppShell slug={slug} activeSection="landing-pages">
+      <div className="px-8 py-8">
+
         {isLoading ? (
-          <div className="flex h-32 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-6 text-sm text-neutral-400 shadow-sm">
-            <Loader2 className="animate-spin" size={17} />
-            Loading workspace
+          <div className="flex h-40 items-center justify-center gap-3 text-sm text-neutral-400">
+            <Loader2 className="animate-spin" size={18} />
+            Loading workspace…
           </div>
         ) : !creator ? (
-          <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-            <p className="font-semibold">Workspace not found</p>
-            <button className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50" type="button" onClick={() => navigate('/')}>Go home</button>
+          <div className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
+            <p className="font-semibold text-neutral-950">Workspace not found</p>
+            <button
+              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+              type="button"
+              onClick={() => navigate('/')}
+            >
+              Go home
+            </button>
           </div>
         ) : (
-          <div className="grid gap-5">
-            <div className="flex items-center justify-between">
+          <div className="grid gap-8">
+            {/* Header */}
+            <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-xl font-semibold text-neutral-950">Landing pages</h1>
-                <p className="mt-0.5 text-sm text-neutral-500">
-                  {maxPages !== null && maxPages >= 0 ? `${pages.length} / ${maxPages} used` : `${pages.length} page${pages.length !== 1 ? 's' : ''}`}
+                <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">
+                  Landing pages
+                </h1>
+                <p className="mt-1 text-sm text-neutral-400">
+                  {maxPages !== null && maxPages >= 0
+                    ? `${pages.length} of ${maxPages} used`
+                    : `${pages.length} page${pages.length !== 1 ? 's' : ''}`}
                 </p>
               </div>
               <button
                 type="button"
                 disabled={atLimit}
                 title={atLimit ? `Plan limit reached (${maxPages ?? 0})` : undefined}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => setIsCreateOpen(true)}
               >
-                <Plus size={16} />
+                <Plus size={15} />
                 New page
               </button>
             </div>
 
+            {/* Plan limit warning */}
             {atLimit ? (
               <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
-                <AlertTriangle size={16} className="shrink-0" />
-                Plan limit reached. Archive existing pages or upgrade your plan.
+                <AlertTriangle size={16} className="shrink-0 text-amber-600" />
+                <span>
+                  Plan limit reached ({maxPages} pages). Archive existing pages or upgrade your
+                  plan to add more.
+                </span>
               </div>
             ) : null}
 
+            {/* Content */}
             {listStatus === 'loading' ? (
-              <div className="flex h-24 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-6 text-sm text-neutral-400 shadow-sm">
+              <div className="flex h-32 items-center justify-center gap-3 text-sm text-neutral-400">
                 <Loader2 className="animate-spin" size={16} />
                 Loading pages…
               </div>
             ) : pages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-neutral-300 bg-white py-16 text-center shadow-sm">
-                <FileText size={32} className="text-neutral-300" />
-                <p className="text-sm font-medium text-neutral-500">No landing pages yet</p>
-                <button type="button" disabled={atLimit} className="inline-flex h-9 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40" onClick={() => setIsCreateOpen(true)}>
+              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-neutral-300 bg-white py-20 text-center">
+                <span className="grid size-14 place-items-center rounded-2xl bg-neutral-100 text-neutral-400">
+                  <FileText size={24} strokeWidth={1.5} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-neutral-950">No landing pages yet</p>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    Create your first page to start capturing leads.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={atLimit}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40"
+                  onClick={() => setIsCreateOpen(true)}
+                >
                   <Plus size={15} />
-                  Create your first page
+                  Create first page
                 </button>
               </div>
             ) : (
-              <div className="grid gap-3">
-                {pages.map((page) => (
-                  <PageCard key={page.publicId} page={page} onClick={() => navigate(`/app/${slug ?? ''}/landing-pages/${page.publicId}`)} />
-                ))}
+              <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                {/* Table header */}
+                <div className="grid grid-cols-[1fr_120px_120px_40px] items-center border-b border-neutral-100 px-5 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Page</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Type</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Status</p>
+                  <span />
+                </div>
+
+                <ul className="divide-y divide-neutral-100">
+                  {pages.map((page) => (
+                    <PageRow
+                      key={page.publicId}
+                      page={page}
+                      slug={slug}
+                      onClick={() =>
+                        navigate(`/app/${slug}/landing-pages/${page.publicId}`)
+                      }
+                    />
+                  ))}
+                </ul>
               </div>
             )}
           </div>
         )}
-      </main>
+      </div>
 
       {isCreateOpen && slug ? (
-        <CreatePageModal slug={slug} onClose={() => setIsCreateOpen(false)} onCreated={(page) => { navigate(`/app/${slug}/landing-pages/${page.publicId}`) }} />
+        <CreatePageModal
+          slug={slug}
+          onClose={() => setIsCreateOpen(false)}
+          onCreated={(page) => {
+            navigate(`/app/${slug}/landing-pages/${page.publicId}`)
+          }}
+        />
       ) : null}
-    </div>
+    </AppShell>
   )
 }
 
-function PageCard({ page, onClick }: { page: LandingPage; onClick: () => void }) {
+/* ─── Sub-components ─────────────────────────────────────────── */
+
+function PageRow({ page, slug, onClick }: { page: LandingPage; slug: string; onClick: () => void }) {
+  const publicUrl = `/p/${slug}/${page.slug}`
+
   return (
-    <button type="button" onClick={onClick} className="flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-5 py-4 shadow-sm text-left transition hover:border-neutral-300 hover:shadow-md">
-      <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-neutral-100 text-neutral-500">
-        <FileText size={18} />
+    <li>
+      <div className="grid w-full grid-cols-[1fr_120px_120px_40px] items-center px-5 py-4">
+        <button
+          type="button"
+          onClick={onClick}
+          className="flex items-center gap-3 min-w-0 text-left"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-neutral-100 text-neutral-500">
+            <FileText size={16} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-neutral-950">{page.title}</p>
+            <p className="mt-0.5 truncate text-xs text-neutral-400">/{page.slug}</p>
+          </div>
+        </button>
+        <p className="text-xs font-medium text-neutral-600">{page.type}</p>
+        <StatusBadge status={page.status} />
+        {page.status === 'Published' ? (
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open public page"
+            onClick={(e) => e.stopPropagation()}
+            className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+          >
+            <Globe size={14} />
+          </a>
+        ) : (
+          <span />
+        )}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-semibold text-neutral-950">{page.title}</p>
-          <StatusBadge status={page.status} />
-        </div>
-        <p className="mt-0.5 truncate text-xs text-neutral-400">/{page.slug} · {page.type}</p>
-      </div>
-      {page.customDomain ? (
-        <div className="flex items-center gap-1 text-xs text-neutral-400">
-          <Globe size={13} />
-          {page.customDomain}
-        </div>
-      ) : null}
-    </button>
+    </li>
   )
 }
 
-function CreatePageModal({ slug, onClose, onCreated }: { slug: string; onClose: () => void; onCreated: (page: LandingPage) => void }) {
+function CreatePageModal({
+  slug,
+  onClose,
+  onCreated,
+}: {
+  slug: string
+  onClose: () => void
+  onCreated: (page: LandingPage) => void
+}) {
   const createPage = useLandingPageStore((s) => s.createPage)
   const mutateStatus = useLandingPageStore((s) => s.mutateStatus)
   const mutateError = useLandingPageStore((s) => s.mutateError)
@@ -161,50 +239,104 @@ function CreatePageModal({ slug, onClose, onCreated }: { slug: string; onClose: 
   const [title, setTitle] = useState('')
   const [pageSlug, setPageSlug] = useState('')
   const [type, setType] = useState<LandingPageType>('LeadGen')
+  const [slugEdited, setSlugEdited] = useState(false)
 
   const handleTitleChange = (value: string) => {
     setTitle(value)
-    if (!pageSlug || pageSlug === slugify(title)) {
-      setPageSlug(slugify(value))
-    }
+    if (!slugEdited) setPageSlug(slugify(value))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const request: CreateLandingPageRequest = { title, slug: pageSlug, type }
     const page = await createPage(slug, request)
-    if (page) { resetMutateFeedback(); onCreated(page) }
+    if (page) {
+      resetMutateFeedback()
+      onCreated(page)
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:px-5">
+      <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white shadow-2xl sm:rounded-2xl">
+        {/* Modal header */}
         <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
           <h2 className="text-base font-semibold text-neutral-950">New landing page</h2>
-          <button type="button" className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700" onClick={onClose}><X size={16} /></button>
+          <button
+            type="button"
+            className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+            onClick={onClose}
+          >
+            <X size={16} />
+          </button>
         </div>
+
         <form onSubmit={(e) => void handleSubmit(e)} className="p-6">
-          <div className="grid gap-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-neutral-400">Title <span className="text-red-500">*</span></label>
-              <input type="text" required maxLength={100} value={title} onChange={(e) => handleTitleChange(e.target.value)} placeholder="e.g. My awesome course" className="w-full rounded-xl border border-neutral-200 px-3.5 py-2.5 text-sm text-neutral-950 placeholder-neutral-400 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100" />
+          <div className="grid gap-5">
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium text-neutral-700">
+                Title <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={100}
+                value={title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                placeholder="e.g. Free Email Course"
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-950 placeholder-neutral-400 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+              />
             </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-neutral-400">URL slug <span className="text-red-500">*</span></label>
-              <input type="text" required maxLength={100} value={pageSlug} onChange={(e) => setPageSlug(e.target.value)} placeholder="my-awesome-course" className="w-full rounded-xl border border-neutral-200 px-3.5 py-2.5 text-sm text-neutral-950 placeholder-neutral-400 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100" />
+
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium text-neutral-700">
+                URL slug <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={100}
+                value={pageSlug}
+                onChange={(e) => {
+                  setSlugEdited(true)
+                  setPageSlug(e.target.value)
+                }}
+                placeholder="free-email-course"
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-950 placeholder-neutral-400 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+              />
             </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-neutral-400">Type</label>
-              <select value={type} onChange={(e) => setType(e.target.value as LandingPageType)} className="w-full rounded-xl border border-neutral-200 px-3.5 py-2.5 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100">
-                <option value="LeadGen">Lead Gen — collect emails</option>
-                <option value="Sales">Sales — sell a product</option>
+
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium text-neutral-700">Type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as LandingPageType)}
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+              >
+                <option value="LeadGen">Lead Gen — collect email addresses</option>
+                <option value="Sales">Sales — sell a product or service</option>
               </select>
             </div>
-            {mutateError ? <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{mutateError}</p> : null}
+
+            {mutateError ? (
+              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{mutateError}</p>
+            ) : null}
           </div>
+
           <div className="mt-6 flex gap-3">
-            <button type="button" className="inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700 transition hover:bg-neutral-50" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-            <button type="submit" disabled={isSubmitting} className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40">
+            <button
+              type="button"
+              className="flex h-10 flex-1 items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+              disabled={isSubmitting}
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !title || !pageSlug}
+              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40"
+            >
               {isSubmitting ? <Loader2 className="animate-spin" size={15} /> : null}
               Create page
             </button>
@@ -217,10 +349,24 @@ function CreatePageModal({ slug, onClose, onCreated }: { slug: string; onClose: 
 
 function StatusBadge({ status }: { status: LandingPageStatus }) {
   if (status === 'Published')
-    return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"><span className="size-1.5 rounded-full bg-emerald-500" />Published</span>
-  return <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-500"><span className="size-1.5 rounded-full bg-neutral-400" />Draft</span>
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+        <span className="size-1.5 rounded-full bg-emerald-500" />
+        Published
+      </span>
+    )
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-neutral-500">
+      <span className="size-1.5 rounded-full bg-neutral-400" />
+      Draft
+    </span>
+  )
 }
 
 function slugify(value: string): string {
-  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
