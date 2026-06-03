@@ -7,6 +7,7 @@ import { CreateCreatorPage } from '../../features/creators/pages/CreateCreatorPa
 import { CreatorSettingsPage } from '../../features/creators/pages/CreatorSettingsPage'
 import { CreatorWorkspacePage } from '../../features/creators/pages/CreatorWorkspacePage'
 import { PaymentStatusPage } from '../../features/creators/pages/PaymentStatusPage'
+import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { AuthBootstrap } from './AuthBootstrap'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
@@ -27,6 +28,7 @@ export function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/app/:slug" element={<CreatorWorkspacePage />} />
+          <Route path="/app/:slug/products" element={<ProductsPage />} />
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />
           <Route path="/creators/new" element={<CreateCreatorPage />} />
         </Route>

@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  LogOut,
   CircleDollarSign,
   CreditCard,
   ExternalLink,
@@ -8,6 +9,7 @@ import {
   Hash,
   LayoutTemplate,
   Loader2,
+  Package,
   Settings,
   Trash2,
   XCircle,
@@ -15,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useAuthStore } from '../../auth/model/auth-store'
 import { DeleteCreatorDialog } from '../components/DeleteCreatorDialog'
 import { useCreatorStore } from '../model/creator-store'
 
@@ -35,8 +38,12 @@ export function CreatorWorkspacePage() {
   const openBillingPortal = useCreatorStore((s) => s.openBillingPortal)
   const resetDeleteCreatorFeedback = useCreatorStore((s) => s.resetDeleteCreatorFeedback)
   const resetCancelSubscriptionFeedback = useCreatorStore((s) => s.resetCancelSubscriptionFeedback)
+  const logout = useAuthStore((s) => s.logout)
+  const logoutStatus = useAuthStore((s) => s.logoutStatus)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
+
+  const isLoggingOut = logoutStatus === 'submitting'
 
   const isLoading = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
   const isCurrentSlug = currentCreator?.slug === slug
@@ -60,6 +67,7 @@ export function CreatorWorkspacePage() {
 
   const currentPlan = creatorPlans.find((p) => p.code === creator?.planCode)
   const maxLandingPages = currentPlan?.limits['max_landing_pages'] ?? null
+  const maxProducts = currentPlan?.limits['max_products'] ?? null
 
   const startCheckout = async () => {
     const checkout = await startCreatorCheckout()
@@ -70,7 +78,7 @@ export function CreatorWorkspacePage() {
     <div className="min-h-screen bg-neutral-50 text-neutral-950">
       {/* Header */}
       <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center px-5 lg:px-8">
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-5 lg:px-8">
           <div className="flex items-center gap-2">
             <span className="grid size-7 place-items-center rounded-lg bg-neutral-950 text-white">
               <span className="text-xs font-bold">CP</span>
@@ -78,6 +86,15 @@ export function CreatorWorkspacePage() {
             <span className="text-sm text-neutral-300">/</span>
             <span className="text-sm font-medium text-neutral-950">{slug}</span>
           </div>
+          <button
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+            type="button"
+            disabled={isLoggingOut}
+            onClick={() => void logout()}
+          >
+            {isLoggingOut ? <Loader2 className="animate-spin" size={15} /> : <LogOut size={15} />}
+            Sign out
+          </button>
         </div>
       </header>
 
@@ -141,10 +158,25 @@ export function CreatorWorkspacePage() {
                       value={maxLandingPages < 0 ? 'Unlimited' : `Up to ${maxLandingPages}`}
                     />
                   ) : null}
+                  {maxProducts !== null ? (
+                    <InfoRow
+                      icon={Package}
+                      label="Products"
+                      value={maxProducts < 0 ? 'Unlimited' : `Up to ${maxProducts}`}
+                    />
+                  ) : null}
                 </div>
 
                 {/* Actions footer */}
                 <div className="flex items-center justify-end gap-2 border-t border-neutral-100 px-6 py-4">
+                  <button
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+                    type="button"
+                    onClick={() => navigate(`/app/${creator.slug}/products`)}
+                  >
+                    <Package size={15} />
+                    Products
+                  </button>
                   <button
                     className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
                     type="button"
