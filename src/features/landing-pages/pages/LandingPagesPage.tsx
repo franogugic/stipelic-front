@@ -4,6 +4,7 @@ import {
   FileText,
   Globe,
   Loader2,
+  Pencil,
   Plus,
   Users,
   X,
@@ -170,8 +171,11 @@ export function LandingPagesPage() {
                       page={page}
                       slug={slug}
                       pageAnalytics={analytics[page.publicId] ?? null}
-                      onClick={() =>
+                      onAnalyticsClick={() =>
                         navigate(`/app/${slug}/landing-pages/${page.publicId}`)
+                      }
+                      onEditClick={() =>
+                        navigate(`/app/${slug}/landing-pages/${page.publicId}/edit`)
                       }
                     />
                   ))}
@@ -201,21 +205,23 @@ function PageRow({
   page,
   slug,
   pageAnalytics,
-  onClick,
+  onAnalyticsClick,
+  onEditClick,
 }: {
   page: LandingPage
   slug: string
   pageAnalytics: LandingPageAnalytics | null
-  onClick: () => void
+  onAnalyticsClick: () => void
+  onEditClick: () => void
 }) {
   const publicUrl = `/p/${slug}/${page.slug}`
 
   return (
     <li>
-      <div className="grid w-full grid-cols-[1fr_120px_120px_160px_40px] items-center px-5 py-4">
+      <div className="grid w-full grid-cols-[1fr_120px_120px_160px_80px] items-center px-5 py-4">
         <button
           type="button"
-          onClick={onClick}
+          onClick={onAnalyticsClick}
           className="flex items-center gap-3 min-w-0 text-left"
         >
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-neutral-100 text-neutral-500">
@@ -244,20 +250,30 @@ function PageRow({
             <span className="text-xs text-neutral-300">—</span>
           ) : null}
         </div>
-        {page.status === 'Published' ? (
-          <a
-            href={publicUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Open public page"
-            onClick={(e) => e.stopPropagation()}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            title="Edit page"
+            onClick={(e) => { e.stopPropagation(); onEditClick() }}
             className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
           >
-            <Globe size={14} />
-          </a>
-        ) : (
-          <span />
-        )}
+            <Pencil size={14} />
+          </button>
+          {page.status === 'Published' ? (
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open public page"
+              onClick={(e) => e.stopPropagation()}
+              className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+            >
+              <Globe size={14} />
+            </a>
+          ) : (
+            <span className="size-8" />
+          )}
+        </div>
       </div>
     </li>
   )
