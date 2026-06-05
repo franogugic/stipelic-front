@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowRight,
+  BarChart3,
   CheckCircle2,
   CreditCard,
   ExternalLink,
@@ -12,6 +13,7 @@ import {
   ShieldAlert,
   Trash2,
   XCircle,
+  Zap,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -68,19 +70,14 @@ export function CreatorWorkspacePage() {
 
   return (
     <AppShell slug={slug} activeSection="overview">
-      <div className="px-8 py-8">
-
-        {/* Loading */}
-        {isLoading ? (
-          <div className="flex h-40 items-center justify-center gap-3 text-sm text-neutral-400">
-            <Loader2 className="animate-spin" size={18} />
-            Loading workspace…
-          </div>
-        ) : null}
-
-        {/* Workspace not found */}
-        {!isLoading && !creator ? (
-          <div className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
+      {isLoading ? (
+        <div className="flex h-screen items-center justify-center gap-3 text-sm text-neutral-400">
+          <Loader2 className="animate-spin" size={18} />
+          Loading workspace…
+        </div>
+      ) : !creator ? (
+        <div className="flex h-screen items-center justify-center p-8">
+          <div className="max-w-sm text-center">
             <p className="font-semibold text-neutral-950">Workspace not found</p>
             <p className="mt-1 text-sm text-neutral-500">This slug doesn't match your workspace.</p>
             <button
@@ -91,222 +88,319 @@ export function CreatorWorkspacePage() {
               Go home
             </button>
           </div>
-        ) : null}
+        </div>
+      ) : (
+        <div className="flex min-h-screen flex-col">
+          {/* ── Hero header ─────────────────────────────────────── */}
+          <div className="border-b border-neutral-200 bg-white px-8 pb-6 pt-8">
 
-        {creator ? (
-          <div className="grid gap-8">
-            {/* Page header */}
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">
-                    {creator.name}
-                  </h1>
-                  <StatusBadge status={creator.status} />
-                </div>
-                <p className="mt-1 text-sm text-neutral-400">/{creator.slug}</p>
-              </div>
-              <button
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 shadow-sm transition hover:bg-neutral-50"
-                type="button"
-                onClick={() => navigate(`/app/${creator.slug}/settings`)}
-              >
-                <Settings size={15} />
-                Settings
-              </button>
-            </div>
-
-            {/* Alerts */}
-            {requiresPayment ? (
-              <div className="flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                <CreditCard className="mt-0.5 shrink-0 text-amber-600" size={18} />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-amber-900">Payment required</p>
-                  <p className="mt-0.5 text-sm text-amber-700">
-                    Complete checkout to activate this workspace and start publishing.
-                  </p>
-                </div>
+            {/* Alert banners */}
+            {requiresPayment && (
+              <div className="mb-6 flex items-center gap-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3.5">
+                <CreditCard className="shrink-0 text-amber-600" size={16} />
+                <p className="flex-1 text-sm text-amber-800">
+                  <span className="font-semibold">Payment required</span> — complete checkout to activate this workspace.
+                </p>
                 <button
-                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-amber-600 px-4 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
+                  className="shrink-0 inline-flex h-8 items-center gap-1.5 rounded-lg bg-amber-600 px-3 text-xs font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
                   type="button"
                   disabled={isStartingCheckout}
                   onClick={() => void startCheckout()}
                 >
-                  {isStartingCheckout ? <Loader2 className="animate-spin" size={15} /> : <CreditCard size={15} />}
+                  {isStartingCheckout ? <Loader2 className="animate-spin" size={12} /> : <CreditCard size={12} />}
                   Pay now
                 </button>
               </div>
-            ) : null}
+            )}
+            {isSuspended && (
+              <div className="mb-6 flex items-center gap-4 rounded-xl border border-red-200 bg-red-50 px-5 py-3.5">
+                <ShieldAlert className="shrink-0 text-red-600" size={16} />
+                <p className="text-sm text-red-800">
+                  <span className="font-semibold">Workspace suspended</span> — your subscription may have lapsed.
+                </p>
+              </div>
+            )}
+            {checkoutError && (
+              <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">
+                {checkoutError}
+              </div>
+            )}
 
-            {checkoutError ? (
-              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{checkoutError}</p>
-            ) : null}
-
-            {isSuspended ? (
-              <div className="flex items-start gap-4 rounded-2xl border border-red-200 bg-red-50 p-5">
-                <ShieldAlert className="mt-0.5 shrink-0 text-red-600" size={18} />
+            {/* Workspace identity */}
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex items-start gap-4">
+                {/* Avatar */}
+                <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-neutral-950">
+                  <span className="text-base font-black tracking-tighter text-white">
+                    {creator.name[0]?.toUpperCase() ?? '?'}
+                  </span>
+                </div>
                 <div>
-                  <p className="text-sm font-semibold text-red-900">Workspace suspended</p>
-                  <p className="mt-0.5 text-sm text-red-700">
-                    Your subscription may have lapsed. Manage billing to reactivate.
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-950">{creator.name}</h1>
+                    <StatusBadge status={creator.status} />
+                  </div>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-sm text-neutral-400">
+                    <Hash size={11} />
+                    {creator.slug}
                   </p>
                 </div>
               </div>
-            ) : null}
 
-            {/* Stats grid */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
+              <button
+                className="shrink-0 inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+                type="button"
+                onClick={() => navigate(`/app/${creator.slug}/settings`)}
+              >
+                <Settings size={14} />
+                Settings
+              </button>
+            </div>
+
+            {/* Inline metrics strip */}
+            <div className="mt-5 flex flex-wrap gap-2">
+              <MetricPill
                 label="Plan"
                 value={planName}
-                sub={creator.planCode === 'free' ? 'Free forever' : 'Monthly billing'}
-                highlight={isActive}
+                accent={isActive ? 'emerald' : 'neutral'}
               />
-              <StatCard
+              <MetricPill
                 label="Landing pages"
-                value={maxLandingPages !== null && maxLandingPages >= 0 ? `Up to ${maxLandingPages}` : 'Unlimited'}
-                sub="on current plan"
-              />
-              <StatCard
-                label="Currency"
-                value={creator.defaultCurrency}
-                sub="billing currency"
-              />
-              <StatCard
-                label="Status"
-                value={isActive ? 'Active' : requiresPayment ? 'Awaiting payment' : creator.status}
-                sub={
-                  isCancelledAtPeriodEnd
-                    ? 'Cancels at period end'
-                    : isActive
-                      ? 'All features available'
-                      : 'Action required'
+                value={
+                  maxLandingPages !== null && maxLandingPages >= 0
+                    ? `Up to ${maxLandingPages}`
+                    : 'Unlimited'
                 }
-                danger={isSuspended}
               />
+              <MetricPill label="Currency" value={creator.defaultCurrency} />
+              {isCancelledAtPeriodEnd && (
+                <MetricPill label="Billing" value="Cancels at period end" accent="amber" />
+              )}
             </div>
+          </div>
 
-            {/* Quick actions */}
-            <div>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">
-                Quick actions
-              </h2>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <ActionCard
-                  icon={FileText}
-                  title="Landing pages"
-                  desc="Create and manage your landing pages."
-                  onClick={() => navigate(`/app/${creator.slug}/landing-pages`)}
-                />
-                <ActionCard
-                  icon={Package}
-                  title="Products"
-                  desc="Manage your digital products and offers."
-                  onClick={() => navigate(`/app/${creator.slug}/products`)}
-                />
-                <ActionCard
-                  icon={Settings}
-                  title="Settings"
-                  desc="Brand, logo, timezone, and more."
-                  onClick={() => navigate(`/app/${creator.slug}/settings`)}
-                />
-              </div>
-            </div>
+          {/* ── Main content area ────────────────────────────────── */}
+          <div className="flex-1 p-8">
+            <div className="grid h-full gap-6 lg:grid-cols-3">
 
-            {/* Billing & danger row */}
-            <div className="grid gap-4 lg:grid-cols-2">
-              {/* Billing card */}
-              {creator.planCode !== 'free' ? (
-                <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-sm font-semibold text-neutral-950">Billing</h3>
-                  <p className="mt-1 text-sm text-neutral-500">
-                    {isCancelledAtPeriodEnd
-                      ? 'Your subscription will cancel at the end of the current period.'
-                      : isActive
-                        ? 'Subscription is active. Manage invoices and plan from Stripe.'
-                        : 'Complete payment to activate your plan.'}
+              {/* Left column — primary actions (2/3) */}
+              <div className="flex flex-col gap-6 lg:col-span-2">
+
+                {/* Navigation cards */}
+                <section>
+                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                    Workspace
                   </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {isActive ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <NavCard
+                      icon={FileText}
+                      title="Landing Pages"
+                      desc="Build and publish pages that convert."
+                      color="blue"
+                      onClick={() => navigate(`/app/${creator.slug}/landing-pages`)}
+                    />
+                    <NavCard
+                      icon={Package}
+                      title="Products"
+                      desc="Manage digital products and offers."
+                      color="violet"
+                      onClick={() => navigate(`/app/${creator.slug}/products`)}
+                    />
+                    <NavCard
+                      icon={BarChart3}
+                      title="Analytics"
+                      desc="Track views, clicks, and revenue."
+                      color="emerald"
+                      onClick={() => navigate(`/app/${creator.slug}/analytics`)}
+                    />
+                  </div>
+                </section>
+
+                {/* Getting started / checklist */}
+                <section className="flex-1 rounded-2xl border border-neutral-200 bg-white p-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-neutral-950">Getting started</h3>
+                    {isActive && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                        <CheckCircle2 size={11} />
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    Follow these steps to get the most out of your workspace.
+                  </p>
+
+                  <div className="mt-5 grid gap-2">
+                    <ChecklistItem
+                      done={isActive || requiresPayment}
+                      label="Create your workspace"
+                      desc="You've set up your Creator Platform account."
+                    />
+                    <ChecklistItem
+                      done={isActive}
+                      label="Activate subscription"
+                      desc={
+                        isActive
+                          ? 'Subscription is active and running.'
+                          : 'Complete checkout to unlock all features.'
+                      }
+                      action={
+                        requiresPayment
+                          ? {
+                              label: 'Pay now',
+                              disabled: isStartingCheckout,
+                              onClick: () => void startCheckout(),
+                            }
+                          : undefined
+                      }
+                    />
+                    <ChecklistItem
+                      done={false}
+                      label="Create your first landing page"
+                      desc="Start publishing to your audience."
+                      action={{
+                        label: 'Go to Landing Pages',
+                        onClick: () => navigate(`/app/${creator.slug}/landing-pages`),
+                      }}
+                    />
+                    <ChecklistItem
+                      done={false}
+                      label="Add a product"
+                      desc="Set up a digital product to sell."
+                      action={{
+                        label: 'Go to Products',
+                        onClick: () => navigate(`/app/${creator.slug}/products`),
+                      }}
+                    />
+                  </div>
+                </section>
+              </div>
+
+              {/* Right column — plan & billing (1/3) */}
+              <div className="flex flex-col gap-6">
+                {/* Plan card */}
+                <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                        Current plan
+                      </p>
+                      <p className="mt-1 text-2xl font-bold text-neutral-950">{planName}</p>
+                    </div>
+                    <div className="grid size-10 place-items-center rounded-xl bg-neutral-950">
+                      <Zap size={16} className="text-white" />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-2">
+                    <PlanDetail
+                      label="Landing pages"
+                      value={
+                        maxLandingPages !== null && maxLandingPages >= 0
+                          ? `Up to ${maxLandingPages}`
+                          : 'Unlimited'
+                      }
+                    />
+                    <PlanDetail label="Currency" value={creator.defaultCurrency} />
+                    <PlanDetail
+                      label="Billing"
+                      value={
+                        creator.planCode === 'free'
+                          ? 'Free forever'
+                          : isCancelledAtPeriodEnd
+                            ? 'Cancels at period end'
+                            : 'Monthly'
+                      }
+                    />
+                  </div>
+
+                  {/* Billing actions */}
+                  <div className="mt-5 grid gap-2">
+                    {creator.planCode === 'free' ? (
                       <button
-                        className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800"
                         type="button"
                         onClick={() => void openBillingPortal()}
                       >
-                        <ExternalLink size={14} />
-                        Manage billing
+                        <ArrowRight size={14} />
+                        Upgrade plan
                       </button>
-                    ) : null}
-                    {isActive && !isCancelledAtPeriodEnd ? (
-                      <button
-                        className="inline-flex h-9 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-40"
-                        type="button"
-                        disabled={isCancellingSubscription}
-                        onClick={() => {
-                          resetCancelSubscriptionFeedback()
-                          setIsCancelDialogOpen(true)
-                        }}
-                      >
-                        {isCancellingSubscription ? (
-                          <Loader2 className="animate-spin" size={14} />
-                        ) : (
-                          <XCircle size={14} />
+                    ) : (
+                      <>
+                        {isActive && (
+                          <button
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 py-2.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+                            type="button"
+                            onClick={() => void openBillingPortal()}
+                          >
+                            <ExternalLink size={14} />
+                            Manage billing
+                          </button>
                         )}
-                        Cancel plan
-                      </button>
-                    ) : null}
+                        {isActive && !isCancelledAtPeriodEnd && (
+                          <button
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-40"
+                            type="button"
+                            disabled={isCancellingSubscription}
+                            onClick={() => {
+                              resetCancelSubscriptionFeedback()
+                              setIsCancelDialogOpen(true)
+                            }}
+                          >
+                            {isCancellingSubscription ? (
+                              <Loader2 className="animate-spin" size={14} />
+                            ) : (
+                              <XCircle size={14} />
+                            )}
+                            Cancel plan
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
-                  {cancelSubscriptionError ? (
+                  {cancelSubscriptionError && (
                     <p className="mt-3 text-xs text-red-600">{cancelSubscriptionError}</p>
-                  ) : null}
+                  )}
                 </div>
-              ) : (
-                <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-sm font-semibold text-neutral-950">Upgrade your plan</h3>
-                  <p className="mt-1 text-sm text-neutral-500">
-                    You're on the Free plan. Upgrade to unlock more landing pages, contacts, and
-                    features.
+
+                {/* Workspace info card */}
+                <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                    Workspace info
+                  </p>
+                  <div className="mt-4 grid gap-3">
+                    <PlanDetail label="Workspace ID" value={creator.publicId} mono />
+                    <PlanDetail label="Slug" value={`/${creator.slug}`} mono />
+                    <PlanDetail label="Status" value={creator.status} />
+                  </div>
+                </div>
+
+                {/* Danger zone */}
+                <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                    Danger zone
+                  </p>
+                  <p className="mt-2 text-sm text-neutral-500">
+                    Permanently delete this workspace and all its data.
                   </p>
                   <button
-                    className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100"
                     type="button"
-                    onClick={() => void openBillingPortal()}
+                    onClick={() => {
+                      resetDeleteCreatorFeedback()
+                      setIsDeleteDialogOpen(true)
+                    }}
                   >
-                    <ArrowRight size={14} />
-                    View plans
+                    <Trash2 size={14} />
+                    Delete workspace
                   </button>
                 </div>
-              )}
-
-              {/* Danger zone */}
-              <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-                <h3 className="text-sm font-semibold text-neutral-950">Danger zone</h3>
-                <p className="mt-1 text-sm text-neutral-500">
-                  Permanently delete this workspace and all associated data. This cannot be undone.
-                </p>
-                <button
-                  className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-medium text-red-700 transition hover:bg-red-100"
-                  type="button"
-                  onClick={() => {
-                    resetDeleteCreatorFeedback()
-                    setIsDeleteDialogOpen(true)
-                  }}
-                >
-                  <Trash2 size={14} />
-                  Delete workspace
-                </button>
               </div>
             </div>
-
-            {/* Workspace ID */}
-            <div className="flex items-center gap-2 text-xs text-neutral-400">
-              <Hash size={12} />
-              <span>Workspace ID:</span>
-              <code className="font-mono">{creator.publicId}</code>
-            </div>
           </div>
-        ) : null}
-      </div>
+        </div>
+      )}
 
       {creator ? (
         <DeleteCreatorDialog
@@ -337,81 +431,144 @@ function StatusBadge({ status }: { status: string }) {
   const s = status.toLowerCase()
   if (s === 'active')
     return (
-      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-700">
-        <span className="size-1.5 rounded-full bg-emerald-500" />
+      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 text-xs font-semibold text-emerald-400">
+        <span className="size-1.5 rounded-full bg-emerald-400" />
         Active
       </span>
     )
   if (s === 'pendingpayment')
     return (
-      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-amber-50 px-2.5 text-xs font-semibold text-amber-700">
-        <span className="size-1.5 rounded-full bg-amber-500" />
+      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-amber-500/20 px-2.5 text-xs font-semibold text-amber-400">
+        <span className="size-1.5 rounded-full bg-amber-400" />
         Pending payment
       </span>
     )
   if (s === 'suspended')
     return (
-      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-red-50 px-2.5 text-xs font-semibold text-red-700">
-        <span className="size-1.5 rounded-full bg-red-500" />
+      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-red-500/20 px-2.5 text-xs font-semibold text-red-400">
+        <span className="size-1.5 rounded-full bg-red-400" />
         Suspended
       </span>
     )
   return (
-    <span className="inline-flex h-6 items-center rounded-full bg-neutral-100 px-2.5 text-xs font-semibold text-neutral-600">
+    <span className="inline-flex h-6 items-center rounded-full bg-white/10 px-2.5 text-xs font-semibold text-white/60">
       {status}
     </span>
   )
 }
 
-function StatCard({
+function MetricPill({
   label,
   value,
-  sub,
-  highlight,
-  danger,
+  accent = 'neutral',
 }: {
   label: string
   value: string
-  sub: string
-  highlight?: boolean
-  danger?: boolean
+  accent?: 'neutral' | 'emerald' | 'amber'
 }) {
+  const colors = {
+    neutral: 'border-neutral-200 bg-neutral-50 text-neutral-600',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    amber: 'border-amber-200 bg-amber-50 text-amber-700',
+  }
   return (
-    <div className={`rounded-2xl border bg-white p-5 shadow-sm ${danger ? 'border-red-200' : 'border-neutral-200'}`}>
-      <p className="text-xs font-medium text-neutral-400">{label}</p>
-      <p className={`mt-2 text-xl font-semibold tracking-tight ${danger ? 'text-red-700' : highlight ? 'text-emerald-700' : 'text-neutral-950'}`}>
-        {value}
-      </p>
-      <p className="mt-0.5 text-xs text-neutral-400">{sub}</p>
+    <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${colors[accent]}`}>
+      <span className="text-neutral-400">{label}</span>
+      <span className="font-semibold">{value}</span>
     </div>
   )
 }
 
-function ActionCard({
+function NavCard({
   icon: Icon,
   title,
   desc,
+  color,
   onClick,
 }: {
   icon: typeof FileText
   title: string
   desc: string
+  color: 'blue' | 'violet' | 'emerald'
   onClick: () => void
 }) {
+  const bg = {
+    blue: 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white',
+    violet: 'bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white',
+    emerald: 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white',
+  }[color]
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex items-start gap-4 rounded-2xl border border-neutral-200 bg-white p-5 text-left shadow-sm transition hover:border-neutral-300 hover:shadow"
+      className="group flex flex-col gap-4 rounded-2xl border border-neutral-200 bg-white p-5 text-left transition hover:border-neutral-300 hover:shadow-sm"
     >
-      <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl border border-neutral-100 bg-neutral-50 text-neutral-500 transition group-hover:border-neutral-950 group-hover:bg-neutral-950 group-hover:text-white">
-        <Icon size={16} />
+      <span className={`grid size-10 place-items-center rounded-xl transition ${bg}`}>
+        <Icon size={18} />
       </span>
       <div>
         <p className="text-sm font-semibold text-neutral-950">{title}</p>
         <p className="mt-0.5 text-xs leading-5 text-neutral-400">{desc}</p>
       </div>
+      <ArrowRight
+        size={14}
+        className="mt-auto self-end text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-neutral-600"
+      />
     </button>
+  )
+}
+
+function ChecklistItem({
+  done,
+  label,
+  desc,
+  action,
+}: {
+  done: boolean
+  label: string
+  desc: string
+  action?: { label: string; onClick: () => void; disabled?: boolean }
+}) {
+  return (
+    <div className={`flex items-start gap-3 rounded-xl p-3 transition ${done ? '' : 'bg-neutral-50'}`}>
+      <div className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-full ${done ? 'bg-emerald-500' : 'border-2 border-neutral-300'}`}>
+        {done && <CheckCircle2 size={12} className="text-white" strokeWidth={3} />}
+      </div>
+      <div className="flex-1">
+        <p className={`text-sm font-medium ${done ? 'text-neutral-400 line-through' : 'text-neutral-950'}`}>
+          {label}
+        </p>
+        <p className="mt-0.5 text-xs text-neutral-400">{desc}</p>
+      </div>
+      {!done && action && (
+        <button
+          type="button"
+          disabled={action.disabled}
+          onClick={action.onClick}
+          className="shrink-0 inline-flex h-7 items-center gap-1 rounded-lg bg-neutral-950 px-3 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
+        >
+          {action.label}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function PlanDetail({
+  label,
+  value,
+  mono,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs text-neutral-400">{label}</span>
+      <span className={`text-xs font-medium text-neutral-700 ${mono ? 'font-mono' : ''}`}>{value}</span>
+    </div>
   )
 }
 
