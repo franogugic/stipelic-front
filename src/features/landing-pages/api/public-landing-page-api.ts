@@ -12,3 +12,14 @@ export async function getPublishedLandingPage(
   )
   return res.data
 }
+
+export async function captureEmail(
+  creatorSlug: string,
+  landingPageSlug: string,
+  email: string,
+): Promise<void> {
+  await apiRequest<unknown>(
+    `/api/public/landing-pages/${creatorSlug}/${landingPageSlug}/captures`,
+    { method: 'POST', body: { email } },
+  )
+}

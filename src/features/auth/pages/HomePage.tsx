@@ -1,4 +1,4 @@
-import { Loader2, LogOut, MailCheck, RefreshCw } from 'lucide-react'
+import { ArrowRight, Inbox, Loader2, LogOut, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useCreatorStore } from '../../creators/model/creator-store'
@@ -45,106 +45,158 @@ export function HomePage() {
     }
   }, [currentCreatorStatus, isPendingVerification, loadCurrentCreator])
 
-  // Redirect once we know the creator state
+  // Redirect once creator state is known
   if (!isPendingVerification && !isCreatorLoading) {
-    if (currentCreator) {
-      return <Navigate to={`/app/${currentCreator.slug}`} replace />
-    }
+    if (currentCreator) return <Navigate to={`/app/${currentCreator.slug}`} replace />
     return <Navigate to="/creators/new" replace />
   }
 
-  // Show spinner while loading creator (only when not pending verification)
+  // Spinner while loading (non-verification path)
   if (!isPendingVerification && isCreatorLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-50">
-        <Loader2 className="animate-spin text-neutral-400" size={22} />
+      <div className="flex min-h-screen items-center justify-center bg-neutral-950">
+        <Loader2 className="animate-spin text-white/20" size={22} />
       </div>
     )
   }
 
-  // Pending email verification screen
+  // ── Email verification required ──────────────────────────────────
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-950">
-      <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-5 lg:px-8">
-          <div className="flex items-center gap-2.5">
-            <span className="grid size-7 place-items-center rounded-lg bg-neutral-950 text-white">
-              <span className="text-xs font-bold">CP</span>
-            </span>
-            <span className="text-sm font-semibold text-neutral-950">Creator Platform</span>
-          </div>
+    <div className="relative flex min-h-screen overflow-hidden bg-neutral-950">
+      {/* Subtle grid pattern */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage:
+            'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
 
-          <div className="flex items-center gap-3">
-            {user ? (
-              <div className="grid size-8 place-items-center rounded-full bg-neutral-100 text-xs font-semibold text-neutral-700">
-                {userInitials}
-              </div>
-            ) : null}
-            <button
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
-              type="button"
-              disabled={isLoggingOut}
-              onClick={() => void logout()}
-            >
-              {isLoggingOut ? <Loader2 className="animate-spin" size={15} /> : <LogOut size={15} />}
-              Sign out
-            </button>
-          </div>
+      {/* Top bar */}
+      <div className="absolute inset-x-0 top-0 flex h-14 items-center justify-between px-8">
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-7 place-items-center rounded-lg bg-white">
+            <span className="text-[11px] font-black text-neutral-950">CP</span>
+          </span>
+          <span className="text-sm font-semibold text-white">Creator Platform</span>
         </div>
-      </header>
 
-      <main className="mx-auto w-full max-w-lg px-5 py-16 lg:px-8">
-        <div className="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600">
-              <MailCheck size={24} />
+        <div className="flex items-center gap-3">
+          <div className="grid size-8 place-items-center rounded-full bg-white/10 text-xs font-bold text-white">
+            {userInitials}
+          </div>
+          <button
+            type="button"
+            disabled={isLoggingOut}
+            onClick={() => void logout()}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
+          >
+            {isLoggingOut ? <Loader2 className="animate-spin" size={13} /> : <LogOut size={13} />}
+            Sign out
+          </button>
+        </div>
+      </div>
+
+      {/* Centered content */}
+      <div className="flex w-full items-center justify-center px-6 py-20">
+        <div className="w-full max-w-4xl">
+
+          {/* Main grid */}
+          <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+
+            {/* Left — headline + inbox icon */}
+            <div className="flex flex-col justify-between rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm lg:min-h-72">
+              <div className="flex size-14 items-center justify-center rounded-2xl border border-white/15 bg-white/10">
+                <Inbox className="text-white" size={26} strokeWidth={1.5} />
+              </div>
+
+              <div>
+                <h1 className="text-3xl font-semibold leading-tight tracking-tight text-white lg:text-4xl">
+                  Check your
+                  <br />
+                  inbox.
+                </h1>
+                <p className="mt-3 max-w-sm text-sm leading-6 text-white/50">
+                  We sent a verification link to{' '}
+                  <span className="font-semibold text-white/80">{user?.email}</span>.
+                  Click it to activate your account and access your workspace.
+                </p>
+              </div>
             </div>
 
-            <div className="flex-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-600">
-                Action required
-              </p>
-              <h2 className="mt-1.5 text-lg font-semibold text-neutral-950">
-                Verify your email to continue
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-neutral-500">
-                We sent a verification link to{' '}
-                <span className="font-semibold text-neutral-950">{user?.email}</span>. Check your
-                inbox and click the link to activate your account.
-              </p>
+            {/* Right column — two stacked cards */}
+            <div className="grid gap-4">
 
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+              {/* Resend card */}
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
+                  Didn't get it?
+                </p>
+                <p className="mt-2 text-sm text-white/60">
+                  Check your spam folder first. If it's not there, request a new link.
+                </p>
+
                 <button
-                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
                   type="button"
                   disabled={isResending || isResendCoolingDown}
                   onClick={resendVerificationEmail}
+                  className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-semibold text-neutral-950 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {isResending ? (
-                    <Loader2 className="animate-spin" size={16} />
+                    <Loader2 className="animate-spin" size={15} />
                   ) : (
-                    <RefreshCw size={16} />
+                    <RefreshCw size={15} />
                   )}
-                  {isResending ? 'Sending…' : 'Resend email'}
+                  {isResending
+                    ? 'Sending…'
+                    : isResendCoolingDown
+                      ? `Resend in ${resendCooldownSeconds}s`
+                      : 'Resend verification email'}
                 </button>
 
-                {isResendCoolingDown ? (
-                  <p className="text-sm text-neutral-400">
-                    Resend available in {resendCooldownSeconds}s
+                {resendMessage ? (
+                  <p className="mt-3 text-center text-xs font-medium text-emerald-400">
+                    {resendMessage}
+                  </p>
+                ) : null}
+                {resendError ? (
+                  <p className="mt-3 text-center text-xs font-medium text-red-400">
+                    {resendError}
                   </p>
                 ) : null}
               </div>
 
-              {resendMessage ? (
-                <p className="mt-4 text-sm font-medium text-emerald-700">{resendMessage}</p>
-              ) : null}
-              {resendError ? (
-                <p className="mt-4 text-sm font-medium text-red-600">{resendError}</p>
-              ) : null}
+              {/* What's next card */}
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
+                  What's next
+                </p>
+                <ul className="mt-3 grid gap-2">
+                  {[
+                    'Verify your email',
+                    'Create your workspace',
+                    'Publish a landing page',
+                  ].map((item, i) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-white/60">
+                      <span
+                        className={`grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold ${
+                          i === 0
+                            ? 'bg-white text-neutral-950'
+                            : 'border border-white/15 text-white/30'
+                        }`}
+                      >
+                        {i === 0 ? <ArrowRight size={10} /> : i + 1}
+                      </span>
+                      <span className={i === 0 ? 'font-semibold text-white' : ''}>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

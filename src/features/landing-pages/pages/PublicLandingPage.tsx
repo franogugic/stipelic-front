@@ -2,7 +2,7 @@ import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
-import { getPublishedLandingPage } from '../api/public-landing-page-api'
+import { captureEmail, getPublishedLandingPage } from '../api/public-landing-page-api'
 import type {
   CtaContent,
   FeaturesContent,
@@ -60,7 +60,13 @@ export function PublicLandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {page.sections.map((section) => (
-        <PublicSection key={section.publicId} section={section} pageType={page.type} />
+        <PublicSection
+          key={section.publicId}
+          section={section}
+          pageType={page.type}
+          creatorSlug={creatorSlug}
+          pageSlug={pageSlug}
+        />
       ))}
     </div>
   )
@@ -68,7 +74,17 @@ export function PublicLandingPage() {
 
 /* ─── PublicSection ───────────────────────────────────────────── */
 
-function PublicSection({ section, pageType }: { section: LandingPageSection; pageType: LandingPageType }) {
+function PublicSection({
+  section,
+  pageType,
+  creatorSlug,
+  pageSlug,
+}: {
+  section: LandingPageSection
+  pageType: LandingPageType
+  creatorSlug: string
+  pageSlug: string
+}) {
   const content = parseJson(section.contentJson)
 
   switch (section.type as SectionType) {
@@ -112,7 +128,7 @@ function PublicSection({ section, pageType }: { section: LandingPageSection; pag
                   Buy now
                 </button>
               ) : null}
-              <CtaButton label={c.ctaText ?? 'Get started'} pageType={pageType} />
+              <CtaButton label={c.ctaText ?? 'Get started'} pageType={pageType} creatorSlug={creatorSlug} pageSlug={pageSlug} />
             </div>
           </div>
         </section>
@@ -185,7 +201,7 @@ function PublicSection({ section, pageType }: { section: LandingPageSection; pag
                   Buy now
                 </button>
               ) : null}
-              <CtaButton label={c.buttonText ?? 'Get started'} pageType={pageType} />
+              <CtaButton label={c.buttonText ?? 'Get started'} pageType={pageType} creatorSlug={creatorSlug} pageSlug={pageSlug} />
             </div>
           </div>
         </section>
@@ -196,12 +212,22 @@ function PublicSection({ section, pageType }: { section: LandingPageSection; pag
 
 /* ─── CtaButton ───────────────────────────────────────────────── */
 
-function CtaButton({ label, pageType }: { label: string; pageType: LandingPageType }) {
+function CtaButton({
+  label,
+  pageType,
+  creatorSlug,
+  pageSlug,
+}: {
+  label: string
+  pageType: LandingPageType
+  creatorSlug: string
+  pageSlug: string
+}) {
   const [email, setEmail] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
 
   if (pageType === 'LeadGen') {
-    if (submitted) {
+    if (status === 'success') {
       return (
         <p className="inline-block rounded-2xl bg-emerald-50 px-6 py-3 text-sm font-medium text-emerald-700">
           ✓ You're in! Check your inbox.
@@ -209,25 +235,39 @@ function CtaButton({ label, pageType }: { label: string; pageType: LandingPageTy
       )
     }
     return (
-      <form
-        className="mx-auto flex max-w-md flex-col gap-3 sm:flex-row"
-        onSubmit={(e) => { e.preventDefault(); setSubmitted(true) }}
-      >
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Your email address"
-          className="flex-1 rounded-xl border border-neutral-200 px-4 py-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
-        />
-        <button
-          type="submit"
-          className="inline-flex h-12 items-center justify-center rounded-xl bg-neutral-950 px-6 text-sm font-semibold text-white transition hover:bg-neutral-800"
+      <div className="mx-auto flex w-full max-w-md flex-col gap-2">
+        <form
+          className="flex flex-col gap-3 sm:flex-row"
+          onSubmit={(e) => {
+            e.preventDefault()
+            setStatus('submitting')
+            captureEmail(creatorSlug, pageSlug, email)
+              .then(() => setStatus('success'))
+              .catch(() => setStatus('error'))
+          }}
         >
-          {label}
-        </button>
-      </form>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Your email address"
+            disabled={status === 'submitting'}
+            className="flex-1 rounded-xl border border-neutral-200 px-4 py-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100 disabled:opacity-60"
+          />
+          <button
+            type="submit"
+            disabled={status === 'submitting'}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-6 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
+          >
+            {status === 'submitting' ? <Loader2 className="animate-spin" size={15} /> : null}
+            {label}
+          </button>
+        </form>
+        {status === 'error' ? (
+          <p className="text-center text-sm text-red-500">Something went wrong. Please try again.</p>
+        ) : null}
+      </div>
     )
   }
 
