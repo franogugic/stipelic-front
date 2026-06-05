@@ -87,6 +87,8 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
     }
   },
 
+
+
   loadTemplates: async (slug) => {
     if (get().templates.length > 0) return
     try {

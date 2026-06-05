@@ -45,6 +45,7 @@ export type LandingPageAnalytics = {
   today: PeriodStats
   last7Days: PeriodStats
   last30Days: PeriodStats
+  totalEmailCaptures: number
 }
 
 export type CreateLandingPageRequest = {

@@ -1,4 +1,4 @@
-import { ArrowLeft, Eye, Globe, Loader2, Pencil, Users } from 'lucide-react'
+import { ArrowLeft, Eye, Globe, Loader2, Mail, Pencil, Users } from 'lucide-react'
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -18,15 +18,15 @@ export function LandingPageAnalyticsPage() {
 
   useEffect(() => {
     if (!slug || !pageId) return
-    if (pageStatus === 'idle' || currentPage?.publicId !== pageId) {
+    if (pageStatus === 'idle' || (pageStatus === 'success' && currentPage?.publicId !== pageId)) {
       void loadPage(slug, pageId)
     }
   }, [slug, pageId, pageStatus, currentPage, loadPage])
 
   useEffect(() => {
     if (!slug || !pageId) return
-    if (!analytics[pageId]) void loadAnalytics(slug, pageId)
-  }, [slug, pageId, analytics, loadAnalytics])
+    void loadAnalytics(slug, pageId)
+  }, [slug, pageId, loadAnalytics])
 
   if (!slug || !pageId) return null
 
@@ -108,6 +108,9 @@ export function LandingPageAnalyticsPage() {
                   <PeriodCard label="Last 30 days" stats={pageAnalytics.last30Days} />
                   <PeriodCard label="All time" stats={pageAnalytics.allTime} highlight />
                 </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <EmailCapturesCard total={pageAnalytics.totalEmailCaptures} />
+                </div>
               </div>
             )}
           </div>
@@ -118,6 +121,20 @@ export function LandingPageAnalyticsPage() {
 }
 
 /* ─── Sub-components ─────────────────────────────────────────── */
+
+function EmailCapturesCard({ total }: { total: number }) {
+  const count = total ?? 0
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Email captures</p>
+      <div className="mt-4 flex items-center gap-2">
+        <Mail size={14} className="text-neutral-400" />
+        <span className="text-2xl font-bold tabular-nums text-neutral-950">{count.toLocaleString()}</span>
+        <span className="text-xs text-neutral-400">unique emails</span>
+      </div>
+    </div>
+  )
+}
 
 function PeriodCard({
   label,
