@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { useCreatorStore } from '../../creators/model/creator-store'
+import { useProductStore } from '../../products/model/product-store'
 import { useLandingPageStore } from '../model/landing-page-store'
 import type {
   CreateLandingPageRequest,
@@ -294,10 +295,19 @@ function CreatePageModal({
   const resetMutateFeedback = useLandingPageStore((s) => s.resetMutateFeedback)
   const isSubmitting = mutateStatus === 'submitting'
 
+  const products = useProductStore((s) => s.products)
+  const productsStatus = useProductStore((s) => s.loadStatus)
+  const loadProducts = useProductStore((s) => s.loadProducts)
+
   const [title, setTitle] = useState('')
   const [pageSlug, setPageSlug] = useState('')
   const [type, setType] = useState<LandingPageType>('LeadGen')
+  const [productId, setProductId] = useState('')
   const [slugEdited, setSlugEdited] = useState(false)
+
+  useEffect(() => {
+    if (productsStatus === 'idle') void loadProducts(slug)
+  }, [productsStatus, loadProducts, slug])
 
   const handleTitleChange = (value: string) => {
     setTitle(value)
@@ -306,7 +316,8 @@ function CreatePageModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const request: CreateLandingPageRequest = { title, slug: pageSlug, type }
+    if (!productId) return
+    const request: CreateLandingPageRequest = { title, slug: pageSlug, type, productId }
     const page = await createPage(slug, request)
     if (page) {
       resetMutateFeedback()
@@ -376,6 +387,39 @@ function CreatePageModal({
               </select>
             </div>
 
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium text-neutral-700">
+                Product <span className="text-red-500">*</span>
+              </label>
+              {productsStatus === 'loading' ? (
+                <div className="flex h-[42px] items-center gap-2 px-1 text-sm text-neutral-400">
+                  <Loader2 className="animate-spin" size={14} />
+                  Loading products…
+                </div>
+              ) : products.length === 0 ? (
+                <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  You don't have any products yet. Create a product first.
+                </p>
+              ) : (
+                <select
+                  required
+                  value={productId}
+                  onChange={(e) => setProductId(e.target.value)}
+                  className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+                >
+                  <option value="" disabled>
+                    Select a product…
+                  </option>
+                  {products.map((p) => (
+                    <option key={p.publicId} value={p.publicId}>
+                      {p.name} — {(p.priceCents / 100).toLocaleString(undefined, { style: 'currency', currency: 'EUR' })}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-xs text-neutral-400">The product cannot be changed after the page is created.</p>
+            </div>
+
             {mutateError ? (
               <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{mutateError}</p>
             ) : null}
@@ -392,7 +436,7 @@ function CreatePageModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !title || !pageSlug}
+              disabled={isSubmitting || !title || !pageSlug || !productId}
               className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40"
             >
               {isSubmitting ? <Loader2 className="animate-spin" size={15} /> : null}

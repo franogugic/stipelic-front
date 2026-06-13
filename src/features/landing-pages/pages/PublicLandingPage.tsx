@@ -66,6 +66,8 @@ export function PublicLandingPage() {
           pageType={page.type}
           creatorSlug={creatorSlug}
           pageSlug={pageSlug}
+          productName={page.productName}
+          productPriceCents={page.productPriceCents}
         />
       ))}
     </div>
@@ -79,11 +81,15 @@ function PublicSection({
   pageType,
   creatorSlug,
   pageSlug,
+  productName,
+  productPriceCents,
 }: {
   section: LandingPageSection
   pageType: LandingPageType
   creatorSlug: string
   pageSlug: string
+  productName: string | null
+  productPriceCents: number | null
 }) {
   const content = parseJson(section.contentJson)
 
@@ -162,14 +168,21 @@ function PublicSection({
       return (
         <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-20">
           <div className="mx-auto max-w-3xl">
+            {productName ? (
+              <p className="text-sm font-semibold uppercase tracking-widest text-neutral-400">{productName}</p>
+            ) : null}
             {c.heading ? (
-              <h2 className="text-3xl font-bold text-neutral-950">{c.heading}</h2>
+              <h2 className="mt-1 text-3xl font-bold text-neutral-950">{c.heading}</h2>
             ) : null}
             {c.description ? (
               <p className="mt-4 text-lg leading-relaxed text-neutral-600">{c.description}</p>
             ) : null}
             {c.showPrice ? (
-              <p className="mt-6 text-3xl font-bold text-neutral-950">Price on request</p>
+              <p className="mt-6 text-3xl font-bold text-neutral-950">
+                {productPriceCents != null
+                  ? (productPriceCents / 100).toLocaleString(undefined, { style: 'currency', currency: 'EUR' })
+                  : 'Price on request'}
+              </p>
             ) : null}
             {c.bullets && c.bullets.length > 0 ? (
               <ul className="mt-6 space-y-3">

@@ -25,6 +25,8 @@ export type LandingPage = {
 
 export type LandingPageWithSections = LandingPage & {
   sections: LandingPageSection[]
+  productName: string | null
+  productPriceCents: number | null
 }
 
 export type SectionTemplate = {
@@ -57,6 +59,7 @@ export type CreateLandingPageRequest = {
   title: string
   slug: string
   type: LandingPageType
+  productId: string
 }
 
 export type SaveEditorSectionRequest = {
