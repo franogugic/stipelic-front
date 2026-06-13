@@ -129,11 +129,6 @@ function PublicSection({
               <p className="mx-auto mt-5 max-w-xl text-lg text-neutral-600">{c.subheading}</p>
             ) : null}
             <div className="mt-8 flex flex-col items-center gap-4">
-              {pageType === 'Sales' ? (
-                <button type="button" className="inline-flex h-12 items-center rounded-xl bg-neutral-950 px-8 text-sm font-semibold text-white transition hover:bg-neutral-800">
-                  Buy now
-                </button>
-              ) : null}
               <CtaButton label={c.ctaText ?? 'Get started'} pageType={pageType} creatorSlug={creatorSlug} pageSlug={pageSlug} />
             </div>
           </div>
@@ -209,11 +204,6 @@ function PublicSection({
               <p className="mt-4 text-lg text-neutral-600">{c.subheading}</p>
             ) : null}
             <div className="mt-8 flex flex-col items-center gap-4">
-              {pageType === 'Sales' ? (
-                <button type="button" className="inline-flex h-12 items-center rounded-xl bg-neutral-950 px-8 text-sm font-semibold text-white transition hover:bg-neutral-800">
-                  Buy now
-                </button>
-              ) : null}
               <CtaButton label={c.buttonText ?? 'Get started'} pageType={pageType} creatorSlug={creatorSlug} pageSlug={pageSlug} />
             </div>
           </div>
@@ -284,14 +274,28 @@ function CtaButton({
     )
   }
 
-  // Sales — buy button (Stripe later)
+  // Sales — buy button (Stripe checkout later)
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+
   return (
-    <button
-      type="button"
-      className="inline-flex h-12 items-center justify-center rounded-xl bg-neutral-950 px-8 text-sm font-semibold text-white transition hover:bg-neutral-800"
-    >
-      {label}
-    </button>
+    <div className="mx-auto flex w-full max-w-md flex-col items-center gap-2">
+      <input
+        type="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Your email address"
+        className="w-full rounded-xl border border-neutral-200 px-4 py-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+      />
+      <button
+        type="button"
+        disabled={!isValidEmail}
+        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-neutral-950 px-8 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Buy now
+      </button>
+      <p className="text-xs text-neutral-400">This is the email address that will receive your product.</p>
+    </div>
   )
 }
 

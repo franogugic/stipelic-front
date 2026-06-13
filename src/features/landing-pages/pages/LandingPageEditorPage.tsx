@@ -577,16 +577,21 @@ function SectionPreview({ section, pageType }: { section: DraftSection; pageType
           {c.subheading ? <p className="mt-3 text-lg text-neutral-600">{c.subheading}</p> : null}
           <div className="mt-6 flex flex-col items-center gap-3">
             {pageType === 'Sales' ? (
-              <button type="button" className="inline-flex h-11 items-center rounded-xl bg-neutral-950 px-6 text-sm font-semibold text-white">
-                Buy now
-              </button>
-            ) : null}
-            <div className="flex max-w-sm w-full gap-2">
-              <input type="email" placeholder="Your email" readOnly className="flex-1 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-400 bg-white" />
-              <button type="button" className="inline-flex h-10 items-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white">
-                {c.ctaText || 'Get started'}
-              </button>
-            </div>
+              <div className="flex w-full max-w-sm flex-col items-center gap-2">
+                <input type="email" placeholder="Your email address" readOnly className="w-full rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-400 bg-white" />
+                <button type="button" disabled className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white opacity-40">
+                  Buy now
+                </button>
+                <p className="text-xs text-neutral-400">This is the email address that will receive your product.</p>
+              </div>
+            ) : (
+              <div className="flex max-w-sm w-full gap-2">
+                <input type="email" placeholder="Your email" readOnly className="flex-1 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-400 bg-white" />
+                <button type="button" className="inline-flex h-10 items-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white">
+                  {c.ctaText || 'Get started'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )
@@ -635,16 +640,21 @@ function SectionPreview({ section, pageType }: { section: DraftSection; pageType
           {c.subheading ? <p className="mt-2 text-neutral-600">{c.subheading}</p> : null}
           <div className="mt-6 flex flex-col items-center gap-3">
             {pageType === 'Sales' ? (
-              <button type="button" className="inline-flex h-11 items-center rounded-xl bg-neutral-950 px-6 text-sm font-semibold text-white">
-                Buy now
-              </button>
-            ) : null}
-            <div className="flex max-w-sm w-full gap-2">
-              <input type="email" placeholder="Your email" readOnly className="flex-1 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-400 bg-white" />
-              <button type="button" className="inline-flex h-10 items-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white">
-                {c.buttonText || 'Get started'}
-              </button>
-            </div>
+              <div className="flex w-full max-w-sm flex-col items-center gap-2">
+                <input type="email" placeholder="Your email address" readOnly className="w-full rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-400 bg-white" />
+                <button type="button" disabled className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white opacity-40">
+                  Buy now
+                </button>
+                <p className="text-xs text-neutral-400">This is the email address that will receive your product.</p>
+              </div>
+            ) : (
+              <div className="flex max-w-sm w-full gap-2">
+                <input type="email" placeholder="Your email" readOnly className="flex-1 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-400 bg-white" />
+                <button type="button" className="inline-flex h-10 items-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white">
+                  {c.buttonText || 'Get started'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )
