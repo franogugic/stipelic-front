@@ -6,6 +6,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Trash2,
   Users,
   X,
 } from 'lucide-react'
@@ -38,6 +39,7 @@ export function LandingPagesPage() {
   const loadPages = useLandingPageStore((s) => s.loadPages)
   const analytics = useLandingPageStore((s) => s.analytics)
   const loadAnalytics = useLandingPageStore((s) => s.loadAnalytics)
+  const archivePage = useLandingPageStore((s) => s.archivePage)
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
 
@@ -157,7 +159,7 @@ export function LandingPagesPage() {
             ) : (
               <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_120px_120px_160px_40px] items-center border-b border-neutral-100 px-5 py-3">
+                <div className="grid grid-cols-[1fr_120px_120px_160px_120px] items-center border-b border-neutral-100 px-5 py-3">
                   <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Page</p>
                   <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Type</p>
                   <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Status</p>
@@ -178,6 +180,7 @@ export function LandingPagesPage() {
                       onEditClick={() =>
                         navigate(`/app/${slug}/landing-pages/${page.publicId}/edit`)
                       }
+                      onDeleteClick={() => void archivePage(slug, page.publicId)}
                     />
                   ))}
                 </ul>
@@ -208,18 +211,24 @@ function PageRow({
   pageAnalytics,
   onAnalyticsClick,
   onEditClick,
+  onDeleteClick,
 }: {
   page: LandingPage
   slug: string
   pageAnalytics: LandingPageAnalytics | null
   onAnalyticsClick: () => void
   onEditClick: () => void
+  onDeleteClick: () => void
 }) {
+  const handleDelete = () => {
+    if (window.confirm(`Delete "${page.title}"? This cannot be undone.`)) onDeleteClick()
+  }
+
   const publicUrl = `/p/${slug}/${page.slug}`
 
   return (
     <li>
-      <div className="grid w-full grid-cols-[1fr_120px_120px_160px_80px] items-center px-5 py-4">
+      <div className="grid w-full grid-cols-[1fr_120px_120px_160px_120px] items-center px-5 py-4">
         <button
           type="button"
           onClick={onAnalyticsClick}
@@ -274,6 +283,14 @@ function PageRow({
           ) : (
             <span className="size-8" />
           )}
+          <button
+            type="button"
+            title="Delete page"
+            onClick={(e) => { e.stopPropagation(); handleDelete() }}
+            className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+          >
+            <Trash2 size={14} />
+          </button>
         </div>
       </div>
     </li>

@@ -199,6 +199,24 @@ export function LandingPageEditorPage() {
         </div>
         <div className="flex items-center gap-2">
           {mutateError ? <p className="text-xs text-red-600">{mutateError}</p> : null}
+          {currentPage?.status === 'Published' ? (
+            <a
+              href={`/p/${slug}/${currentPage.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="View live"
+              className="inline-flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-800"
+            >
+              <Globe size={15} />
+            </a>
+          ) : (
+            <span
+              title="Publish the page to view it live"
+              className="inline-flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-300 cursor-not-allowed"
+            >
+              <Globe size={15} />
+            </span>
+          )}
           <button
             type="button"
             disabled={isSaving || !currentPage}
