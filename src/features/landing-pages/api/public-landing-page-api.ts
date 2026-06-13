@@ -13,6 +13,18 @@ export async function getPublishedLandingPage(
   return res.data
 }
 
+export async function createCheckout(
+  creatorSlug: string,
+  landingPageSlug: string,
+  email: string,
+): Promise<string> {
+  const res = await apiRequest<ApiResponse<{ checkoutUrl: string }>>(
+    `/api/public/landing-pages/${creatorSlug}/${landingPageSlug}/checkout`,
+    { method: 'POST', body: { email } },
+  )
+  return res.data.checkoutUrl
+}
+
 export async function captureEmail(
   creatorSlug: string,
   landingPageSlug: string,

@@ -10,6 +10,7 @@ import { PaymentStatusPage } from '../../features/creators/pages/PaymentStatusPa
 import { LandingPageAnalyticsPage } from '../../features/landing-pages/pages/LandingPageAnalyticsPage'
 import { LandingPageEditorPage } from '../../features/landing-pages/pages/LandingPageEditorPage'
 import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPagesPage'
+import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSuccessPage'
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { AuthBootstrap } from './AuthBootstrap'
@@ -20,6 +21,7 @@ export function AppRouter() {
   return (
     <Routes>
       <Route element={<AuthBootstrap />}>
+        <Route path="/p/:creatorSlug/:pageSlug/success" element={<OrderSuccessPage />} />
         <Route path="/p/:creatorSlug/:pageSlug" element={<PublicLandingPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/payment/success" element={<PaymentStatusPage status="success" />} />

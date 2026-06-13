@@ -2,7 +2,7 @@ import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
-import { captureEmail, getPublishedLandingPage } from '../api/public-landing-page-api'
+import { captureEmail, createCheckout, getPublishedLandingPage } from '../api/public-landing-page-api'
 import type {
   CtaContent,
   FeaturesContent,
@@ -274,7 +274,7 @@ function CtaButton({
     )
   }
 
-  // Sales — buy button (Stripe checkout later)
+  // Sales — buy button (Stripe checkout)
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
   return (
@@ -285,15 +285,26 @@ function CtaButton({
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="Your email address"
-        className="w-full rounded-xl border border-neutral-200 px-4 py-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+        disabled={status === 'submitting'}
+        className="w-full rounded-xl border border-neutral-200 px-4 py-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100 disabled:opacity-60"
       />
       <button
         type="button"
-        disabled={!isValidEmail}
-        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-neutral-950 px-8 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+        disabled={!isValidEmail || status === 'submitting'}
+        onClick={() => {
+          setStatus('submitting')
+          createCheckout(creatorSlug, pageSlug, email)
+            .then((checkoutUrl) => { window.location.href = checkoutUrl })
+            .catch(() => setStatus('error'))
+        }}
+        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-8 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
       >
+        {status === 'submitting' ? <Loader2 className="animate-spin" size={15} /> : null}
         Buy now
       </button>
+      {status === 'error' ? (
+        <p className="text-sm text-red-500">Something went wrong. Please try again.</p>
+      ) : null}
       <p className="text-xs text-neutral-400">This is the email address that will receive your product.</p>
     </div>
   )
