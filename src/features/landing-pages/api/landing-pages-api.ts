@@ -1,6 +1,7 @@
 import { apiRequest } from '../../../shared/api/http-client'
 import type {
   CreateLandingPageRequest,
+  EmailCaptureItem,
   LandingPage,
   LandingPageAnalytics,
   LandingPageWithSections,
@@ -52,5 +53,10 @@ export async function getSectionTemplates(slug: string): Promise<SectionTemplate
 
 export async function getLandingPageAnalytics(slug: string, pageId: string): Promise<LandingPageAnalytics> {
   const res = await apiRequest<ApiResponse<LandingPageAnalytics>>(`/api/creators/${slug}/landing-pages/${pageId}/analytics`)
+  return res.data
+}
+
+export async function listEmailCaptures(slug: string, pageId: string): Promise<EmailCaptureItem[]> {
+  const res = await apiRequest<ApiResponse<EmailCaptureItem[]>>(`/api/creators/${slug}/landing-pages/${pageId}/captures`)
   return res.data
 }

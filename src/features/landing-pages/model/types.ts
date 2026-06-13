@@ -40,6 +40,11 @@ export type PeriodStats = {
   uniqueVisitors: number
 }
 
+export type EmailCaptureItem = {
+  email: string
+  capturedAt: string
+}
+
 export type LandingPageAnalytics = {
   allTime: PeriodStats
   today: PeriodStats
