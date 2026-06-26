@@ -1,4 +1,4 @@
-import { Check, Circle } from 'lucide-react'
+import { Check } from 'lucide-react'
 import type { PasswordCheck } from '../model/register-validation'
 
 type PasswordChecklistProps = {
@@ -7,20 +7,24 @@ type PasswordChecklistProps = {
 
 export function PasswordChecklist({ checks }: PasswordChecklistProps) {
   return (
-    <div className="grid gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+    <div className="grid grid-cols-2 gap-1.5">
       {checks.map((check) => (
         <div
-          className={`flex items-center gap-2 text-sm ${
-            check.isMet ? 'text-emerald-700' : 'text-neutral-500'
-          }`}
           key={check.id}
+          className={`flex items-center gap-2 text-xs ${
+            check.isMet ? 'text-emerald-700' : 'text-neutral-400'
+          }`}
         >
           <span
-            className={`grid size-5 place-items-center rounded-full ${
-              check.isMet ? 'bg-emerald-100' : 'bg-white'
+            className={`grid size-4 shrink-0 place-items-center rounded-full transition ${
+              check.isMet ? 'bg-emerald-100' : 'bg-neutral-100'
             }`}
           >
-            {check.isMet ? <Check size={14} strokeWidth={2.4} /> : <Circle size={8} />}
+            {check.isMet ? (
+              <Check size={9} strokeWidth={3} />
+            ) : (
+              <span className="size-1.5 rounded-full bg-neutral-300" />
+            )}
           </span>
           {check.label}
         </div>

@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   AtSign,
   CircleDollarSign,
   Clock3,
@@ -12,7 +11,8 @@ import {
   Save,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { AppShell } from '../../../shared/ui/AppShell'
 import { creatorConstraints } from '../model/creator-constraints'
 import { useCreatorStore } from '../model/creator-store'
 import type { CreatorSettings, UpdateCreatorSettingsRequest } from '../model/types'
@@ -35,22 +35,21 @@ type SettingsDraft = {
 }
 
 export function CreatorSettingsPage() {
-  const navigate = useNavigate()
-  const { slug } = useParams()
-  const creatorSettings = useCreatorStore((state) => state.creatorSettings)
-  const creatorSettingsStatus = useCreatorStore((state) => state.creatorSettingsStatus)
-  const creatorSettingsError = useCreatorStore((state) => state.creatorSettingsError)
-  const loadCreatorSettings = useCreatorStore((state) => state.loadCreatorSettings)
-  const updateCreatorSettingsProfile = useCreatorStore((state) => state.updateCreatorSettingsProfile)
-  const updateSettingsStatus = useCreatorStore((state) => state.updateSettingsStatus)
-  const updateSettingsError = useCreatorStore((state) => state.updateSettingsError)
+  const { slug } = useParams<{ slug: string }>()
+  const creatorSettings = useCreatorStore((s) => s.creatorSettings)
+  const creatorSettingsStatus = useCreatorStore((s) => s.creatorSettingsStatus)
+  const creatorSettingsError = useCreatorStore((s) => s.creatorSettingsError)
+  const loadCreatorSettings = useCreatorStore((s) => s.loadCreatorSettings)
+  const updateCreatorSettingsProfile = useCreatorStore((s) => s.updateCreatorSettingsProfile)
+  const updateSettingsStatus = useCreatorStore((s) => s.updateSettingsStatus)
+  const updateSettingsError = useCreatorStore((s) => s.updateSettingsError)
   const resetUpdateCreatorSettingsFeedback = useCreatorStore(
-    (state) => state.resetUpdateCreatorSettingsFeedback,
+    (s) => s.resetUpdateCreatorSettingsFeedback,
   )
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>({ slug: '', values: {} })
 
-  const isLoading = creatorSettingsStatus === 'loading' || creatorSettingsStatus === 'idle'
   const normalizedSlug = slug ?? ''
+  const isLoading = creatorSettingsStatus === 'loading' || creatorSettingsStatus === 'idle'
   const isSaving = updateSettingsStatus === 'submitting'
   const saveSuccess = updateSettingsStatus === 'success'
 
@@ -92,87 +91,70 @@ export function CreatorSettingsPage() {
     if (settings) setSettingsDraft({ slug: normalizedSlug, values: {} })
   }
 
+  if (!slug) return null
+
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-950">
-      {/* Header */}
-      <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-5 lg:px-8">
-          <div className="flex items-center gap-2.5">
-            <span className="grid size-7 place-items-center rounded-lg bg-neutral-950 text-white">
-              <span className="text-xs font-bold">CP</span>
-            </span>
-            <span className="text-sm text-neutral-400">/</span>
-            <span className="text-sm font-medium text-neutral-950">{normalizedSlug}</span>
-            <span className="text-sm text-neutral-400">/</span>
-            <span className="text-sm font-medium text-neutral-950">settings</span>
+    <AppShell slug={slug} activeSection="settings">
+      <div className="px-8 py-8">
+
+        {/* Page header */}
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">Settings</h1>
+            <p className="mt-1 text-sm text-neutral-400">
+              {creatorSettings?.creatorName ?? `/${normalizedSlug}`} · workspace configuration
+            </p>
           </div>
-
-          <button
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
-            type="button"
-            onClick={() => navigate(`/app/${normalizedSlug}`)}
-          >
-            <ArrowLeft size={15} />
-            Workspace
-          </button>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-5xl px-5 py-10 lg:px-8">
-        {/* Page title */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {creatorSettings?.creatorName ?? `/${normalizedSlug}`}
-          </h1>
-          <p className="mt-1 text-sm text-neutral-500">Creator settings</p>
+          {isDirty ? (
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+              Unsaved changes
+            </span>
+          ) : null}
         </div>
 
         {/* Loading */}
         {isLoading ? (
-          <div className="flex h-28 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-6 text-sm text-neutral-400 shadow-sm">
-            <Loader2 className="animate-spin" size={17} />
-            Loading settings
+          <div className="flex h-40 items-center justify-center gap-3 text-sm text-neutral-400">
+            <Loader2 className="animate-spin" size={18} />
+            Loading settings…
           </div>
         ) : null}
 
         {/* Error */}
         {creatorSettingsStatus === 'error' ? (
-          <div className="rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold text-neutral-950">Could not load settings</p>
-            <p className="mt-1 text-sm text-neutral-500">{creatorSettingsError}</p>
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+            <p className="text-sm font-semibold text-red-900">Could not load settings</p>
+            <p className="mt-1 text-sm text-red-700">{creatorSettingsError}</p>
           </div>
         ) : null}
 
-        {/* Settings content */}
         {creatorSettingsStatus === 'success' && creatorSettings ? (
           <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-            {/* Left — brand preview + form */}
+
+            {/* Left column */}
             <div className="grid gap-5">
               {/* Brand preview */}
               <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
                 <div
-                  className="relative min-h-40 p-6"
+                  className="relative h-36 p-6"
                   style={{ backgroundColor: normalizeColor(formValues.primaryColor) }}
                 >
-                  <div className="absolute inset-0 bg-black/10" />
-                  <div className="relative flex h-full flex-col justify-between gap-8">
-                    <span className="w-fit rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur">
+                  <div className="absolute inset-0 bg-black/15" />
+                  <div className="relative flex h-full items-end gap-4">
+                    <div className="grid size-14 shrink-0 place-items-center rounded-2xl border-[3px] border-white/50 bg-neutral-950 text-lg font-bold text-white shadow-lg">
+                      {getInitials(formValues.brandName || creatorSettings.creatorName)}
+                    </div>
+                    <div>
+                      <p className="text-xl font-semibold text-white drop-shadow-sm">
+                        {formValues.brandName || creatorSettings.creatorName}
+                      </p>
+                      <p className="mt-0.5 text-sm text-white/60">/{creatorSettings.slug}</p>
+                    </div>
+                    <span className="ml-auto rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
                       Preview
                     </span>
-                    <div className="flex items-end gap-4">
-                      <div className="grid size-16 shrink-0 place-items-center rounded-2xl border-4 border-white/60 bg-neutral-950 text-xl font-bold text-white shadow-lg">
-                        {getInitials(formValues.brandName || creatorSettings.creatorName)}
-                      </div>
-                      <div>
-                        <p className="text-2xl font-semibold text-white">
-                          {formValues.brandName || creatorSettings.creatorName}
-                        </p>
-                        <p className="mt-1 text-sm text-white/70">/{creatorSettings.slug}</p>
-                      </div>
-                    </div>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-3 divide-x divide-neutral-100 border-t border-neutral-100">
                   <PreviewMeta label="Currency" value={creatorSettings.defaultCurrency} />
                   <PreviewMeta label="Timezone" value={formValues.timezone} />
@@ -181,129 +163,157 @@ export function CreatorSettingsPage() {
               </div>
 
               {/* Edit form */}
-              <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-                <div className="mb-5 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-base font-semibold text-neutral-950">Public details</p>
-                    <p className="mt-0.5 text-sm text-neutral-500">Visible on your creator profile.</p>
-                  </div>
-                  {isDirty ? (
-                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                      Unsaved changes
-                    </span>
-                  ) : null}
+              <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                <div className="border-b border-neutral-100 px-6 py-5">
+                  <p className="text-sm font-semibold text-neutral-950">Public details</p>
+                  <p className="mt-0.5 text-xs text-neutral-400">
+                    Displayed on your public creator profile and landing pages.
+                  </p>
                 </div>
 
                 <form
-                  className="grid gap-4"
+                  className="p-6"
                   onSubmit={(e) => {
                     e.preventDefault()
                     void submitSettings()
                   }}
                 >
-                  <SettingsField
-                    icon={Palette}
-                    label="Brand name"
-                    maxLength={creatorConstraints.brandName.maxLength}
-                    value={formValues.brandName}
-                    error={validation.fieldErrors.brandName}
-                    onChange={(v) => updateField('brandName', v)}
-                  />
-                  <SettingsField
-                    icon={AtSign}
-                    label="Support email"
-                    type="email"
-                    maxLength={creatorConstraints.supportEmail.maxLength}
-                    placeholder="hello@example.com"
-                    value={formValues.supportEmail}
-                    error={validation.fieldErrors.supportEmail}
-                    onChange={(v) => updateField('supportEmail', v)}
-                  />
-                  <SettingsField
-                    icon={Image}
-                    label="Logo URL"
-                    type="url"
-                    maxLength={creatorConstraints.logoUrl.maxLength}
-                    placeholder="https://example.com/logo.png"
-                    value={formValues.logoUrl}
-                    error={validation.fieldErrors.logoUrl}
-                    onChange={(v) => updateField('logoUrl', v)}
-                  />
-
-                  <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
+                  <div className="grid gap-5">
                     <SettingsField
-                      icon={Globe2}
-                      label="Timezone"
-                      maxLength={creatorConstraints.timezone.maxLength}
-                      value={formValues.timezone}
-                      error={validation.fieldErrors.timezone}
-                      onChange={(v) => updateField('timezone', v)}
+                      icon={Palette}
+                      label="Brand name"
+                      maxLength={creatorConstraints.brandName.maxLength}
+                      value={formValues.brandName}
+                      error={validation.fieldErrors.brandName}
+                      onChange={(v) => updateField('brandName', v)}
+                      placeholder={creatorSettings.creatorName}
+                    />
+                    <SettingsField
+                      icon={AtSign}
+                      label="Support email"
+                      type="email"
+                      maxLength={creatorConstraints.supportEmail.maxLength}
+                      placeholder="hello@example.com"
+                      value={formValues.supportEmail}
+                      error={validation.fieldErrors.supportEmail}
+                      onChange={(v) => updateField('supportEmail', v)}
+                    />
+                    <SettingsField
+                      icon={Image}
+                      label="Logo URL"
+                      type="url"
+                      maxLength={creatorConstraints.logoUrl.maxLength}
+                      placeholder="https://example.com/logo.png"
+                      value={formValues.logoUrl}
+                      error={validation.fieldErrors.logoUrl}
+                      onChange={(v) => updateField('logoUrl', v)}
                     />
 
-                    <label className="grid gap-2 text-sm font-medium text-neutral-700">
-                      <span>Primary color</span>
-                      <span className="flex h-11 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3">
-                        <input
-                          className="size-6 cursor-pointer rounded-md border-0 bg-transparent p-0"
-                          type="color"
-                          value={normalizeColor(formValues.primaryColor)}
-                          onChange={(e) => updateField('primaryColor', e.target.value)}
-                        />
-                        <input
-                          className="min-w-0 flex-1 text-sm text-neutral-950 outline-none"
-                          maxLength={creatorConstraints.primaryColor.maxLength}
-                          value={formValues.primaryColor}
-                          onChange={(e) => updateField('primaryColor', e.target.value)}
-                        />
-                      </span>
-                      {validation.fieldErrors.primaryColor ? (
-                        <span className="text-xs text-red-600">
-                          {validation.fieldErrors.primaryColor}
-                        </span>
-                      ) : null}
-                    </label>
-                  </div>
+                    <div className="grid gap-5 sm:grid-cols-[1fr_180px]">
+                      <SettingsField
+                        icon={Globe2}
+                        label="Timezone"
+                        maxLength={creatorConstraints.timezone.maxLength}
+                        placeholder="Europe/Zagreb"
+                        value={formValues.timezone}
+                        error={validation.fieldErrors.timezone}
+                        onChange={(v) => updateField('timezone', v)}
+                      />
 
-                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                    <p className="text-sm font-medium text-neutral-700">Language</p>
-                    <p className="mt-0.5 text-sm text-neutral-500">English (only available language)</p>
+                      <div className="grid gap-1.5">
+                        <label className="text-sm font-medium text-neutral-700">
+                          Primary colour
+                        </label>
+                        <span className="flex h-[42px] items-center gap-2.5 rounded-xl border border-neutral-200 bg-white px-3 transition focus-within:border-neutral-400 focus-within:ring-2 focus-within:ring-neutral-100">
+                          <input
+                            className="size-6 shrink-0 cursor-pointer rounded border-0 bg-transparent p-0"
+                            type="color"
+                            value={normalizeColor(formValues.primaryColor)}
+                            onChange={(e) => updateField('primaryColor', e.target.value)}
+                          />
+                          <input
+                            className="min-w-0 flex-1 text-sm text-neutral-950 outline-none"
+                            maxLength={creatorConstraints.primaryColor.maxLength}
+                            value={formValues.primaryColor}
+                            onChange={(e) => updateField('primaryColor', e.target.value)}
+                          />
+                        </span>
+                        {validation.fieldErrors.primaryColor ? (
+                          <p className="text-xs text-red-600">
+                            {validation.fieldErrors.primaryColor}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-3">
+                      <p className="text-sm font-medium text-neutral-700">Language</p>
+                      <p className="mt-0.5 text-sm text-neutral-400">
+                        English — only available language at this time
+                      </p>
+                    </div>
                   </div>
 
                   {updateSettingsError ? (
-                    <p className="text-sm font-medium text-red-600">{updateSettingsError}</p>
+                    <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+                      {updateSettingsError}
+                    </p>
                   ) : null}
                   {saveSuccess && !isDirty ? (
-                    <p className="text-sm font-medium text-emerald-700">Settings saved.</p>
+                    <p className="mt-5 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                      Settings saved successfully.
+                    </p>
                   ) : null}
 
-                  <button
-                    className="inline-flex h-10 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400 sm:w-fit"
-                    type="submit"
-                    disabled={!validation.isValid || !isDirty || isSaving}
-                  >
-                    {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-                    Save changes
-                  </button>
+                  <div className="mt-6 flex items-center justify-between border-t border-neutral-100 pt-5">
+                    <p className="text-xs text-neutral-400">
+                      {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
+                    </p>
+                    <button
+                      className="inline-flex h-9 items-center gap-2 rounded-lg bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      type="submit"
+                      disabled={!validation.isValid || !isDirty || isSaving}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="animate-spin" size={15} />
+                      ) : (
+                        <Save size={15} />
+                      )}
+                      Save changes
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>
 
-            {/* Right — workspace info */}
-            <aside className="h-fit rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-                Workspace info
-              </p>
-              <div className="mt-4 grid gap-3">
-                <InfoRow icon={Fingerprint} label="Creator ID" value={creatorSettings.creatorPublicId} />
-                <InfoRow icon={Hash} label="Slug" value={`/${creatorSettings.slug}`} />
-                <InfoRow icon={CircleDollarSign} label="Currency" value={creatorSettings.defaultCurrency} />
-                <InfoRow icon={Clock3} label="Timezone" value={formValues.timezone} />
+            {/* Right column — workspace info */}
+            <aside className="grid gap-4 h-fit">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                  Workspace info
+                </p>
+                <div className="mt-4 grid gap-3">
+                  <InfoRow icon={Fingerprint} label="Creator ID" value={creatorSettings.creatorPublicId} />
+                  <InfoRow icon={Hash} label="Slug" value={`/${creatorSettings.slug}`} />
+                  <InfoRow icon={CircleDollarSign} label="Currency" value={creatorSettings.defaultCurrency} />
+                  <InfoRow icon={Clock3} label="Timezone" value={formValues.timezone} />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                  Tip
+                </p>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                  Your brand colour is used as the background accent on landing pages and email
+                  templates. Make sure it has enough contrast with white text.
+                </p>
               </div>
             </aside>
           </div>
         ) : null}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   )
 }
 
@@ -312,21 +322,10 @@ export function CreatorSettingsPage() {
 function PreviewMeta({ label, value }: { label: string; value: string }) {
   return (
     <div className="px-4 py-3">
-      <p className="text-xs text-neutral-400">{label}</p>
+      <p className="text-[11px] text-neutral-400">{label}</p>
       <p className="mt-0.5 truncate text-sm font-semibold text-neutral-950">{value}</p>
     </div>
   )
-}
-
-type SettingsFieldProps = {
-  icon: typeof AtSign
-  label: string
-  onChange: (value: string) => void
-  value: string
-  error?: string
-  maxLength?: number
-  placeholder?: string
-  type?: string
 }
 
 function SettingsField({
@@ -338,43 +337,62 @@ function SettingsField({
   maxLength,
   placeholder,
   type = 'text',
-}: SettingsFieldProps) {
+}: {
+  icon: typeof AtSign
+  label: string
+  onChange: (value: string) => void
+  value: string
+  error?: string
+  maxLength?: number
+  placeholder?: string
+  type?: string
+}) {
   return (
-    <label className="grid gap-2 text-sm font-medium text-neutral-700">
-      <span className="flex items-center gap-1.5">
+    <div className="grid gap-1.5">
+      <label className="flex items-center gap-1.5 text-sm font-medium text-neutral-700">
         <Icon size={14} className="text-neutral-400" />
         {label}
-      </span>
+      </label>
       <input
-        className={`h-11 rounded-xl border bg-white px-3 text-sm text-neutral-950 outline-none placeholder:text-neutral-400 transition focus:border-neutral-950 focus:ring-4 focus:ring-neutral-950/8 ${
-          error ? 'border-red-300 bg-red-50/30' : 'border-neutral-200'
-        }`}
+        className={[
+          'h-[42px] w-full rounded-xl border px-3.5 text-sm text-neutral-950 outline-none placeholder:text-neutral-400 transition',
+          'focus:ring-2',
+          error
+            ? 'border-red-300 bg-red-50/50 focus:border-red-400 focus:ring-red-100'
+            : 'border-neutral-200 bg-white focus:border-neutral-400 focus:ring-neutral-100',
+        ].join(' ')}
         maxLength={maxLength}
         placeholder={placeholder}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-      {error ? <span className="text-xs text-red-600">{error}</span> : null}
-    </label>
-  )
-}
-
-function InfoRow({ icon: Icon, label, value }: { icon: typeof AtSign; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-3 rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-3">
-      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-neutral-400 shadow-sm">
-        <Icon size={14} />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-xs text-neutral-400">{label}</span>
-        <span className="mt-0.5 block break-all text-xs font-semibold text-neutral-950">{value}</span>
-      </span>
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>
   )
 }
 
-/* ─── Helpers ────────────────────────────────────────────────── */
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof AtSign
+  label: string
+  value: string
+}) {
+  return (
+    <div className="grid gap-0.5">
+      <p className="flex items-center gap-1.5 text-[11px] text-neutral-400">
+        <Icon size={11} />
+        {label}
+      </p>
+      <p className="break-all text-xs font-medium text-neutral-950">{value}</p>
+    </div>
+  )
+}
+
+/* ─── Helpers ─────────────────────────────────────────────────── */
 
 function formatLanguage(lang: string) {
   return lang.toLowerCase() === 'en' ? 'English' : lang
@@ -414,11 +432,9 @@ function validateSettingsForm(values: UpdateCreatorSettingsRequest): SettingsVal
   } else if (supportEmail.length > creatorConstraints.supportEmail.maxLength) {
     fieldErrors.supportEmail = `Max ${creatorConstraints.supportEmail.maxLength} characters.`
   }
-
   if (brandName.length > creatorConstraints.brandName.maxLength) {
     fieldErrors.brandName = `Max ${creatorConstraints.brandName.maxLength} characters.`
   }
-
   if (logoUrl.length > creatorConstraints.logoUrl.maxLength) {
     fieldErrors.logoUrl = `Max ${creatorConstraints.logoUrl.maxLength} characters.`
   } else if (logoUrl) {
@@ -431,17 +447,14 @@ function validateSettingsForm(values: UpdateCreatorSettingsRequest): SettingsVal
       fieldErrors.logoUrl = 'Enter a valid URL.'
     }
   }
-
   if (!/^#[0-9a-fA-F]{6}$/.test(primaryColor)) {
-    fieldErrors.primaryColor = 'Must be a hex color like #111827.'
+    fieldErrors.primaryColor = 'Must be a hex colour like #111827.'
   }
-
   if (timezone.length > creatorConstraints.timezone.maxLength) {
     fieldErrors.timezone = `Max ${creatorConstraints.timezone.maxLength} characters.`
   } else if (!timezonePattern.test(timezone)) {
     fieldErrors.timezone = 'Invalid timezone format.'
   }
-
   if (language !== 'en') {
     fieldErrors.language = 'English is the only supported language.'
   }
@@ -460,7 +473,10 @@ function toSettingsFormValues(settings: CreatorSettings): UpdateCreatorSettingsR
   }
 }
 
-function areSettingsFormsEqual(a: UpdateCreatorSettingsRequest, b: UpdateCreatorSettingsRequest) {
+function areSettingsFormsEqual(
+  a: UpdateCreatorSettingsRequest,
+  b: UpdateCreatorSettingsRequest,
+) {
   return (
     a.supportEmail.trim() === b.supportEmail.trim() &&
     a.brandName.trim() === b.brandName.trim() &&
