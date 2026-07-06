@@ -17,3 +17,12 @@ export interface OrderSummary {
   totalPaidAmountCents: number
   currency: string | null
 }
+
+export interface HomeSummary {
+  totalPaidAmountCents: number
+  paidOrderCount: number
+  currency: string | null
+  productCount: number
+  landingPageCount: number
+  recentOrders: Order[]
+}

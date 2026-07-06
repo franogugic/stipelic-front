@@ -112,7 +112,7 @@ export function HomePage() {
               </div>
 
               <div>
-                <h1 className="text-3xl font-semibold leading-tight tracking-tight text-white lg:text-4xl">
+                <h1 className="font-display text-3xl font-semibold leading-tight tracking-tight text-white lg:text-4xl">
                   Check your
                   <br />
                   inbox.
@@ -141,7 +141,7 @@ export function HomePage() {
                   type="button"
                   disabled={isResending || isResendCoolingDown}
                   onClick={resendVerificationEmail}
-                  className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-semibold text-neutral-950 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {isResending ? (
                     <Loader2 className="animate-spin" size={15} />
@@ -182,7 +182,7 @@ export function HomePage() {
                       <span
                         className={`grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold ${
                           i === 0
-                            ? 'bg-white text-neutral-950'
+                            ? 'bg-accent text-white'
                             : 'border border-white/15 text-white/30'
                         }`}
                       >
