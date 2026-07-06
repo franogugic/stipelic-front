@@ -13,6 +13,7 @@ import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPage
 import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSuccessPage'
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
+import { OrdersPage } from '../../features/orders/pages/OrdersPage'
 import { AuthBootstrap } from './AuthBootstrap'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
@@ -36,6 +37,7 @@ export function AppRouter() {
           <Route path="/" element={<HomePage />} />
           <Route path="/app/:slug" element={<CreatorWorkspacePage />} />
           <Route path="/app/:slug/products" element={<ProductsPage />} />
+          <Route path="/app/:slug/orders" element={<OrdersPage />} />
           <Route path="/app/:slug/landing-pages" element={<LandingPagesPage />} />
           <Route path="/app/:slug/landing-pages/:pageId" element={<LandingPageAnalyticsPage />} />
           <Route path="/app/:slug/landing-pages/:pageId/edit" element={<LandingPageEditorPage />} />

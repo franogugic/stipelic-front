@@ -1,17 +1,18 @@
 import {
-  BarChart3,
   FileText,
   LayoutDashboard,
   Loader2,
   LogOut,
   Package,
   Settings,
+  ShoppingBag,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
+import { useCreatorStore } from '../../features/creators/model/creator-store'
 
-type NavSection = 'overview' | 'landing-pages' | 'products' | 'analytics' | 'settings'
+type NavSection = 'overview' | 'landing-pages' | 'products' | 'orders' | 'settings'
 
 type AppShellProps = {
   slug: string
@@ -23,7 +24,7 @@ const navItems: { section: NavSection; label: string; icon: typeof LayoutDashboa
   { section: 'overview',       label: 'Overview',       icon: LayoutDashboard, href: (s) => `/app/${s}` },
   { section: 'landing-pages',  label: 'Landing Pages',  icon: FileText,        href: (s) => `/app/${s}/landing-pages` },
   { section: 'products',       label: 'Products',       icon: Package,         href: (s) => `/app/${s}/products` },
-  { section: 'analytics',      label: 'Analytics',      icon: BarChart3,       href: (s) => `/app/${s}/analytics` },
+  { section: 'orders',         label: 'Orders',         icon: ShoppingBag,     href: (s) => `/app/${s}/orders` },
 ]
 
 export function AppShell({ slug, activeSection, children }: AppShellProps) {
@@ -33,6 +34,8 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
   const logout = useAuthStore((s) => s.logout)
   const logoutStatus = useAuthStore((s) => s.logoutStatus)
   const isLoggingOut = logoutStatus === 'submitting'
+  const currentCreator = useCreatorStore((s) => s.currentCreator)
+  const creator = currentCreator?.slug === slug ? currentCreator : null
 
   const initials = user
     ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || '?'
@@ -45,19 +48,42 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
   void location // used implicitly via activeSection
 
   return (
-    <div className="flex min-h-screen bg-neutral-50">
+    <div className="relative flex min-h-screen bg-neutral-950">
+      {/* Subtle grid texture */}
+      <div className="bg-grid pointer-events-none fixed inset-0 opacity-[0.04]" />
+
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col bg-neutral-950">
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-white/10 bg-neutral-950">
         {/* Logo */}
-        <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
-          <span className="grid size-8 place-items-center rounded-lg bg-white text-neutral-950">
-            <span className="text-xs font-black tracking-tight">CP</span>
+        <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-5">
+          <span className="grid size-7 place-items-center rounded-md bg-white text-neutral-950">
+            <span className="text-[11px] font-black tracking-tight">CP</span>
           </span>
-          <div>
-            <p className="text-sm font-semibold text-white">Creator Platform</p>
-            <p className="text-[11px] text-white/40">/{slug}</p>
-          </div>
+          <p className="text-[13px] font-semibold text-white">Creator Platform</p>
         </div>
+
+        {/* Creator identity */}
+        {creator && (
+          <div className="relative overflow-hidden border-b border-white/10 px-5 py-4">
+            <div className="animate-glow-pulse pointer-events-none absolute -left-8 -top-8 size-24 rounded-full bg-accent/25 blur-2xl" />
+            <div className="relative flex items-center gap-3">
+              <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white shadow-lg shadow-black/20">
+                <span className="font-display text-sm font-black tracking-tighter text-neutral-950">
+                  {creator.name[0]?.toUpperCase() ?? '?'}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display text-[15px] font-bold leading-tight text-white">
+                  {creator.name}
+                </p>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <StatusDot status={creator.status} />
+                  <span className="truncate font-mono text-[10.5px] text-white/35">/{slug}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
@@ -74,7 +100,7 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
                     onClick={() => navigate(href(slug))}
                     className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
                       isActive
-                        ? 'bg-white text-neutral-950'
+                        ? 'bg-accent text-white shadow-lg shadow-accent/25'
                         : 'text-white/60 hover:bg-white/5 hover:text-white'
                     }`}
                   >
@@ -95,7 +121,7 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
                 onClick={() => navigate(`/app/${slug}/settings`)}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
                   activeSection === 'settings'
-                    ? 'bg-white text-neutral-950'
+                    ? 'bg-accent text-white shadow-lg shadow-accent/25'
                     : 'text-white/60 hover:bg-white/5 hover:text-white'
                 }`}
               >
@@ -109,7 +135,7 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
         {/* Footer — user */}
         <div className="border-t border-white/10 p-3">
           <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <div className="grid size-8 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-bold text-white">
+            <div className="grid size-8 shrink-0 place-items-center rounded-full bg-accent/15 text-xs font-bold text-accent-strong">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
@@ -134,9 +160,16 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
       </aside>
 
       {/* Main content */}
-      <div className="ml-60 flex min-h-screen flex-1 flex-col">
+      <div className="relative z-10 ml-60 flex min-h-screen flex-1 flex-col">
         {children}
       </div>
     </div>
   )
+}
+
+function StatusDot({ status }: { status: string }) {
+  const s = status.toLowerCase()
+  const color =
+    s === 'active' ? 'bg-emerald-500' : s === 'pendingpayment' ? 'bg-amber-500' : s === 'suspended' ? 'bg-red-500' : 'bg-white/30'
+  return <span className={`size-1.5 shrink-0 rounded-full ${color}`} />
 }
