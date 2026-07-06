@@ -1,17 +1,17 @@
 import {
-  BarChart3,
   FileText,
   LayoutDashboard,
   Loader2,
   LogOut,
   Package,
   Settings,
+  ShoppingBag,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
 
-type NavSection = 'overview' | 'landing-pages' | 'products' | 'analytics' | 'settings'
+type NavSection = 'overview' | 'landing-pages' | 'products' | 'orders' | 'settings'
 
 type AppShellProps = {
   slug: string
@@ -23,7 +23,7 @@ const navItems: { section: NavSection; label: string; icon: typeof LayoutDashboa
   { section: 'overview',       label: 'Overview',       icon: LayoutDashboard, href: (s) => `/app/${s}` },
   { section: 'landing-pages',  label: 'Landing Pages',  icon: FileText,        href: (s) => `/app/${s}/landing-pages` },
   { section: 'products',       label: 'Products',       icon: Package,         href: (s) => `/app/${s}/products` },
-  { section: 'analytics',      label: 'Analytics',      icon: BarChart3,       href: (s) => `/app/${s}/analytics` },
+  { section: 'orders',         label: 'Orders',         icon: ShoppingBag,     href: (s) => `/app/${s}/orders` },
 ]
 
 export function AppShell({ slug, activeSection, children }: AppShellProps) {

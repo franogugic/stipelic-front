@@ -1,22 +1,27 @@
 import {
   AlertTriangle,
   ArrowRight,
-  BarChart3,
   CheckCircle2,
   CreditCard,
   ExternalLink,
   FileText,
   Hash,
   Loader2,
+  Mail,
   Package,
   Settings,
   ShieldAlert,
+  ShoppingBag,
   Trash2,
   XCircle,
   Zap,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { listLandingPages } from '../../landing-pages/api/landing-pages-api'
+import { listOrders, getOrderSummary } from '../../orders/api/orders-api'
+import type { Order, OrderSummary } from '../../orders/model/types'
+import { listProducts } from '../../products/api/products-api'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { DeleteCreatorDialog } from '../components/DeleteCreatorDialog'
 import { useCreatorStore } from '../model/creator-store'
@@ -38,8 +43,13 @@ export function CreatorWorkspacePage() {
   const openBillingPortal = useCreatorStore((s) => s.openBillingPortal)
   const resetDeleteCreatorFeedback = useCreatorStore((s) => s.resetDeleteCreatorFeedback)
   const resetCancelSubscriptionFeedback = useCreatorStore((s) => s.resetCancelSubscriptionFeedback)
+
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
+  const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null)
+  const [recentOrders, setRecentOrders] = useState<Order[]>([])
+  const [productCount, setProductCount] = useState<number | null>(null)
+  const [landingPageCount, setLandingPageCount] = useState<number | null>(null)
 
   const isLoading = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
   const creator = currentCreator?.slug === slug ? currentCreator : null
@@ -52,6 +62,16 @@ export function CreatorWorkspacePage() {
   const planName = formatPlanName(creator?.planCode ?? '')
   const currentPlan = creatorPlans.find((p) => p.code === creator?.planCode)
   const maxLandingPages = currentPlan?.limits['max_landing_pages'] ?? null
+  const maxProducts = currentPlan?.limits['max_products'] ?? null
+  const maxEmailsPerMonth = currentPlan?.limits['max_email_sends_per_month'] ?? null
+  const platformFeePercent =
+    currentPlan != null ? (currentPlan.platformFeeBasisPoints / 100).toFixed(1) : null
+
+  // Onboarding done = has product + has landing page + status active
+  const onboardingDone =
+    isActive &&
+    productCount != null && productCount > 0 &&
+    landingPageCount != null && landingPageCount > 0
 
   useEffect(() => {
     if (currentCreatorStatus === 'idle') void loadCurrentCreator()
@@ -60,6 +80,16 @@ export function CreatorWorkspacePage() {
   useEffect(() => {
     void loadCreatorPlans()
   }, [loadCreatorPlans])
+
+  useEffect(() => {
+    if (!slug) return
+    void getOrderSummary(slug).then(setOrderSummary).catch(() => {})
+    void listProducts(slug).then((p) => setProductCount(p.length)).catch(() => {})
+    void listLandingPages(slug).then((p) => setLandingPageCount(p.length)).catch(() => {})
+    void listOrders(slug)
+      .then((orders) => setRecentOrders(orders.filter((o) => o.status === 'Paid').slice(0, 5)))
+      .catch(() => {})
+  }, [slug])
 
   const startCheckout = async () => {
     const checkout = await startCreatorCheckout()
@@ -91,10 +121,9 @@ export function CreatorWorkspacePage() {
         </div>
       ) : (
         <div className="flex min-h-screen flex-col">
-          {/* ── Hero header ─────────────────────────────────────── */}
-          <div className="border-b border-neutral-200 bg-white px-8 pb-6 pt-8">
 
-            {/* Alert banners */}
+          {/* ── Header ──────────────────────────────────────────────── */}
+          <div className="border-b border-neutral-100 bg-white px-8 pb-6 pt-8">
             {requiresPayment && (
               <div className="mb-6 flex items-center gap-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3.5">
                 <CreditCard className="shrink-0 text-amber-600" size={16} />
@@ -126,29 +155,26 @@ export function CreatorWorkspacePage() {
               </div>
             )}
 
-            {/* Workspace identity */}
-            <div className="flex items-start justify-between gap-6">
-              <div className="flex items-start gap-4">
-                {/* Avatar */}
-                <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-neutral-950">
-                  <span className="text-base font-black tracking-tighter text-white">
+            <div className="flex items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-neutral-950">
+                  <span className="text-sm font-black tracking-tighter text-white">
                     {creator.name[0]?.toUpperCase() ?? '?'}
                   </span>
                 </div>
                 <div>
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-950">{creator.name}</h1>
+                  <div className="flex items-center gap-2.5">
+                    <h1 className="text-xl font-bold tracking-tight text-neutral-950">{creator.name}</h1>
                     <StatusBadge status={creator.status} />
                   </div>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-sm text-neutral-400">
-                    <Hash size={11} />
+                  <p className="mt-0.5 flex items-center gap-1 text-xs text-neutral-400">
+                    <Hash size={10} />
                     {creator.slug}
                   </p>
                 </div>
               </div>
-
               <button
-                className="shrink-0 inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
                 type="button"
                 onClick={() => navigate(`/app/${creator.slug}/settings`)}
               >
@@ -156,166 +182,128 @@ export function CreatorWorkspacePage() {
                 Settings
               </button>
             </div>
-
-            {/* Inline metrics strip */}
-            <div className="mt-5 flex flex-wrap gap-2">
-              <MetricPill
-                label="Plan"
-                value={planName}
-                accent={isActive ? 'emerald' : 'neutral'}
-              />
-              <MetricPill
-                label="Landing pages"
-                value={
-                  maxLandingPages !== null && maxLandingPages >= 0
-                    ? `Up to ${maxLandingPages}`
-                    : 'Unlimited'
-                }
-              />
-              <MetricPill label="Currency" value={creator.defaultCurrency} />
-              {isCancelledAtPeriodEnd && (
-                <MetricPill label="Billing" value="Cancels at period end" accent="amber" />
-              )}
-            </div>
           </div>
 
-          {/* ── Main content area ────────────────────────────────── */}
+          {/* ── Body ────────────────────────────────────────────────── */}
           <div className="flex-1 p-8">
-            <div className="grid h-full gap-6 lg:grid-cols-3">
+            <div className="grid gap-6 lg:grid-cols-3">
 
-              {/* Left column — primary actions (2/3) */}
+              {/* Left column (2/3) */}
               <div className="flex flex-col gap-6 lg:col-span-2">
 
-                {/* Navigation cards */}
-                <section>
-                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
-                    Workspace
-                  </p>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <NavCard
-                      icon={FileText}
-                      title="Landing Pages"
-                      desc="Build and publish pages that convert."
-                      color="blue"
-                      onClick={() => navigate(`/app/${creator.slug}/landing-pages`)}
-                    />
-                    <NavCard
-                      icon={Package}
-                      title="Products"
-                      desc="Manage digital products and offers."
-                      color="violet"
-                      onClick={() => navigate(`/app/${creator.slug}/products`)}
-                    />
-                    <NavCard
-                      icon={BarChart3}
-                      title="Analytics"
-                      desc="Track views, clicks, and revenue."
-                      color="emerald"
-                      onClick={() => navigate(`/app/${creator.slug}/analytics`)}
-                    />
-                  </div>
-                </section>
+                {/* ── Section 2: Glavni brojevi ──────────────────────── */}
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <StatCard
+                    label="Total revenue"
+                    value={
+                      orderSummary != null
+                        ? formatCurrency(
+                            orderSummary.totalPaidAmountCents,
+                            orderSummary.currency ?? creator.defaultCurrency,
+                          )
+                        : '—'
+                    }
+                  />
+                  <StatCard
+                    label="Products"
+                    value={productCount != null ? String(productCount) : '—'}
+                    onClick={() => navigate(`/app/${creator.slug}/products`)}
+                  />
+                  <StatCard
+                    label="Landing pages"
+                    value={landingPageCount != null ? String(landingPageCount) : '—'}
+                    onClick={() => navigate(`/app/${creator.slug}/landing-pages`)}
+                  />
+                  <StatCard
+                    label="Emails this month"
+                    value={maxEmailsPerMonth != null ? `0 / ${maxEmailsPerMonth.toLocaleString()}` : '—'}
+                  />
+                </div>
 
-                {/* Getting started / checklist */}
-                <section className="flex-1 rounded-2xl border border-neutral-200 bg-white p-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-neutral-950">Getting started</h3>
-                    {isActive && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                        <CheckCircle2 size={11} />
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-sm text-neutral-400">
-                    Follow these steps to get the most out of your workspace.
-                  </p>
-
-                  <div className="mt-5 grid gap-2">
-                    <ChecklistItem
-                      done={isActive || requiresPayment}
-                      label="Create your workspace"
-                      desc="You've set up your Creator Platform account."
-                    />
-                    <ChecklistItem
-                      done={isActive}
-                      label="Activate subscription"
-                      desc={
-                        isActive
-                          ? 'Subscription is active and running.'
-                          : 'Complete checkout to unlock all features.'
-                      }
-                      action={
-                        requiresPayment
-                          ? {
-                              label: 'Pay now',
-                              disabled: isStartingCheckout,
-                              onClick: () => void startCheckout(),
-                            }
-                          : undefined
-                      }
-                    />
-                    <ChecklistItem
-                      done={false}
-                      label="Create your first landing page"
-                      desc="Start publishing to your audience."
-                      action={{
-                        label: 'Go to Landing Pages',
-                        onClick: () => navigate(`/app/${creator.slug}/landing-pages`),
-                      }}
-                    />
-                    <ChecklistItem
-                      done={false}
-                      label="Add a product"
-                      desc="Set up a digital product to sell."
-                      action={{
-                        label: 'Go to Products',
-                        onClick: () => navigate(`/app/${creator.slug}/products`),
-                      }}
-                    />
-                  </div>
-                </section>
-              </div>
-
-              {/* Right column — plan & billing (1/3) */}
-              <div className="flex flex-col gap-6">
-                {/* Plan card */}
-                <div className="rounded-2xl border border-neutral-200 bg-white p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
-                        Current plan
-                      </p>
-                      <p className="mt-1 text-2xl font-bold text-neutral-950">{planName}</p>
-                    </div>
-                    <div className="grid size-10 place-items-center rounded-xl bg-neutral-950">
-                      <Zap size={16} className="text-white" />
+                {/* ── Section 1: Kutak s planom ──────────────────────── */}
+                <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                      Your plan
+                    </p>
+                    <div className="flex items-center gap-1.5 rounded-full bg-neutral-950 px-3 py-1">
+                      <Zap size={11} className="text-white" />
+                      <span className="text-xs font-bold text-white">{planName}</span>
                     </div>
                   </div>
-
-                  <div className="mt-4 grid gap-2">
-                    <PlanDetail
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <PlanStat
                       label="Landing pages"
                       value={
-                        maxLandingPages !== null && maxLandingPages >= 0
-                          ? `Up to ${maxLandingPages}`
-                          : 'Unlimited'
+                        landingPageCount != null && maxLandingPages != null
+                          ? `${landingPageCount} / ${maxLandingPages < 0 ? '∞' : maxLandingPages}`
+                          : maxLandingPages != null
+                            ? maxLandingPages < 0 ? 'Unlimited' : `Up to ${maxLandingPages}`
+                            : '—'
                       }
+                      icon={FileText}
                     />
-                    <PlanDetail label="Currency" value={creator.defaultCurrency} />
-                    <PlanDetail
-                      label="Billing"
+                    <PlanStat
+                      label="Products"
                       value={
-                        creator.planCode === 'free'
-                          ? 'Free forever'
-                          : isCancelledAtPeriodEnd
-                            ? 'Cancels at period end'
-                            : 'Monthly'
+                        productCount != null && maxProducts != null
+                          ? `${productCount} / ${maxProducts < 0 ? '∞' : maxProducts}`
+                          : maxProducts != null
+                            ? maxProducts < 0 ? 'Unlimited' : `Up to ${maxProducts}`
+                            : '—'
                       }
+                      icon={Package}
+                    />
+                    <PlanStat
+                      label="Platform fee"
+                      value={platformFeePercent != null ? `${platformFeePercent}%` : '—'}
+                      icon={Zap}
+                    />
+                    <PlanStat
+                      label="Email limit / mo"
+                      value={
+                        maxEmailsPerMonth != null
+                          ? maxEmailsPerMonth < 0 ? 'Unlimited' : maxEmailsPerMonth.toLocaleString()
+                          : '—'
+                      }
+                      icon={Mail}
                     />
                   </div>
+                </div>
 
-                  {/* Billing actions */}
+                {/* ── Section 3: Conditional block ──────────────────── */}
+                {onboardingDone ? (
+                  <RecentTransactions
+                    orders={recentOrders}
+                    onViewAll={() => navigate(`/app/${creator.slug}/orders`)}
+                  />
+                ) : (
+                  <OnboardingChecklist
+                    isActive={isActive}
+                    requiresPayment={requiresPayment}
+                    isStartingCheckout={isStartingCheckout}
+                    productCount={productCount ?? 0}
+                    landingPageCount={landingPageCount ?? 0}
+                    onStartCheckout={() => void startCheckout()}
+                    onGoToProducts={() => navigate(`/app/${creator.slug}/products`)}
+                    onGoToLandingPages={() => navigate(`/app/${creator.slug}/landing-pages`)}
+                  />
+                )}
+              </div>
+
+              {/* Right column (1/3) */}
+              <div className="flex flex-col gap-6">
+
+                {/* Plan + billing actions */}
+                <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                    Billing
+                  </p>
+                  <p className="mt-1.5 text-2xl font-bold text-neutral-950">{planName}</p>
+                  {isCancelledAtPeriodEnd && (
+                    <p className="mt-1 text-xs text-amber-600">Cancels at period end</p>
+                  )}
+
                   <div className="mt-5 grid gap-2">
                     {creator.planCode === 'free' ? (
                       <button
@@ -336,6 +324,21 @@ export function CreatorWorkspacePage() {
                           >
                             <ExternalLink size={14} />
                             Manage billing
+                          </button>
+                        )}
+                        {requiresPayment && (
+                          <button
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
+                            type="button"
+                            disabled={isStartingCheckout}
+                            onClick={() => void startCheckout()}
+                          >
+                            {isStartingCheckout ? (
+                              <Loader2 className="animate-spin" size={14} />
+                            ) : (
+                              <CreditCard size={14} />
+                            )}
+                            Complete payment
                           </button>
                         )}
                         {isActive && !isCancelledAtPeriodEnd && (
@@ -364,15 +367,16 @@ export function CreatorWorkspacePage() {
                   )}
                 </div>
 
-                {/* Workspace info card */}
+                {/* Workspace info */}
                 <div className="rounded-2xl border border-neutral-200 bg-white p-6">
                   <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
                     Workspace info
                   </p>
                   <div className="mt-4 grid gap-3">
-                    <PlanDetail label="Workspace ID" value={creator.publicId} mono />
-                    <PlanDetail label="Slug" value={`/${creator.slug}`} mono />
-                    <PlanDetail label="Status" value={creator.status} />
+                    <InfoRow label="ID" value={creator.publicId} mono />
+                    <InfoRow label="Slug" value={`/${creator.slug}`} mono />
+                    <InfoRow label="Status" value={creator.status} />
+                    <InfoRow label="Currency" value={creator.defaultCurrency} />
                   </div>
                 </div>
 
@@ -427,95 +431,117 @@ export function CreatorWorkspacePage() {
 
 /* ─── Sub-components ─────────────────────────────────────────── */
 
-function StatusBadge({ status }: { status: string }) {
-  const s = status.toLowerCase()
-  if (s === 'active')
-    return (
-      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 text-xs font-semibold text-emerald-400">
-        <span className="size-1.5 rounded-full bg-emerald-400" />
-        Active
-      </span>
-    )
-  if (s === 'pendingpayment')
-    return (
-      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-amber-500/20 px-2.5 text-xs font-semibold text-amber-400">
-        <span className="size-1.5 rounded-full bg-amber-400" />
-        Pending payment
-      </span>
-    )
-  if (s === 'suspended')
-    return (
-      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-red-500/20 px-2.5 text-xs font-semibold text-red-400">
-        <span className="size-1.5 rounded-full bg-red-400" />
-        Suspended
-      </span>
-    )
-  return (
-    <span className="inline-flex h-6 items-center rounded-full bg-white/10 px-2.5 text-xs font-semibold text-white/60">
-      {status}
-    </span>
-  )
-}
-
-function MetricPill({
+function StatCard({
   label,
   value,
-  accent = 'neutral',
+  onClick,
 }: {
   label: string
   value: string
-  accent?: 'neutral' | 'emerald' | 'amber'
+  onClick?: () => void
 }) {
-  const colors = {
-    neutral: 'border-neutral-200 bg-neutral-50 text-neutral-600',
-    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    amber: 'border-amber-200 bg-amber-50 text-amber-700',
-  }
+  const base =
+    'rounded-2xl border border-neutral-200 bg-white p-5 transition'
+  const interactive = onClick ? 'cursor-pointer hover:border-neutral-300 hover:shadow-sm' : ''
   return (
-    <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${colors[accent]}`}>
-      <span className="text-neutral-400">{label}</span>
-      <span className="font-semibold">{value}</span>
+    <div className={`${base} ${interactive}`} onClick={onClick} role={onClick ? 'button' : undefined}>
+      <p className="text-2xl font-bold tracking-tight text-neutral-950">{value}</p>
+      <p className="mt-1 text-xs text-neutral-400">{label}</p>
     </div>
   )
 }
 
-function NavCard({
+function PlanStat({
+  label,
+  value,
   icon: Icon,
-  title,
-  desc,
-  color,
-  onClick,
 }: {
+  label: string
+  value: string
   icon: typeof FileText
-  title: string
-  desc: string
-  color: 'blue' | 'violet' | 'emerald'
-  onClick: () => void
 }) {
-  const bg = {
-    blue: 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white',
-    violet: 'bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white',
-    emerald: 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white',
-  }[color]
-
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex flex-col gap-4 rounded-2xl border border-neutral-200 bg-white p-5 text-left transition hover:border-neutral-300 hover:shadow-sm"
-    >
-      <span className={`grid size-10 place-items-center rounded-xl transition ${bg}`}>
-        <Icon size={18} />
-      </span>
+    <div className="flex flex-col gap-2 rounded-xl bg-neutral-50 p-3.5">
+      <Icon size={14} className="text-neutral-400" />
       <div>
-        <p className="text-sm font-semibold text-neutral-950">{title}</p>
-        <p className="mt-0.5 text-xs leading-5 text-neutral-400">{desc}</p>
+        <p className="text-sm font-semibold text-neutral-950">{value}</p>
+        <p className="mt-0.5 text-xs text-neutral-400">{label}</p>
       </div>
-      <ArrowRight
-        size={14}
-        className="mt-auto self-end text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-neutral-600"
-      />
-    </button>
+    </div>
+  )
+}
+
+function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs text-neutral-400">{label}</span>
+      <span className={`truncate text-xs font-medium text-neutral-700 ${mono ? 'font-mono' : ''}`}>{value}</span>
+    </div>
+  )
+}
+
+function OnboardingChecklist({
+  isActive,
+  requiresPayment,
+  isStartingCheckout,
+  productCount,
+  landingPageCount,
+  onStartCheckout,
+  onGoToProducts,
+  onGoToLandingPages,
+}: {
+  isActive: boolean
+  requiresPayment: boolean
+  isStartingCheckout: boolean
+  productCount: number
+  landingPageCount: number
+  onStartCheckout: () => void
+  onGoToProducts: () => void
+  onGoToLandingPages: () => void
+}) {
+  return (
+    <div className="flex-1 rounded-2xl border border-neutral-200 bg-white p-6">
+      <h3 className="text-sm font-semibold text-neutral-950">Getting started</h3>
+      <p className="mt-1 text-sm text-neutral-400">Complete these steps to launch your workspace.</p>
+
+      <div className="mt-5 grid gap-2">
+        <ChecklistItem
+          done={isActive || requiresPayment}
+          label="Create your workspace"
+          desc="You've set up your Creator Platform account."
+        />
+        <ChecklistItem
+          done={isActive}
+          label="Activate workspace"
+          desc={isActive ? 'Subscription is active.' : 'Complete checkout to unlock all features.'}
+          action={
+            requiresPayment
+              ? { label: 'Pay now', disabled: isStartingCheckout, onClick: onStartCheckout }
+              : undefined
+          }
+        />
+        <ChecklistItem
+          done={productCount > 0}
+          label="Add a product"
+          desc="Create at least one digital product to sell."
+          action={
+            productCount === 0
+              ? { label: 'Go to Products', onClick: onGoToProducts }
+              : undefined
+          }
+        />
+        <ChecklistItem
+          done={landingPageCount > 0}
+          label="Create a landing page"
+          desc="Publish a page to start converting visitors."
+          action={
+            landingPageCount === 0
+              ? { label: 'Go to Landing Pages', onClick: onGoToLandingPages }
+              : undefined
+          }
+        />
+      </div>
+    </div>
   )
 }
 
@@ -531,8 +557,12 @@ function ChecklistItem({
   action?: { label: string; onClick: () => void; disabled?: boolean }
 }) {
   return (
-    <div className={`flex items-start gap-3 rounded-xl p-3 transition ${done ? '' : 'bg-neutral-50'}`}>
-      <div className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-full ${done ? 'bg-emerald-500' : 'border-2 border-neutral-300'}`}>
+    <div className={`flex items-start gap-3 rounded-xl p-3 ${done ? '' : 'bg-neutral-50'}`}>
+      <div
+        className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-full ${
+          done ? 'bg-emerald-500' : 'border-2 border-neutral-300'
+        }`}
+      >
         {done && <CheckCircle2 size={12} className="text-white" strokeWidth={3} />}
       </div>
       <div className="flex-1">
@@ -555,20 +585,91 @@ function ChecklistItem({
   )
 }
 
-function PlanDetail({
-  label,
-  value,
-  mono,
+function RecentTransactions({
+  orders,
+  onViewAll,
 }: {
-  label: string
-  value: string
-  mono?: boolean
+  orders: Order[]
+  onViewAll: () => void
 }) {
   return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-xs text-neutral-400">{label}</span>
-      <span className={`text-xs font-medium text-neutral-700 ${mono ? 'font-mono' : ''}`}>{value}</span>
+    <div className="flex-1 rounded-2xl border border-neutral-200 bg-white p-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-neutral-950">Recent transactions</h3>
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="flex items-center gap-1 text-xs font-medium text-neutral-400 transition hover:text-neutral-700"
+        >
+          View all
+          <ArrowRight size={11} />
+        </button>
+      </div>
+
+      {orders.length === 0 ? (
+        <div className="mt-6 flex flex-col items-center gap-2 py-6 text-center">
+          <ShoppingBag size={22} className="text-neutral-300" />
+          <p className="text-sm text-neutral-400">No paid orders yet.</p>
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-2">
+          {orders.map((order) => (
+            <div
+              key={order.publicId}
+              className="flex items-center justify-between gap-3 rounded-xl bg-neutral-50 px-4 py-3"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-neutral-950">
+                  {order.name ?? order.email}
+                </p>
+                <p className="truncate text-xs text-neutral-400">{order.productName}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-sm font-semibold text-neutral-950">
+                  {formatCurrency(order.amountCents, order.currency)}
+                </p>
+                <p className="text-xs text-neutral-400">
+                  {new Date(order.paidAt ?? order.createdAt).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
+  )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const s = status.toLowerCase()
+  if (s === 'active')
+    return (
+      <span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-emerald-50 px-2 text-[11px] font-semibold text-emerald-700">
+        <span className="size-1.5 rounded-full bg-emerald-500" />
+        Active
+      </span>
+    )
+  if (s === 'pendingpayment')
+    return (
+      <span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-amber-50 px-2 text-[11px] font-semibold text-amber-700">
+        <span className="size-1.5 rounded-full bg-amber-500" />
+        Pending payment
+      </span>
+    )
+  if (s === 'suspended')
+    return (
+      <span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-red-50 px-2 text-[11px] font-semibold text-red-700">
+        <span className="size-1.5 rounded-full bg-red-500" />
+        Suspended
+      </span>
+    )
+  return (
+    <span className="inline-flex h-5 items-center rounded-full bg-neutral-100 px-2 text-[11px] font-semibold text-neutral-500">
+      {status}
+    </span>
   )
 }
 
@@ -624,4 +725,11 @@ function formatPlanName(code: string): string {
     case 'plus':  return 'Pro Plus'
     default:      return code || 'Free'
   }
+}
+
+function formatCurrency(cents: number, currency: string): string {
+  return (cents / 100).toLocaleString(undefined, {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+  })
 }
