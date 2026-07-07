@@ -70,15 +70,15 @@ export function ProductsPage() {
       <div className="px-8 py-8">
 
         {isLoading ? (
-          <div className="flex h-40 items-center justify-center gap-3 text-sm text-neutral-400">
+          <div className="flex h-40 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
             <Loader2 className="animate-spin" size={18} />
             Loading workspace…
           </div>
         ) : !creator ? (
-          <div className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
-            <p className="font-semibold text-neutral-950">Workspace not found</p>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+            <p className="font-semibold text-white light:text-neutral-950">Workspace not found</p>
             <button
-              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
               type="button"
               onClick={() => navigate('/')}
             >
@@ -90,8 +90,8 @@ export function ProductsPage() {
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">Products</h1>
-                <p className="mt-1 text-sm text-neutral-400">
+                <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">Products</h1>
+                <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
                   {maxProducts !== null && maxProducts >= 0
                     ? `${products.length} of ${maxProducts} used`
                     : `${products.length} product${products.length !== 1 ? 's' : ''}`}
@@ -101,7 +101,7 @@ export function ProductsPage() {
                 type="button"
                 disabled={atLimit}
                 title={atLimit ? `Plan limit reached (${maxProducts ?? 0})` : undefined}
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => setIsCreateOpen(true)}
               >
                 <Plus size={15} />
@@ -110,32 +110,32 @@ export function ProductsPage() {
             </div>
 
             {atLimit ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
-                <AlertTriangle size={16} className="shrink-0 text-amber-600" />
+              <div className="flex items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-200 light:border-amber-200 light:bg-amber-50 light:text-amber-800">
+                <AlertTriangle size={16} className="shrink-0 text-amber-400 light:text-amber-600" />
                 Plan limit reached. Archive existing products or upgrade your plan.
               </div>
             ) : null}
 
             {loadStatus === 'loading' ? (
-              <div className="flex h-32 items-center justify-center gap-3 text-sm text-neutral-400">
+              <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
                 <Loader2 className="animate-spin" size={16} />
                 Loading products…
               </div>
             ) : products.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-neutral-300 bg-white py-20 text-center">
-                <span className="grid size-14 place-items-center rounded-2xl bg-neutral-100 text-neutral-400">
+              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-20 text-center light:border-neutral-300 light:bg-white">
+                <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
                   <Package size={24} strokeWidth={1.5} />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-neutral-950">No products yet</p>
-                  <p className="mt-1 text-sm text-neutral-400">
+                  <p className="text-sm font-semibold text-white light:text-neutral-950">No products yet</p>
+                  <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
                     Add a digital product, service, or course to start selling.
                   </p>
                 </div>
                 <button
                   type="button"
                   disabled={atLimit}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40"
                   onClick={() => setIsCreateOpen(true)}
                 >
                   <Plus size={15} />
@@ -143,41 +143,41 @@ export function ProductsPage() {
                 </button>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-                <div className="grid grid-cols-[auto_1fr_160px_100px_100px] items-center border-b border-neutral-100 px-5 py-3">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+                <div className="grid grid-cols-[auto_1fr_160px_100px_100px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
                   <span className="w-10" />
-                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Product</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Type</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Price</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Status</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Product</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Type</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Price</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
                 </div>
-                <ul className="divide-y divide-neutral-100">
+                <ul className="divide-y divide-white/10 light:divide-neutral-100">
                   {products.map((product) => {
                     const typeInfo = PRODUCT_TYPES.find((t) => t.value === product.type)
                     const TypeIcon = typeInfo?.icon ?? Package
                     return (
                       <li key={product.publicId} className="group">
                         <div className="grid grid-cols-[auto_1fr_160px_100px_100px] items-center px-5 py-4">
-                          <span className="mr-4 grid size-9 shrink-0 place-items-center rounded-xl bg-neutral-100 text-neutral-500">
+                          <span className="mr-4 grid size-9 shrink-0 place-items-center rounded-xl bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500">
                             <TypeIcon size={16} />
                           </span>
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-neutral-950">{product.name}</p>
+                            <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{product.name}</p>
                             {product.description ? (
-                              <p className="mt-0.5 truncate text-xs text-neutral-400">{product.description}</p>
+                              <p className="mt-0.5 truncate text-xs text-white/40 light:text-neutral-400">{product.description}</p>
                             ) : null}
                           </div>
-                          <p className="text-xs font-medium text-neutral-600">{product.type}</p>
-                          <p className="text-sm font-semibold text-neutral-950">{formatPrice(product.priceCents)}</p>
+                          <p className="text-xs font-medium text-white/60 light:text-neutral-600">{product.type}</p>
+                          <p className="text-sm font-semibold text-white light:text-neutral-950">{formatPrice(product.priceCents)}</p>
                           <div className="flex items-center gap-2">
                             <StatusBadge status={product.status} />
                           </div>
                         </div>
                         {/* Row actions revealed on hover */}
-                        <div className="hidden border-t border-neutral-50 bg-neutral-50 px-5 py-2.5 group-hover:flex items-center gap-2">
+                        <div className="hidden border-t border-white/10 bg-white/[0.03] px-5 py-2.5 group-hover:flex items-center gap-2 light:border-neutral-50 light:bg-neutral-50">
                           <button
                             type="button"
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs font-medium text-neutral-600 transition hover:bg-neutral-100"
+                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
                             onClick={() => setEditingProduct(product)}
                           >
                             <Pencil size={12} />
@@ -188,7 +188,7 @@ export function ProductsPage() {
                               href={product.accessUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs font-medium text-neutral-600 transition hover:bg-neutral-100"
+                              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
                             >
                               <ExternalLink size={12} />
                               Access URL
@@ -196,7 +196,7 @@ export function ProductsPage() {
                           ) : null}
                           <button
                             type="button"
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs font-medium text-neutral-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/60 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:border-neutral-200 light:bg-white light:text-neutral-500 light:hover:border-red-200 light:hover:bg-red-50 light:hover:text-red-600"
                             onClick={() => setArchivingProduct(product)}
                           >
                             <Archive size={12} />
@@ -275,15 +275,15 @@ function ProductFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
-          <h2 className="text-base font-semibold text-neutral-950">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl light:border-neutral-200 light:bg-white">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 light:border-neutral-100">
+          <h2 className="text-base font-semibold text-white light:text-neutral-950">
             {isEditing ? 'Edit product' : 'New product'}
           </h2>
           <button
             type="button"
-            className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
             onClick={onClose}
           >
             <X size={16} />
@@ -329,13 +329,13 @@ function ProductFormModal({
             </ModalField>
 
             {error ? (
-              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
+              <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">{error}</p>
             ) : null}
           </div>
 
           <div className="mt-6 flex gap-3">
-            <button type="button" className="flex h-10 flex-1 items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700 transition hover:bg-neutral-50" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-            <button type="submit" disabled={isSubmitting} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40">
+            <button type="button" className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50" disabled={isSubmitting} onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40">
               {isSubmitting ? <Loader2 className="animate-spin" size={15} /> : null}
               {isEditing ? 'Save changes' : 'Create product'}
             </button>
@@ -349,15 +349,15 @@ function ProductFormModal({
 function ModalField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="grid gap-1.5">
-      <label className="text-sm font-medium text-neutral-700">
-        {label}{required ? <span className="ml-0.5 text-red-500">*</span> : null}
+      <label className="text-sm font-medium text-white/80 light:text-neutral-700">
+        {label}{required ? <span className="ml-0.5 text-red-400 light:text-red-500">*</span> : null}
       </label>
       {children}
     </div>
   )
 }
 
-const inputClass = 'w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-950 placeholder-neutral-400 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100'
+const inputClass = 'w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100'
 
 /* ─── ArchiveProductDialog ─────────────────────────────────────── */
 
@@ -374,19 +374,19 @@ function ArchiveProductDialog({ slug, product, onClose }: { slug: string; produc
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl">
-        <div className="grid size-11 place-items-center rounded-xl bg-amber-50">
-          <AlertTriangle className="text-amber-600" size={22} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl light:border-neutral-200 light:bg-white">
+        <div className="grid size-11 place-items-center rounded-xl bg-amber-500/15 light:bg-amber-50">
+          <AlertTriangle className="text-amber-400 light:text-amber-600" size={22} />
         </div>
-        <h2 className="mt-4 text-lg font-semibold text-neutral-950">Archive product?</h2>
-        <p className="mt-2 text-sm leading-6 text-neutral-500">
-          <span className="font-medium text-neutral-800">{product.name}</span> will be archived and hidden from your workspace.
+        <h2 className="mt-4 text-lg font-semibold text-white light:text-neutral-950">Archive product?</h2>
+        <p className="mt-2 text-sm leading-6 text-white/50 light:text-neutral-500">
+          <span className="font-medium text-white/80 light:text-neutral-800">{product.name}</span> will be archived and hidden from your workspace.
         </p>
-        {archiveError ? <p className="mt-3 text-sm text-red-600">{archiveError}</p> : null}
+        {archiveError ? <p className="mt-3 text-sm text-red-300 light:text-red-600">{archiveError}</p> : null}
         <div className="mt-6 flex gap-3">
-          <button type="button" className="flex h-10 flex-1 items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700 transition hover:bg-neutral-50" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-          <button type="button" disabled={isSubmitting} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40" onClick={() => void handleConfirm()}>
+          <button type="button" className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50" disabled={isSubmitting} onClick={onClose}>Cancel</button>
+          <button type="button" disabled={isSubmitting} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40" onClick={() => void handleConfirm()}>
             {isSubmitting ? <Loader2 className="animate-spin" size={15} /> : null}
             Archive
           </button>
@@ -401,14 +401,14 @@ function ArchiveProductDialog({ slug, product, onClose }: { slug: string; produc
 function StatusBadge({ status }: { status: ProductStatus }) {
   if (status === 'Active')
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-300 light:bg-emerald-50 light:text-emerald-700">
         <span className="size-1.5 rounded-full bg-emerald-500" />
         Active
       </span>
     )
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-neutral-500">
-      <span className="size-1.5 rounded-full bg-neutral-400" />
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
+      <span className="size-1.5 rounded-full bg-white/40 light:bg-neutral-400" />
       Draft
     </span>
   )
