@@ -49,16 +49,16 @@ export function LandingPageAnalyticsPage() {
     <AppShell slug={slug} activeSection="landing-pages">
       <div className="px-8 py-8">
         {isLoading ? (
-          <div className="flex h-40 items-center justify-center gap-3 text-sm text-neutral-400">
+          <div className="flex h-40 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
             <Loader2 className="animate-spin" size={18} />
             Loading…
           </div>
         ) : pageStatus === 'error' ? (
-          <div className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
-            <p className="text-sm font-semibold text-neutral-950">{pageError ?? 'Something went wrong.'}</p>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+            <p className="text-sm font-semibold text-white light:text-neutral-950">{pageError ?? 'Something went wrong.'}</p>
             <button
               type="button"
-              className="mt-4 text-sm text-neutral-500 hover:text-neutral-800"
+              className="mt-4 text-sm text-white/50 hover:text-white light:text-neutral-500 light:hover:text-neutral-800"
               onClick={() => navigate(`/app/${slug}/landing-pages`)}
             >
               ← Back to landing pages
@@ -72,15 +72,15 @@ export function LandingPageAnalyticsPage() {
                 <button
                   type="button"
                   onClick={() => navigate(`/app/${slug}/landing-pages`)}
-                  className="grid size-9 place-items-center rounded-xl border border-neutral-200 bg-white text-neutral-500 shadow-sm transition hover:bg-neutral-50 hover:text-neutral-800"
+                  className="grid size-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white light:border-neutral-200 light:bg-white light:text-neutral-500 light:shadow-sm light:hover:bg-neutral-50 light:hover:text-neutral-800"
                 >
                   <ArrowLeft size={16} />
                 </button>
                 <div>
-                  <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">
+                  <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">
                     {currentPage.title}
                   </h1>
-                  <p className="mt-0.5 text-sm text-neutral-400">/{currentPage.slug}</p>
+                  <p className="mt-0.5 text-sm text-white/40 light:text-neutral-400">/{currentPage.slug}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -89,7 +89,7 @@ export function LandingPageAnalyticsPage() {
                     href={`/p/${slug}/${currentPage.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-9 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 shadow-sm transition hover:bg-neutral-50"
+                    className="inline-flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:shadow-sm light:hover:bg-neutral-50"
                   >
                     <Globe size={14} />
                     View live
@@ -98,7 +98,7 @@ export function LandingPageAnalyticsPage() {
                 <button
                   type="button"
                   onClick={() => navigate(`/app/${slug}/landing-pages/${pageId}/edit`)}
-                  className="inline-flex h-9 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                  className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
                 >
                   <Pencil size={14} />
                   Edit page
@@ -108,7 +108,7 @@ export function LandingPageAnalyticsPage() {
 
             {/* Analytics cards */}
             {pageAnalytics === null ? (
-              <div className="flex h-32 items-center justify-center gap-3 text-sm text-neutral-400">
+              <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
                 <Loader2 className="animate-spin" size={16} />
                 Loading analytics…
               </div>
@@ -125,17 +125,17 @@ export function LandingPageAnalyticsPage() {
                 </div>
 
                 {/* Email list — lazy loaded */}
-                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-                  <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+                <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+                  <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 light:border-neutral-100">
                     <div className="flex items-center gap-2">
-                      <Mail size={15} className="text-neutral-400" />
-                      <p className="text-sm font-semibold text-neutral-950">Captured emails</p>
+                      <Mail size={15} className="text-white/40 light:text-neutral-400" />
+                      <p className="text-sm font-semibold text-white light:text-neutral-950">Captured emails</p>
                     </div>
                     {capturesStatus === 'idle' ? (
                       <button
                         type="button"
                         onClick={handleLoadCaptures}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 transition hover:bg-neutral-50"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
                       >
                         <ChevronDown size={13} />
                         Show emails
@@ -144,28 +144,28 @@ export function LandingPageAnalyticsPage() {
                   </div>
 
                   {capturesStatus === 'idle' ? (
-                    <div className="flex items-center justify-center py-10 text-sm text-neutral-400">
+                    <div className="flex items-center justify-center py-10 text-sm text-white/40 light:text-neutral-400">
                       Click "Show emails" to load the list
                     </div>
                   ) : capturesStatus === 'loading' ? (
-                    <div className="flex items-center justify-center gap-2 py-10 text-sm text-neutral-400">
+                    <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/40 light:text-neutral-400">
                       <Loader2 className="animate-spin" size={15} />
                       Loading…
                     </div>
                   ) : capturesStatus === 'error' ? (
-                    <div className="flex items-center justify-center py-10 text-sm text-red-500">
+                    <div className="flex items-center justify-center py-10 text-sm text-red-400 light:text-red-500">
                       Failed to load. Try again.
                     </div>
                   ) : captures !== null && captures.length === 0 ? (
-                    <div className="flex items-center justify-center py-10 text-sm text-neutral-400">
+                    <div className="flex items-center justify-center py-10 text-sm text-white/40 light:text-neutral-400">
                       No emails captured yet.
                     </div>
                   ) : (
-                    <ul className="divide-y divide-neutral-100">
+                    <ul className="divide-y divide-white/10 light:divide-neutral-100">
                       {captures?.map((c) => (
                         <li key={c.email} className="flex items-center justify-between px-5 py-3">
-                          <span className="text-sm text-neutral-950">{c.email}</span>
-                          <span className="text-xs text-neutral-400">
+                          <span className="text-sm text-white light:text-neutral-950">{c.email}</span>
+                          <span className="text-xs text-white/40 light:text-neutral-400">
                             {new Date(c.capturedAt).toLocaleDateString('en-GB', {
                               day: 'numeric',
                               month: 'short',
@@ -191,12 +191,12 @@ export function LandingPageAnalyticsPage() {
 function EmailCapturesCard({ total }: { total: number }) {
   const count = total ?? 0
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Email captures</p>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Email captures</p>
       <div className="mt-4 flex items-center gap-2">
-        <Mail size={14} className="text-neutral-400" />
-        <span className="text-2xl font-bold tabular-nums text-neutral-950">{count.toLocaleString()}</span>
-        <span className="text-xs text-neutral-400">unique emails</span>
+        <Mail size={14} className="text-white/40 light:text-neutral-400" />
+        <span className="text-2xl font-bold tabular-nums text-white light:text-neutral-950">{count.toLocaleString()}</span>
+        <span className="text-xs text-white/40 light:text-neutral-400">unique emails</span>
       </div>
     </div>
   )
@@ -213,29 +213,29 @@ function PeriodCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border p-5 shadow-sm ${
+      className={`rounded-2xl border p-5 ${
         highlight
-          ? 'border-neutral-950 bg-neutral-950'
-          : 'border-neutral-200 bg-white'
+          ? 'border-accent/50 bg-accent/[0.12] light:border-neutral-950 light:bg-neutral-950 light:shadow-sm'
+          : 'border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm'
       }`}
     >
-      <p className={`text-xs font-semibold uppercase tracking-widest ${highlight ? 'text-white/50' : 'text-neutral-400'}`}>
+      <p className={`text-xs font-semibold uppercase tracking-widest ${highlight ? 'text-white/50' : 'text-white/40 light:text-neutral-400'}`}>
         {label}
       </p>
       <div className="mt-4 grid gap-3">
         <div className="flex items-center gap-2">
-          <Eye size={14} className={highlight ? 'text-white/60' : 'text-neutral-400'} />
-          <span className={`text-2xl font-bold tabular-nums ${highlight ? 'text-white' : 'text-neutral-950'}`}>
+          <Eye size={14} className={highlight ? 'text-white/60' : 'text-white/40 light:text-neutral-400'} />
+          <span className={`text-2xl font-bold tabular-nums ${highlight ? 'text-white' : 'text-white light:text-neutral-950'}`}>
             {stats.totalViews.toLocaleString()}
           </span>
-          <span className={`text-xs ${highlight ? 'text-white/40' : 'text-neutral-400'}`}>views</span>
+          <span className={`text-xs ${highlight ? 'text-white/40' : 'text-white/40 light:text-neutral-400'}`}>views</span>
         </div>
         <div className="flex items-center gap-2">
-          <Users size={14} className={highlight ? 'text-white/60' : 'text-neutral-400'} />
-          <span className={`text-2xl font-bold tabular-nums ${highlight ? 'text-white' : 'text-neutral-950'}`}>
+          <Users size={14} className={highlight ? 'text-white/60' : 'text-white/40 light:text-neutral-400'} />
+          <span className={`text-2xl font-bold tabular-nums ${highlight ? 'text-white' : 'text-white light:text-neutral-950'}`}>
             {stats.uniqueVisitors.toLocaleString()}
           </span>
-          <span className={`text-xs ${highlight ? 'text-white/40' : 'text-neutral-400'}`}>unique</span>
+          <span className={`text-xs ${highlight ? 'text-white/40' : 'text-white/40 light:text-neutral-400'}`}>unique</span>
         </div>
       </div>
     </div>
