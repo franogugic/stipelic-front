@@ -58,6 +58,31 @@ export type LandingPageAnalytics = {
   currency: string | null
 }
 
+export type TimeSeriesPeriod =
+  | 'Today'
+  | 'Week'
+  | 'Month'
+  | 'ThreeMonths'
+  | 'SixMonths'
+  | 'Year'
+  | 'AllTime'
+
+export type TimeSeriesPoint = {
+  bucketStart: string
+  viewCount: number
+  uniqueVisitors: number
+  captureCount: number
+  purchaseCount: number
+  revenueCents: number
+}
+
+export type TimeSeriesResponse = {
+  period: string
+  bucketUnit: string
+  currency: string | null
+  points: TimeSeriesPoint[]
+}
+
 export type CreateLandingPageRequest = {
   title: string
   slug: string

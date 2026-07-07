@@ -7,6 +7,8 @@ import type {
   LandingPageWithSections,
   SaveEditorRequest,
   SectionTemplate,
+  TimeSeriesPeriod,
+  TimeSeriesResponse,
 } from '../model/types'
 
 type ApiResponse<T> = { statusCode: number; message: string; code: string; data: T }
@@ -53,6 +55,17 @@ export async function getSectionTemplates(slug: string): Promise<SectionTemplate
 
 export async function getLandingPageAnalytics(slug: string, pageId: string): Promise<LandingPageAnalytics> {
   const res = await apiRequest<ApiResponse<LandingPageAnalytics>>(`/api/creators/${slug}/landing-pages/${pageId}/analytics`)
+  return res.data
+}
+
+export async function getLandingPageTimeSeries(
+  slug: string,
+  pageId: string,
+  period: TimeSeriesPeriod,
+): Promise<TimeSeriesResponse> {
+  const res = await apiRequest<ApiResponse<TimeSeriesResponse>>(
+    `/api/creators/${slug}/landing-pages/${pageId}/timeseries?period=${period}`,
+  )
   return res.data
 }
 
