@@ -11,6 +11,8 @@ import {
   startCreatorSubscriptionCheckout,
   updateCreatorSettings,
 } from '../api/creators-api'
+import { getHomeSummary } from '../../orders/api/orders-api'
+import type { HomeSummary } from '../../orders/model/types'
 import type {
   CreateCreatorFormValues,
   CreateCreatorResult,
@@ -54,6 +56,10 @@ type CreatorState = {
   cancelSubscriptionStatus: CreatorCancelSubscriptionStatus
   cancelSubscriptionError: string | null
   pollActivationStatus: PollActivationStatus
+  homeSummary: HomeSummary | null
+  homeSummaryStatus: CreatorLoadStatus
+  homeSummarySlug: string | null
+  loadHomeSummary: (slug: string) => Promise<void>
   loadCurrentCreator: () => Promise<Creator | null>
   loadCreatorPlans: () => Promise<void>
   loadCreatorSettings: (slug: string) => Promise<CreatorSettings | null>
@@ -97,6 +103,24 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   cancelSubscriptionStatus: 'idle',
   cancelSubscriptionError: null,
   pollActivationStatus: 'idle',
+  homeSummary: null,
+  homeSummaryStatus: 'idle',
+  homeSummarySlug: null,
+
+  loadHomeSummary: async (slug) => {
+    const { homeSummaryStatus, homeSummarySlug } = useCreatorStore.getState()
+    if (homeSummaryStatus === 'loading') return
+    if (homeSummaryStatus === 'success' && homeSummarySlug === slug) return
+
+    set({ homeSummaryStatus: 'loading', homeSummarySlug: slug })
+
+    try {
+      const summary = await getHomeSummary(slug)
+      set({ homeSummary: summary, homeSummaryStatus: 'success' })
+    } catch {
+      set({ homeSummaryStatus: 'error' })
+    }
+  },
 
   loadCurrentCreator: async () => {
     set({ currentCreatorStatus: 'loading' })
