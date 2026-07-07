@@ -1,10 +1,10 @@
-import { ArrowLeft, ChevronDown, Eye, Globe, Loader2, Mail, Pencil, Users } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Eye, Globe, Loader2, Mail, Pencil, ShoppingBag, Users, Wallet } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { listEmailCaptures } from '../api/landing-pages-api'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { useLandingPageStore } from '../model/landing-page-store'
-import type { EmailCaptureItem, LandingPageAnalytics, PeriodStats } from '../model/types'
+import type { EmailCaptureItem, PeriodStats } from '../model/types'
 
 export function LandingPageAnalyticsPage() {
   const navigate = useNavigate()
@@ -121,6 +121,8 @@ export function LandingPageAnalyticsPage() {
                   <PeriodCard label="All time" stats={pageAnalytics.allTime} highlight />
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <PurchasesCard count={pageAnalytics.purchaseCount} />
+                  <RevenueCard totalCents={pageAnalytics.totalRevenueCents} currency={pageAnalytics.currency} />
                   <EmailCapturesCard total={pageAnalytics.totalEmailCaptures} />
                 </div>
 
@@ -187,6 +189,36 @@ export function LandingPageAnalyticsPage() {
 }
 
 /* ─── Sub-components ─────────────────────────────────────────── */
+
+function PurchasesCard({ count }: { count: number }) {
+  const total = count ?? 0
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Purchases</p>
+      <div className="mt-4 flex items-center gap-2">
+        <ShoppingBag size={14} className="text-white/40 light:text-neutral-400" />
+        <span className="text-2xl font-bold tabular-nums text-white light:text-neutral-950">{total.toLocaleString()}</span>
+        <span className="text-xs text-white/40 light:text-neutral-400">paid orders</span>
+      </div>
+    </div>
+  )
+}
+
+function RevenueCard({ totalCents, currency }: { totalCents: number; currency: string | null }) {
+  const formatted = ((totalCents ?? 0) / 100).toLocaleString(undefined, {
+    style: 'currency',
+    currency: currency ?? 'EUR',
+  })
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Revenue</p>
+      <div className="mt-4 flex items-center gap-2">
+        <Wallet size={14} className="text-white/40 light:text-neutral-400" />
+        <span className="text-2xl font-bold tabular-nums text-white light:text-neutral-950">{formatted}</span>
+      </div>
+    </div>
+  )
+}
 
 function EmailCapturesCard({ total }: { total: number }) {
   const count = total ?? 0

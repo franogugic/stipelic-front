@@ -53,6 +53,9 @@ export type LandingPageAnalytics = {
   last7Days: PeriodStats
   last30Days: PeriodStats
   totalEmailCaptures: number
+  purchaseCount: number
+  totalRevenueCents: number
+  currency: string | null
 }
 
 export type CreateLandingPageRequest = {
