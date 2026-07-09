@@ -58,6 +58,12 @@ export type LandingPageAnalytics = {
   currency: string | null
 }
 
+export type LandingPageViewsSummary = {
+  publicId: string
+  totalViews: number
+  uniqueVisitors: number
+}
+
 export type TimeSeriesPeriod =
   | 'Today'
   | 'Week'
