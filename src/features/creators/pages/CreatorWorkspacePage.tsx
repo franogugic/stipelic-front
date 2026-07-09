@@ -16,9 +16,9 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { listOrders, getHomeSummary } from '../../orders/api/orders-api'
+import { getHomeSummary } from '../../orders/api/orders-api'
 import type { HomeSummary, Order } from '../../orders/model/types'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { DeleteCreatorDialog } from '../components/DeleteCreatorDialog'
@@ -47,7 +47,6 @@ export function CreatorWorkspacePage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
   const [homeSummary, setHomeSummary] = useState<HomeSummary | null>(null)
-  const [paidOrders, setPaidOrders] = useState<Order[]>([])
 
   const isLoading = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
   const creator = currentCreator?.slug === slug ? currentCreator : null
@@ -68,10 +67,12 @@ export function CreatorWorkspacePage() {
   const landingPageCount = homeSummary?.landingPageCount ?? null
   const currency = homeSummary?.currency ?? creator?.defaultCurrency ?? 'EUR'
 
-  const recentOrders = useMemo(() => paidOrders.slice(0, 5), [paidOrders])
-  const revenueTrend = useMemo(() => buildRevenueTrend(paidOrders, TREND_DAYS), [paidOrders])
-  const topProduct = useMemo(() => computeTopProduct(paidOrders), [paidOrders])
-  const thisMonthRevenueCents = useMemo(() => computeThisMonthRevenueCents(paidOrders), [paidOrders])
+  // Recent 5 transactions, 14-day revenue trend, top product and this-month revenue are now computed
+  // server-side and returned in the (cached) home summary — no need to pull the full orders list here.
+  const recentOrders = homeSummary?.recentOrders ?? []
+  const revenueTrend = homeSummary?.revenueTrend ?? []
+  const topProduct = homeSummary?.topProduct ?? null
+  const thisMonthRevenueCents = homeSummary?.thisMonthRevenueCents ?? 0
   const avgOrderValueCents =
     homeSummary && homeSummary.paidOrderCount > 0
       ? Math.round(homeSummary.totalPaidAmountCents / homeSummary.paidOrderCount)
@@ -94,9 +95,6 @@ export function CreatorWorkspacePage() {
   useEffect(() => {
     if (!slug) return
     void getHomeSummary(slug).then(setHomeSummary).catch(() => {})
-    void listOrders(slug)
-      .then((orders) => setPaidOrders(orders.filter((o) => o.status === 'Paid')))
-      .catch(() => {})
   }, [slug])
 
   const startCheckout = async () => {
@@ -830,44 +828,6 @@ function orderInitials(order: Order): string {
   const parts = source.trim().split(/\s+/)
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
   return source.slice(0, 2).toUpperCase()
-}
-
-function buildRevenueTrend(orders: Order[], days: number): number[] {
-  const buckets = new Array<number>(days).fill(0)
-  const now = new Date()
-  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  for (const order of orders) {
-    if (!order.paidAt) continue
-    const paid = new Date(order.paidAt)
-    const paidMidnight = new Date(paid.getFullYear(), paid.getMonth(), paid.getDate())
-    const diffDays = Math.round((todayMidnight.getTime() - paidMidnight.getTime()) / 86_400_000)
-    const idx = days - 1 - diffDays
-    if (idx >= 0 && idx < days) buckets[idx] += order.amountCents
-  }
-  return buckets
-}
-
-function computeTopProduct(orders: Order[]): { name: string; totalCents: number } | null {
-  const totals = new Map<string, number>()
-  for (const order of orders) {
-    totals.set(order.productName, (totals.get(order.productName) ?? 0) + order.amountCents)
-  }
-  let best: { name: string; totalCents: number } | null = null
-  for (const [name, totalCents] of totals) {
-    if (!best || totalCents > best.totalCents) best = { name, totalCents }
-  }
-  return best
-}
-
-function computeThisMonthRevenueCents(orders: Order[]): number {
-  const now = new Date()
-  return orders
-    .filter((order) => {
-      if (!order.paidAt) return false
-      const paid = new Date(order.paidAt)
-      return paid.getMonth() === now.getMonth() && paid.getFullYear() === now.getFullYear()
-    })
-    .reduce((sum, order) => sum + order.amountCents, 0)
 }
 
 function buildSparklinePath(values: number[], width: number, height: number): { line: string; area: string } {

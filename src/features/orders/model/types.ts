@@ -25,4 +25,7 @@ export interface HomeSummary {
   productCount: number
   landingPageCount: number
   recentOrders: Order[]
+  thisMonthRevenueCents: number
+  topProduct: { name: string; totalCents: number } | null
+  revenueTrend: number[]
 }
