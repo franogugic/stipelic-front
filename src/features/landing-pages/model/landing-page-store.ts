@@ -5,6 +5,7 @@ import {
   createLandingPage,
   getLandingPage,
   getLandingPageAnalytics,
+  getLandingPageSummary,
   getSectionTemplates,
   listLandingPages,
   publishLandingPage,
@@ -26,16 +27,21 @@ type MutateStatus = 'idle' | 'submitting' | 'success' | 'error'
 type LandingPageState = {
   pages: LandingPage[]
   currentPage: LandingPageWithSections | null
+  pageSummary: LandingPage | null
   templates: SectionTemplate[]
   analytics: Record<string, LandingPageAnalytics>
   listStatus: LoadStatus
   pageStatus: LoadStatus
   pageError: string | null
+  pageSummaryStatus: LoadStatus
+  pageSummaryError: string | null
   mutateStatus: MutateStatus
   mutateError: string | null
 
   loadPages: (slug: string) => Promise<void>
   loadPage: (slug: string, pageId: string) => Promise<void>
+  // Lightweight counterpart of loadPage/currentPage (no sections) — used by the analytics view.
+  loadPageSummary: (slug: string, pageId: string) => Promise<void>
   loadTemplates: (slug: string) => Promise<void>
   loadAnalytics: (slug: string, pageId: string) => Promise<void>
   createPage: (slug: string, request: CreateLandingPageRequest) => Promise<LandingPage | null>
@@ -49,11 +55,14 @@ type LandingPageState = {
 export const useLandingPageStore = create<LandingPageState>((set, get) => ({
   pages: [],
   currentPage: null,
+  pageSummary: null,
   templates: [],
   analytics: {},
   listStatus: 'idle',
   pageStatus: 'idle',
   pageError: null,
+  pageSummaryStatus: 'idle',
+  pageSummaryError: null,
   mutateStatus: 'idle',
   mutateError: null,
 
@@ -75,6 +84,17 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to load landing page.'
       set({ pageStatus: 'error', pageError: message })
+    }
+  },
+
+  loadPageSummary: async (slug, pageId) => {
+    set({ pageSummaryStatus: 'loading', pageSummaryError: null })
+    try {
+      const page = await getLandingPageSummary(slug, pageId)
+      set({ pageSummary: page, pageSummaryStatus: 'success' })
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Failed to load landing page.'
+      set({ pageSummaryStatus: 'error', pageSummaryError: message })
     }
   },
 

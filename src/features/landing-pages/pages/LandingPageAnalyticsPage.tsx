@@ -21,10 +21,10 @@ export function LandingPageAnalyticsPage() {
   const navigate = useNavigate()
   const { slug, pageId } = useParams<{ slug: string; pageId: string }>()
 
-  const currentPage = useLandingPageStore((s) => s.currentPage)
-  const pageStatus = useLandingPageStore((s) => s.pageStatus)
-  const pageError = useLandingPageStore((s) => s.pageError)
-  const loadPage = useLandingPageStore((s) => s.loadPage)
+  const currentPage = useLandingPageStore((s) => s.pageSummary)
+  const pageStatus = useLandingPageStore((s) => s.pageSummaryStatus)
+  const pageError = useLandingPageStore((s) => s.pageSummaryError)
+  const loadPage = useLandingPageStore((s) => s.loadPageSummary)
   const analytics = useLandingPageStore((s) => s.analytics)
   const loadAnalytics = useLandingPageStore((s) => s.loadAnalytics)
 
