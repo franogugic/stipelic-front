@@ -21,6 +21,8 @@ export type LandingPage = {
   customDomain: string | null
   createdAt: string
   updatedAt: string
+  totalViews: number
+  uniqueVisitors: number
 }
 
 export type LandingPageWithSections = LandingPage & {
@@ -56,12 +58,6 @@ export type LandingPageAnalytics = {
   purchaseCount: number
   totalRevenueCents: number
   currency: string | null
-}
-
-export type LandingPageViewsSummary = {
-  publicId: string
-  totalViews: number
-  uniqueVisitors: number
 }
 
 export type TimeSeriesPeriod =

@@ -5,7 +5,6 @@ import {
   createLandingPage,
   getLandingPage,
   getLandingPageAnalytics,
-  getLandingPageViewsSummary,
   getSectionTemplates,
   listLandingPages,
   publishLandingPage,
@@ -29,7 +28,6 @@ type LandingPageState = {
   currentPage: LandingPageWithSections | null
   templates: SectionTemplate[]
   analytics: Record<string, LandingPageAnalytics>
-  viewsSummary: Record<string, { totalViews: number; uniqueVisitors: number }>
   listStatus: LoadStatus
   pageStatus: LoadStatus
   pageError: string | null
@@ -40,7 +38,6 @@ type LandingPageState = {
   loadPage: (slug: string, pageId: string) => Promise<void>
   loadTemplates: (slug: string) => Promise<void>
   loadAnalytics: (slug: string, pageId: string) => Promise<void>
-  loadViewsSummary: (slug: string) => Promise<void>
   createPage: (slug: string, request: CreateLandingPageRequest) => Promise<LandingPage | null>
   publishPage: (slug: string, pageId: string) => Promise<boolean>
   unpublishPage: (slug: string, pageId: string) => Promise<boolean>
@@ -54,7 +51,6 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
   currentPage: null,
   templates: [],
   analytics: {},
-  viewsSummary: {},
   listStatus: 'idle',
   pageStatus: 'idle',
   pageError: null,
@@ -90,21 +86,6 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
       // non-critical
     }
   },
-
-  loadViewsSummary: async (slug) => {
-    try {
-      const list = await getLandingPageViewsSummary(slug)
-      const map: Record<string, { totalViews: number; uniqueVisitors: number }> = {}
-      for (const item of list) {
-        map[item.publicId] = { totalViews: item.totalViews, uniqueVisitors: item.uniqueVisitors }
-      }
-      set({ viewsSummary: map })
-    } catch {
-      // non-critical
-    }
-  },
-
-
 
   loadTemplates: async (slug) => {
     if (get().templates.length > 0) return

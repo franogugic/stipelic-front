@@ -4,7 +4,6 @@ import type {
   EmailCaptureItem,
   LandingPage,
   LandingPageAnalytics,
-  LandingPageViewsSummary,
   LandingPageWithSections,
   SaveEditorRequest,
   SectionTemplate,
@@ -56,13 +55,6 @@ export async function getSectionTemplates(slug: string): Promise<SectionTemplate
 
 export async function getLandingPageAnalytics(slug: string, pageId: string): Promise<LandingPageAnalytics> {
   const res = await apiRequest<ApiResponse<LandingPageAnalytics>>(`/api/creators/${slug}/landing-pages/${pageId}/analytics`)
-  return res.data
-}
-
-export async function getLandingPageViewsSummary(slug: string): Promise<LandingPageViewsSummary[]> {
-  const res = await apiRequest<ApiResponse<LandingPageViewsSummary[]>>(
-    `/api/creators/${slug}/landing-pages/views-summary`,
-  )
   return res.data
 }
 

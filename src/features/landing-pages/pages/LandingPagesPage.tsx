@@ -36,8 +36,6 @@ export function LandingPagesPage() {
   const pages = useLandingPageStore((s) => s.pages)
   const listStatus = useLandingPageStore((s) => s.listStatus)
   const loadPages = useLandingPageStore((s) => s.loadPages)
-  const viewsSummary = useLandingPageStore((s) => s.viewsSummary)
-  const loadViewsSummary = useLandingPageStore((s) => s.loadViewsSummary)
   const archivePage = useLandingPageStore((s) => s.archivePage)
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -59,12 +57,6 @@ export function LandingPagesPage() {
   useEffect(() => {
     if (slug && listStatus === 'idle') void loadPages(slug)
   }, [slug, listStatus, loadPages])
-
-  useEffect(() => {
-    if (!slug || listStatus !== 'success') return
-    // Single batch request for all pages' view counts, instead of one /analytics call per page.
-    void loadViewsSummary(slug)
-  }, [slug, listStatus, loadViewsSummary])
 
   if (!slug) return null
 
@@ -169,7 +161,6 @@ export function LandingPagesPage() {
                       key={page.publicId}
                       page={page}
                       slug={slug}
-                      views={viewsSummary[page.publicId] ?? null}
                       onAnalyticsClick={() =>
                         navigate(`/app/${slug}/landing-pages/${page.publicId}`)
                       }
@@ -204,14 +195,12 @@ export function LandingPagesPage() {
 function PageRow({
   page,
   slug,
-  views,
   onAnalyticsClick,
   onEditClick,
   onDeleteClick,
 }: {
   page: LandingPage
   slug: string
-  views: { totalViews: number; uniqueVisitors: number } | null
   onAnalyticsClick: () => void
   onEditClick: () => void
   onDeleteClick: () => void
@@ -241,19 +230,17 @@ function PageRow({
         <p className="text-xs font-medium text-white/60 light:text-neutral-600">{page.type}</p>
         <StatusBadge status={page.status} />
         <div className="flex items-center gap-3">
-          {page.status === 'Published' && views !== null ? (
+          {page.status === 'Published' ? (
             <>
               <span className="flex items-center gap-1 text-xs text-white/50 light:text-neutral-500" title="Total views">
                 <Eye size={12} className="text-white/40 light:text-neutral-400" />
-                {views.totalViews.toLocaleString()}
+                {page.totalViews.toLocaleString()}
               </span>
               <span className="flex items-center gap-1 text-xs text-white/50 light:text-neutral-500" title="Unique visitors">
                 <Users size={12} className="text-white/40 light:text-neutral-400" />
-                {views.uniqueVisitors.toLocaleString()}
+                {page.uniqueVisitors.toLocaleString()}
               </span>
             </>
-          ) : page.status === 'Published' ? (
-            <span className="text-xs text-white/30 light:text-neutral-300">—</span>
           ) : null}
         </div>
         <div className="flex items-center gap-1">
