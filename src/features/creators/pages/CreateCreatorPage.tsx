@@ -344,7 +344,7 @@ export function CreateCreatorPage() {
                       <div>
                         <p className="mb-3 text-sm font-medium text-neutral-700">Default currency</p>
                         <div className="grid grid-cols-3 gap-2">
-                          {(['EUR', 'USD', 'GBP'] as const).map((currency) => (
+                          {(['EUR', 'USD'] as const).map((currency) => (
                             <button
                               key={currency}
                               className={`h-10 rounded-xl border text-sm font-semibold transition ${

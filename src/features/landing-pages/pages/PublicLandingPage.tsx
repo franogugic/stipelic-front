@@ -32,6 +32,8 @@ export function PublicLandingPage() {
       })
   }, [creatorSlug, pageSlug])
 
+  if (!creatorSlug || !pageSlug) return null
+
   if (status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center">

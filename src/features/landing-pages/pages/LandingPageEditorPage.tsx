@@ -266,7 +266,6 @@ export function LandingPageEditorPage() {
               {draftSections.map((section) => {
                 const isSelected = selectedSectionId === section.publicId
                 const isLocked = LOCKED_TYPES.includes(section.type as SectionType)
-                const isRequired = REQUIRED_TYPES.includes(section.type as SectionType)
 
                 return (
                   <div

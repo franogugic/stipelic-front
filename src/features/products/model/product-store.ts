@@ -26,7 +26,7 @@ type ProductState = {
   resetArchiveFeedback: () => void
 }
 
-export const useProductStore = create<ProductState>((set, get) => ({
+export const useProductStore = create<ProductState>((set) => ({
   products: [],
   loadStatus: 'idle',
   loadError: null,
