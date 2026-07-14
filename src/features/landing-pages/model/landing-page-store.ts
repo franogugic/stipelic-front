@@ -5,7 +5,6 @@ import {
   createLandingPage,
   getLandingPage,
   getLandingPageAnalytics,
-  getLandingPageSummary,
   getSectionTemplates,
   listLandingPages,
   publishLandingPage,
@@ -27,22 +26,21 @@ type MutateStatus = 'idle' | 'submitting' | 'success' | 'error'
 type LandingPageState = {
   pages: LandingPage[]
   currentPage: LandingPageWithSections | null
-  pageSummary: LandingPage | null
   templates: SectionTemplate[]
   analytics: Record<string, LandingPageAnalytics>
   listStatus: LoadStatus
   pageStatus: LoadStatus
   pageError: string | null
-  pageSummaryStatus: LoadStatus
-  pageSummaryError: string | null
+  analyticsStatus: LoadStatus
+  analyticsError: string | null
   mutateStatus: MutateStatus
   mutateError: string | null
 
   loadPages: (slug: string) => Promise<void>
   loadPage: (slug: string, pageId: string) => Promise<void>
-  // Lightweight counterpart of loadPage/currentPage (no sections) — used by the analytics view.
-  loadPageSummary: (slug: string, pageId: string) => Promise<void>
   loadTemplates: (slug: string) => Promise<void>
+  // Also carries the page header (title/slug/status) — the analytics view uses this as its sole
+  // data + status source instead of a separate lightweight page fetch.
   loadAnalytics: (slug: string, pageId: string) => Promise<void>
   createPage: (slug: string, request: CreateLandingPageRequest) => Promise<LandingPage | null>
   publishPage: (slug: string, pageId: string) => Promise<boolean>
@@ -55,14 +53,13 @@ type LandingPageState = {
 export const useLandingPageStore = create<LandingPageState>((set, get) => ({
   pages: [],
   currentPage: null,
-  pageSummary: null,
   templates: [],
   analytics: {},
   listStatus: 'idle',
   pageStatus: 'idle',
   pageError: null,
-  pageSummaryStatus: 'idle',
-  pageSummaryError: null,
+  analyticsStatus: 'idle',
+  analyticsError: null,
   mutateStatus: 'idle',
   mutateError: null,
 
@@ -87,23 +84,14 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
     }
   },
 
-  loadPageSummary: async (slug, pageId) => {
-    set({ pageSummaryStatus: 'loading', pageSummaryError: null })
-    try {
-      const page = await getLandingPageSummary(slug, pageId)
-      set({ pageSummary: page, pageSummaryStatus: 'success' })
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Failed to load landing page.'
-      set({ pageSummaryStatus: 'error', pageSummaryError: message })
-    }
-  },
-
   loadAnalytics: async (slug, pageId) => {
+    set({ analyticsStatus: 'loading', analyticsError: null })
     try {
       const data = await getLandingPageAnalytics(slug, pageId)
-      set((s) => ({ analytics: { ...s.analytics, [pageId]: data } }))
-    } catch {
-      // non-critical
+      set((s) => ({ analytics: { ...s.analytics, [pageId]: data }, analyticsStatus: 'success' }))
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Failed to load analytics.'
+      set({ analyticsStatus: 'error', analyticsError: message })
     }
   },
 

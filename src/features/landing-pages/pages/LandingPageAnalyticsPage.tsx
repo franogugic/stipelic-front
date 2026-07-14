@@ -21,19 +21,10 @@ export function LandingPageAnalyticsPage() {
   const navigate = useNavigate()
   const { slug, pageId } = useParams<{ slug: string; pageId: string }>()
 
-  const currentPage = useLandingPageStore((s) => s.pageSummary)
-  const pageStatus = useLandingPageStore((s) => s.pageSummaryStatus)
-  const pageError = useLandingPageStore((s) => s.pageSummaryError)
-  const loadPage = useLandingPageStore((s) => s.loadPageSummary)
   const analytics = useLandingPageStore((s) => s.analytics)
+  const analyticsStatus = useLandingPageStore((s) => s.analyticsStatus)
+  const analyticsError = useLandingPageStore((s) => s.analyticsError)
   const loadAnalytics = useLandingPageStore((s) => s.loadAnalytics)
-
-  useEffect(() => {
-    if (!slug || !pageId) return
-    if (pageStatus === 'idle' || (pageStatus === 'success' && currentPage?.publicId !== pageId)) {
-      void loadPage(slug, pageId)
-    }
-  }, [slug, pageId, pageStatus, currentPage, loadPage])
 
   useEffect(() => {
     if (!slug || !pageId) return
@@ -42,7 +33,7 @@ export function LandingPageAnalyticsPage() {
 
   if (!slug || !pageId) return null
 
-  const isLoading = pageStatus === 'idle' || pageStatus === 'loading'
+  const isLoading = analyticsStatus === 'idle' || analyticsStatus === 'loading'
   const pageAnalytics = analytics[pageId] ?? null
 
   const [captures, setCaptures] = useState<EmailCaptureItem[] | null>(null)
@@ -64,9 +55,9 @@ export function LandingPageAnalyticsPage() {
             <Loader2 className="animate-spin" size={18} />
             Loading…
           </div>
-        ) : pageStatus === 'error' ? (
+        ) : analyticsStatus === 'error' ? (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-            <p className="text-sm font-semibold text-white light:text-neutral-950">{pageError ?? 'Something went wrong.'}</p>
+            <p className="text-sm font-semibold text-white light:text-neutral-950">{analyticsError ?? 'Something went wrong.'}</p>
             <button
               type="button"
               className="mt-4 text-sm text-white/50 hover:text-white light:text-neutral-500 light:hover:text-neutral-800"
@@ -75,7 +66,7 @@ export function LandingPageAnalyticsPage() {
               ← Back to landing pages
             </button>
           </div>
-        ) : currentPage ? (
+        ) : pageAnalytics ? (
           <div className="grid gap-8">
             {/* Header */}
             <div className="flex items-start justify-between">
@@ -89,15 +80,15 @@ export function LandingPageAnalyticsPage() {
                 </button>
                 <div>
                   <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">
-                    {currentPage.title}
+                    {pageAnalytics.title}
                   </h1>
-                  <p className="mt-0.5 text-sm text-white/40 light:text-neutral-400">/{currentPage.slug}</p>
+                  <p className="mt-0.5 text-sm text-white/40 light:text-neutral-400">/{pageAnalytics.slug}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {currentPage.status === 'Published' ? (
+                {pageAnalytics.status === 'Published' ? (
                   <a
-                    href={`/p/${slug}/${currentPage.slug}`}
+                    href={`/p/${slug}/${pageAnalytics.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:shadow-sm light:hover:bg-neutral-50"
@@ -118,82 +109,75 @@ export function LandingPageAnalyticsPage() {
             </div>
 
             {/* Analytics cards */}
-            {pageAnalytics === null ? (
-              <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-                <Loader2 className="animate-spin" size={16} />
-                Loading analytics…
+            <div className="grid gap-6">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <PeriodCard label="Today" stats={pageAnalytics.today} />
+                <PeriodCard label="Last 7 days" stats={pageAnalytics.last7Days} />
+                <PeriodCard label="Last 30 days" stats={pageAnalytics.last30Days} />
+                <PeriodCard label="All time" stats={pageAnalytics.allTime} highlight />
               </div>
-            ) : (
-              <div className="grid gap-6">
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <PeriodCard label="Today" stats={pageAnalytics.today} />
-                  <PeriodCard label="Last 7 days" stats={pageAnalytics.last7Days} />
-                  <PeriodCard label="Last 30 days" stats={pageAnalytics.last30Days} />
-                  <PeriodCard label="All time" stats={pageAnalytics.allTime} highlight />
-                </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <PurchasesCard count={pageAnalytics.purchaseCount} />
-                  <RevenueCard totalCents={pageAnalytics.totalRevenueCents} currency={pageAnalytics.currency} />
-                  <EmailCapturesCard total={pageAnalytics.totalEmailCaptures} />
-                </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <PurchasesCard count={pageAnalytics.purchaseCount} />
+                <RevenueCard totalCents={pageAnalytics.totalRevenueCents} currency={pageAnalytics.currency} />
+                <EmailCapturesCard total={pageAnalytics.totalEmailCaptures} />
+              </div>
 
-                <TimeSeriesCharts slug={slug} pageId={pageId} />
+              <TimeSeriesCharts slug={slug} pageId={pageId} />
 
-                {/* Email list — lazy loaded */}
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-                  <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 light:border-neutral-100">
-                    <div className="flex items-center gap-2">
-                      <Mail size={15} className="text-white/40 light:text-neutral-400" />
-                      <p className="text-sm font-semibold text-white light:text-neutral-950">Captured emails</p>
-                    </div>
-                    {capturesStatus === 'idle' ? (
-                      <button
-                        type="button"
-                        onClick={handleLoadCaptures}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
-                      >
-                        <ChevronDown size={13} />
-                        Show emails
-                      </button>
-                    ) : null}
+              {/* Email list — lazy loaded */}
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+                <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 light:border-neutral-100">
+                  <div className="flex items-center gap-2">
+                    <Mail size={15} className="text-white/40 light:text-neutral-400" />
+                    <p className="text-sm font-semibold text-white light:text-neutral-950">Captured emails</p>
                   </div>
-
                   {capturesStatus === 'idle' ? (
-                    <div className="flex items-center justify-center py-10 text-sm text-white/40 light:text-neutral-400">
-                      Click "Show emails" to load the list
-                    </div>
-                  ) : capturesStatus === 'loading' ? (
-                    <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/40 light:text-neutral-400">
-                      <Loader2 className="animate-spin" size={15} />
-                      Loading…
-                    </div>
-                  ) : capturesStatus === 'error' ? (
-                    <div className="flex items-center justify-center py-10 text-sm text-red-400 light:text-red-500">
-                      Failed to load. Try again.
-                    </div>
-                  ) : captures !== null && captures.length === 0 ? (
-                    <div className="flex items-center justify-center py-10 text-sm text-white/40 light:text-neutral-400">
-                      No emails captured yet.
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-white/10 light:divide-neutral-100">
-                      {captures?.map((c) => (
-                        <li key={c.email} className="flex items-center justify-between px-5 py-3">
-                          <span className="text-sm text-white light:text-neutral-950">{c.email}</span>
-                          <span className="text-xs text-white/40 light:text-neutral-400">
-                            {new Date(c.capturedAt).toLocaleDateString('en-GB', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                    <button
+                      type="button"
+                      onClick={handleLoadCaptures}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
+                    >
+                      <ChevronDown size={13} />
+                      Show emails
+                    </button>
+                  ) : null}
                 </div>
+
+                {capturesStatus === 'idle' ? (
+                  <div className="flex items-center justify-center py-10 text-sm text-white/40 light:text-neutral-400">
+                    Click "Show emails" to load the list
+                  </div>
+                ) : capturesStatus === 'loading' ? (
+                  <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/40 light:text-neutral-400">
+                    <Loader2 className="animate-spin" size={15} />
+                    Loading…
+                  </div>
+                ) : capturesStatus === 'error' ? (
+                  <div className="flex items-center justify-center py-10 text-sm text-red-400 light:text-red-500">
+                    Failed to load. Try again.
+                  </div>
+                ) : captures !== null && captures.length === 0 ? (
+                  <div className="flex items-center justify-center py-10 text-sm text-white/40 light:text-neutral-400">
+                    No emails captured yet.
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-white/10 light:divide-neutral-100">
+                    {captures?.map((c) => (
+                      <li key={c.email} className="flex items-center justify-between px-5 py-3">
+                        <span className="text-sm text-white light:text-neutral-950">{c.email}</span>
+                        <span className="text-xs text-white/40 light:text-neutral-400">
+                          {new Date(c.capturedAt).toLocaleDateString('en-GB', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            )}
+            </div>
           </div>
         ) : null}
       </div>

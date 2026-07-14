@@ -23,13 +23,6 @@ export async function getLandingPage(slug: string, pageId: string): Promise<Land
   return res.data
 }
 
-// Lightweight page header (title/slug/status) — used by the analytics view, which doesn't render
-// sections and shouldn't pay for the editor's full with-sections fetch.
-export async function getLandingPageSummary(slug: string, pageId: string): Promise<LandingPage> {
-  const res = await apiRequest<ApiResponse<LandingPage>>(`/api/creators/${slug}/landing-pages/${pageId}/summary`)
-  return res.data
-}
-
 export async function createLandingPage(slug: string, request: CreateLandingPageRequest): Promise<LandingPage> {
   const res = await apiRequest<ApiResponse<LandingPage>>(`/api/creators/${slug}/landing-pages`, { method: 'POST', body: request })
   return res.data

@@ -50,6 +50,9 @@ export type EmailCaptureItem = {
 }
 
 export type LandingPageAnalytics = {
+  title: string
+  slug: string
+  status: LandingPageStatus
   allTime: PeriodStats
   today: PeriodStats
   last7Days: PeriodStats
