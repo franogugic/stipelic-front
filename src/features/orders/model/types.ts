@@ -10,6 +10,8 @@ export interface Order {
   status: OrderStatus
   createdAt: string
   paidAt: string | null
+  platformFeeCents: number
+  netAmountCents: number
 }
 
 export interface OrderSummary {

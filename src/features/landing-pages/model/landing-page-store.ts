@@ -35,6 +35,9 @@ type LandingPageState = {
   analyticsError: string | null
   mutateStatus: MutateStatus
   mutateError: string | null
+  // 409 = a gating conflict (e.g. publish blocked on payout setup) — the editor uses this to render
+  // a specific alert instead of a generic error message.
+  mutateErrorStatus: number | null
 
   loadPages: (slug: string) => Promise<void>
   loadPage: (slug: string, pageId: string) => Promise<void>
@@ -62,6 +65,7 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
   analyticsError: null,
   mutateStatus: 'idle',
   mutateError: null,
+  mutateErrorStatus: null,
 
   loadPages: async (slug) => {
     set({ listStatus: 'loading' })
@@ -106,20 +110,20 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
   },
 
   createPage: async (slug, request) => {
-    set({ mutateStatus: 'submitting', mutateError: null })
+    set({ mutateStatus: 'submitting', mutateError: null, mutateErrorStatus: null })
     try {
       const page = await createLandingPage(slug, request)
       set((s) => ({ pages: [page, ...s.pages], mutateStatus: 'success' }))
       return page
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to create landing page.'
-      set({ mutateStatus: 'error', mutateError: message })
+      set({ mutateStatus: 'error', mutateError: message, mutateErrorStatus: err instanceof ApiError ? err.status : null })
       return null
     }
   },
 
   publishPage: async (slug, pageId) => {
-    set({ mutateStatus: 'submitting', mutateError: null })
+    set({ mutateStatus: 'submitting', mutateError: null, mutateErrorStatus: null })
     try {
       await publishLandingPage(slug, pageId)
       set((s) => ({
@@ -130,13 +134,13 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
       return true
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to publish landing page.'
-      set({ mutateStatus: 'error', mutateError: message })
+      set({ mutateStatus: 'error', mutateError: message, mutateErrorStatus: err instanceof ApiError ? err.status : null })
       return false
     }
   },
 
   unpublishPage: async (slug, pageId) => {
-    set({ mutateStatus: 'submitting', mutateError: null })
+    set({ mutateStatus: 'submitting', mutateError: null, mutateErrorStatus: null })
     try {
       await unpublishLandingPage(slug, pageId)
       set((s) => ({
@@ -147,26 +151,26 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
       return true
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to unpublish landing page.'
-      set({ mutateStatus: 'error', mutateError: message })
+      set({ mutateStatus: 'error', mutateError: message, mutateErrorStatus: err instanceof ApiError ? err.status : null })
       return false
     }
   },
 
   archivePage: async (slug, pageId) => {
-    set({ mutateStatus: 'submitting', mutateError: null })
+    set({ mutateStatus: 'submitting', mutateError: null, mutateErrorStatus: null })
     try {
       await archiveLandingPage(slug, pageId)
       set((s) => ({ pages: s.pages.filter((p) => p.publicId !== pageId), mutateStatus: 'success' }))
       return true
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to archive landing page.'
-      set({ mutateStatus: 'error', mutateError: message })
+      set({ mutateStatus: 'error', mutateError: message, mutateErrorStatus: err instanceof ApiError ? err.status : null })
       return false
     }
   },
 
   saveEditor: async (slug, pageId, request) => {
-    set({ mutateStatus: 'submitting', mutateError: null })
+    set({ mutateStatus: 'submitting', mutateError: null, mutateErrorStatus: null })
     try {
       const page = await saveEditor(slug, pageId, request)
       set((s) => ({
@@ -177,10 +181,10 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
       return page
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to save.'
-      set({ mutateStatus: 'error', mutateError: message })
+      set({ mutateStatus: 'error', mutateError: message, mutateErrorStatus: err instanceof ApiError ? err.status : null })
       return null
     }
   },
 
-  resetMutateFeedback: () => set({ mutateStatus: 'idle', mutateError: null }),
+  resetMutateFeedback: () => set({ mutateStatus: 'idle', mutateError: null, mutateErrorStatus: null }),
 }))

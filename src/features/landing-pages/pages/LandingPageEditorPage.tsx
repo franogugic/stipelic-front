@@ -1,5 +1,5 @@
 import {
-  BookOpen, ChevronLeft, ChevronRight, Globe, Loader2, Lock,
+  AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Globe, Loader2, Lock,
   Package, PanelLeftClose, PanelLeftOpen, Trash2, Type, Wrench, Zap,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -36,6 +36,7 @@ export function LandingPageEditorPage() {
   const pageError = useLandingPageStore((s) => s.pageError)
   const mutateStatus = useLandingPageStore((s) => s.mutateStatus)
   const mutateError = useLandingPageStore((s) => s.mutateError)
+  const mutateErrorStatus = useLandingPageStore((s) => s.mutateErrorStatus)
   const templates = useLandingPageStore((s) => s.templates)
   const loadPage = useLandingPageStore((s) => s.loadPage)
   const loadTemplates = useLandingPageStore((s) => s.loadTemplates)
@@ -198,7 +199,9 @@ export function LandingPageEditorPage() {
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          {mutateError ? <p className="text-xs text-red-400 light:text-red-600">{mutateError}</p> : null}
+          {mutateError && mutateErrorStatus !== 409 ? (
+            <p className="text-xs text-red-400 light:text-red-600">{mutateError}</p>
+          ) : null}
           {currentPage?.status === 'Published' ? (
             <a
               href={`/p/${slug}/${currentPage.slug}`}
@@ -237,6 +240,20 @@ export function LandingPageEditorPage() {
           </button>
         </div>
       </header>
+
+      {mutateErrorStatus === 409 && mutateError ? (
+        <div className="flex items-center gap-3 border-b border-amber-500/25 bg-amber-500/10 px-5 py-3 light:border-amber-200 light:bg-amber-50">
+          <AlertTriangle size={16} className="shrink-0 text-amber-400 light:text-amber-600" />
+          <p className="flex-1 text-sm text-amber-200 light:text-amber-800">{mutateError}</p>
+          <button
+            type="button"
+            className="shrink-0 text-sm font-semibold text-amber-300 underline transition hover:text-amber-100 light:text-amber-700 light:hover:text-amber-900"
+            onClick={() => navigate(`/app/${slug ?? ''}/settings`)}
+          >
+            Complete payout setup
+          </button>
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div className="flex flex-1 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">

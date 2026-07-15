@@ -58,6 +58,8 @@ export function OrdersPage() {
                   <th className="px-5 py-3">Customer</th>
                   <th className="px-5 py-3">Product</th>
                   <th className="px-5 py-3">Amount</th>
+                  <th className="px-5 py-3">Fee</th>
+                  <th className="px-5 py-3">Net</th>
                   <th className="px-5 py-3">Status</th>
                 </tr>
               </thead>
@@ -74,10 +76,14 @@ export function OrdersPage() {
                       <p className="text-xs text-white/40 light:text-neutral-400">{order.email}</p>
                     </td>
                     <td className="px-5 py-3.5 text-white/70 light:text-neutral-700">{order.productName}</td>
-                    <td className="px-5 py-3.5 font-medium text-white light:text-neutral-950">
-                      {(order.amountCents / 100).toLocaleString(undefined, {
-                        style: 'currency', currency: order.currency,
-                      })}
+                    <td className="font-data px-5 py-3.5 font-medium tabular-nums text-white light:text-neutral-950">
+                      {formatMoney(order.amountCents, order.currency)}
+                    </td>
+                    <td className="font-data px-5 py-3.5 tabular-nums text-white/50 light:text-neutral-500">
+                      {formatMoney(order.platformFeeCents, order.currency)}
+                    </td>
+                    <td className="font-data px-5 py-3.5 font-medium tabular-nums text-white light:text-neutral-950">
+                      {formatMoney(order.netAmountCents, order.currency)}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[order.status] ?? 'bg-white/10 text-white/50 light:bg-neutral-100 light:text-neutral-500'}`}>
@@ -93,4 +99,8 @@ export function OrdersPage() {
       </div>
     </AppShell>
   )
+}
+
+function formatMoney(cents: number, currency: string): string {
+  return (cents / 100).toLocaleString(undefined, { style: 'currency', currency })
 }

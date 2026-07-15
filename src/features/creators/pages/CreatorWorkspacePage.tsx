@@ -5,6 +5,7 @@ import {
   CreditCard,
   ExternalLink,
   FileText,
+  Landmark,
   Loader2,
   Mail,
   Package,
@@ -23,6 +24,7 @@ import type { HomeSummary, Order } from '../../orders/model/types'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { DeleteCreatorDialog } from '../components/DeleteCreatorDialog'
 import { useCreatorStore } from '../model/creator-store'
+import { usePayoutStore } from '../model/payout-store'
 
 const TREND_DAYS = 14
 
@@ -43,6 +45,12 @@ export function CreatorWorkspacePage() {
   const openBillingPortal = useCreatorStore((s) => s.openBillingPortal)
   const resetDeleteCreatorFeedback = useCreatorStore((s) => s.resetDeleteCreatorFeedback)
   const resetCancelSubscriptionFeedback = useCreatorStore((s) => s.resetCancelSubscriptionFeedback)
+
+  const payoutSummary = usePayoutStore((s) => s.payoutSummary)
+  const payoutSummaryStatus = usePayoutStore((s) => s.payoutSummaryStatus)
+  const loadPayoutSummary = usePayoutStore((s) => s.loadPayoutSummary)
+  const connectOnboardingStatus = usePayoutStore((s) => s.connectOnboardingStatus)
+  const startConnectOnboardingLink = usePayoutStore((s) => s.startConnectOnboardingLink)
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
@@ -97,9 +105,18 @@ export function CreatorWorkspacePage() {
     void getHomeSummary(slug).then(setHomeSummary).catch(() => {})
   }, [slug])
 
+  useEffect(() => {
+    if (creator?.payoutMode === 'BankTransfer') void loadPayoutSummary(creator.slug)
+  }, [creator?.payoutMode, creator?.slug, loadPayoutSummary])
+
   const startCheckout = async () => {
     const checkout = await startCreatorCheckout()
     if (checkout?.checkoutUrl) window.location.assign(checkout.checkoutUrl)
+  }
+
+  const startOnboarding = async () => {
+    const url = await startConnectOnboardingLink()
+    if (url) window.location.href = url
   }
 
   if (!slug) return null
@@ -403,6 +420,97 @@ export function CreatorWorkspacePage() {
                   </div>
                 </div>
 
+                {/* Payouts */}
+                <div className="animate-rise rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 backdrop-blur-sm" style={{ animationDelay: '230ms' }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
+                    Payouts
+                  </p>
+
+                  {creator.payoutMode === 'StripeConnect' ? (
+                    <>
+                      <div className="mt-3 flex items-center gap-2">
+                        <PayoutStatusBadge
+                          label={
+                            creator.stripeConnectPayoutsEnabled
+                              ? 'Ready'
+                              : creator.stripeConnectDetailsSubmitted
+                                ? 'In progress'
+                                : 'Not connected'
+                          }
+                          tone={
+                            creator.stripeConnectPayoutsEnabled
+                              ? 'success'
+                              : creator.stripeConnectDetailsSubmitted
+                                ? 'warning'
+                                : 'neutral'
+                          }
+                        />
+                      </div>
+                      {!creator.stripeConnectPayoutsEnabled ? (
+                        <>
+                          <p className="mt-3 text-sm leading-5 text-white/40 light:text-neutral-950/40">
+                            {creator.stripeConnectDetailsSubmitted
+                              ? 'Stripe is still verifying your account details.'
+                              : 'Connect your Stripe account to receive payouts.'}
+                          </p>
+                          <button
+                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-50"
+                            type="button"
+                            disabled={connectOnboardingStatus === 'submitting'}
+                            onClick={() => void startOnboarding()}
+                          >
+                            {connectOnboardingStatus === 'submitting' ? (
+                              <Loader2 className="animate-spin" size={14} />
+                            ) : (
+                              <CreditCard size={14} />
+                            )}
+                            {creator.stripeConnectDetailsSubmitted ? 'Continue onboarding' : 'Connect Stripe'}
+                          </button>
+                        </>
+                      ) : (
+                        <p className="mt-3 text-sm text-white/40 light:text-neutral-950/40">
+                          Payouts are sent directly to your connected Stripe account.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="mt-3 flex items-center gap-2">
+                        <PayoutStatusBadge
+                          label={creator.hasPayoutProfile ? 'Ready' : 'Bank details missing'}
+                          tone={creator.hasPayoutProfile ? 'success' : 'warning'}
+                        />
+                      </div>
+                      {!creator.hasPayoutProfile ? (
+                        <>
+                          <p className="mt-3 text-sm leading-5 text-white/40 light:text-neutral-950/40">
+                            Add your bank details to start receiving payouts.
+                          </p>
+                          <button
+                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
+                            type="button"
+                            onClick={() => navigate(`/app/${creator.slug}/settings`)}
+                          >
+                            <Landmark size={14} />
+                            Add bank details
+                          </button>
+                        </>
+                      ) : payoutSummaryStatus === 'loading' ? (
+                        <div className="mt-4 flex items-center gap-2 text-sm text-white/40 light:text-neutral-950/40">
+                          <Loader2 className="animate-spin" size={14} />
+                          Loading balance…
+                        </div>
+                      ) : payoutSummary ? (
+                        <div className="mt-4 grid gap-2.5">
+                          <PayoutInfoRow label="Balance" value={formatCurrency(payoutSummary.balanceCents, payoutSummary.currency)} />
+                          <PayoutInfoRow label="Pending payouts" value={formatCurrency(payoutSummary.pendingPayoutCents, payoutSummary.currency)} />
+                          <PayoutInfoRow label="Minimum payout" value={formatCurrency(payoutSummary.minPayoutCents, payoutSummary.currency)} />
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+
                 {/* Danger zone */}
                 <div className="animate-rise rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 backdrop-blur-sm" style={{ animationDelay: '260ms' }}>
                   <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
@@ -585,6 +693,33 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
     <div className="flex items-center justify-between gap-2">
       <span className="text-xs text-white/40 light:text-neutral-950/40">{label}</span>
       <span className={`truncate text-xs font-medium text-white/80 light:text-neutral-950/80 ${mono ? 'font-mono' : ''}`}>{value}</span>
+    </div>
+  )
+}
+
+function PayoutStatusBadge({ label, tone }: { label: string; tone: 'success' | 'warning' | 'neutral' }) {
+  const toneClasses =
+    tone === 'success'
+      ? 'bg-emerald-500/15 text-emerald-300 light:bg-emerald-50 light:text-emerald-700'
+      : tone === 'warning'
+        ? 'bg-amber-500/15 text-amber-300 light:bg-amber-50 light:text-amber-700'
+        : 'bg-white/10 text-white/50 light:bg-neutral-950/10 light:text-neutral-950/50'
+  const dotClasses =
+    tone === 'success' ? 'bg-emerald-500' : tone === 'warning' ? 'bg-amber-500' : 'bg-white/40 light:bg-neutral-950/40'
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${toneClasses}`}>
+      <span className={`size-1.5 rounded-full ${dotClasses}`} />
+      {label}
+    </span>
+  )
+}
+
+function PayoutInfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs text-white/40 light:text-neutral-950/40">{label}</span>
+      <span className="font-data text-xs font-semibold text-white/80 tabular-nums light:text-neutral-950/80">{value}</span>
     </div>
   )
 }
