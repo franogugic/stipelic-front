@@ -5,6 +5,7 @@ import {
   createLandingPage,
   getLandingPage,
   getLandingPageAnalytics,
+  getLandingPageTimeSeries,
   getSectionTemplates,
   listLandingPages,
   publishLandingPage,
@@ -18,6 +19,8 @@ import type {
   LandingPageWithSections,
   SaveEditorRequest,
   SectionTemplate,
+  TimeSeriesPeriod,
+  TimeSeriesResponse,
 } from './types'
 
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -28,6 +31,11 @@ type LandingPageState = {
   currentPage: LandingPageWithSections | null
   templates: SectionTemplate[]
   analytics: Record<string, LandingPageAnalytics>
+  timeSeries: TimeSeriesResponse | null
+  timeSeriesStatus: LoadStatus
+  // `${slug}:${pageId}` the current series belongs to — the analytics view uses it so a series
+  // left over from another page's charts is never rendered while its own load is in flight.
+  timeSeriesPageKey: string | null
   listStatus: LoadStatus
   pageStatus: LoadStatus
   pageError: string | null
@@ -45,6 +53,7 @@ type LandingPageState = {
   // Also carries the page header (title/slug/status) — the analytics view uses this as its sole
   // data + status source instead of a separate lightweight page fetch.
   loadAnalytics: (slug: string, pageId: string) => Promise<void>
+  loadTimeSeries: (slug: string, pageId: string, period: TimeSeriesPeriod) => Promise<void>
   createPage: (slug: string, request: CreateLandingPageRequest) => Promise<LandingPage | null>
   publishPage: (slug: string, pageId: string) => Promise<boolean>
   unpublishPage: (slug: string, pageId: string) => Promise<boolean>
@@ -53,11 +62,18 @@ type LandingPageState = {
   resetMutateFeedback: () => void
 }
 
+// Monotonic token so only the latest time-series request may write its result — rapid period
+// switches can resolve out of order.
+let timeSeriesRequestId = 0
+
 export const useLandingPageStore = create<LandingPageState>((set, get) => ({
   pages: [],
   currentPage: null,
   templates: [],
   analytics: {},
+  timeSeries: null,
+  timeSeriesStatus: 'idle',
+  timeSeriesPageKey: null,
   listStatus: 'idle',
   pageStatus: 'idle',
   pageError: null,
@@ -96,6 +112,26 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to load analytics.'
       set({ analyticsStatus: 'error', analyticsError: message })
+    }
+  },
+
+  loadTimeSeries: async (slug, pageId, period) => {
+    const pageKey = `${slug}:${pageId}`
+    const requestId = ++timeSeriesRequestId
+    set((s) => ({
+      timeSeriesStatus: 'loading',
+      // Keep the previous period's series visible under the loading overlay for the same page;
+      // drop it when the charts belong to a different page.
+      timeSeries: s.timeSeriesPageKey === pageKey ? s.timeSeries : null,
+      timeSeriesPageKey: pageKey,
+    }))
+    try {
+      const data = await getLandingPageTimeSeries(slug, pageId, period)
+      if (requestId !== timeSeriesRequestId) return
+      set({ timeSeries: data, timeSeriesStatus: 'success' })
+    } catch {
+      if (requestId !== timeSeriesRequestId) return
+      set({ timeSeriesStatus: 'error' })
     }
   },
 

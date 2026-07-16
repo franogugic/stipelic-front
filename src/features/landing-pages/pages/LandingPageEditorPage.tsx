@@ -7,7 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useLandingPageStore } from '../model/landing-page-store'
 import type {
   CtaContent, FeaturesContent, FooterContent, HeroContent,
-  LandingPageSection, LandingPageType,
+  LandingPageSection, LandingPageType, LandingPageWithSections,
   NavbarContent, ProductDetailsContent,
   SaveEditorRequest, SaveEditorSectionRequest,
   SectionTemplate, SectionType,
@@ -53,6 +53,21 @@ export function LandingPageEditorPage() {
   const [isDirty, setIsDirty] = useState(false)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [sidebarMode, setSidebarMode] = useState<'page' | 'section'>('page')
+  const [syncedPage, setSyncedPage] = useState<LandingPageWithSections | null>(null)
+
+  // Re-seed the drafts whenever the store hands us a new page object (initial load, save —
+  // which swaps temp section ids for server-issued ones — publish/unpublish). Guarded setState
+  // during render instead of an effect, per react.dev "storing information from previous renders".
+  if (currentPage !== syncedPage) {
+    setSyncedPage(currentPage)
+    if (currentPage) {
+      setDraftTitle(currentPage.title)
+      setDraftSlug(currentPage.slug)
+      setDraftType(currentPage.type)
+      setDraftSections(currentPage.sections.map((s) => ({ ...s })))
+      setIsDirty(false)
+    }
+  }
 
   const isLoading = pageStatus === 'idle' || pageStatus === 'loading'
   const isSaving = mutateStatus === 'submitting'
@@ -67,16 +82,6 @@ export function LandingPageEditorPage() {
       void loadTemplates(slug)
     }
   }, [slug, pageId, loadPage, loadTemplates])
-
-  useEffect(() => {
-    if (currentPage) {
-      setDraftTitle(currentPage.title)
-      setDraftSlug(currentPage.slug)
-      setDraftType(currentPage.type)
-      setDraftSections(currentPage.sections.map((s) => ({ ...s })))
-      setIsDirty(false)
-    }
-  }, [currentPage])
 
   const selectedSection = draftSections.find((s) => s.publicId === selectedSectionId) ?? null
   const markDirty = () => setIsDirty(true)

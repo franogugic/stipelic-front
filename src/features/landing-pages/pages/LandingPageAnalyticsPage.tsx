@@ -12,10 +12,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { getLandingPageTimeSeries, listEmailCaptures } from '../api/landing-pages-api'
+import { listEmailCaptures } from '../api/landing-pages-api'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { useLandingPageStore } from '../model/landing-page-store'
-import type { EmailCaptureItem, PeriodStats, TimeSeriesPeriod, TimeSeriesResponse } from '../model/types'
+import type { EmailCaptureItem, PeriodStats, TimeSeriesPeriod } from '../model/types'
 
 export function LandingPageAnalyticsPage() {
   const navigate = useNavigate()
@@ -26,6 +26,9 @@ export function LandingPageAnalyticsPage() {
   const analyticsError = useLandingPageStore((s) => s.analyticsError)
   const loadAnalytics = useLandingPageStore((s) => s.loadAnalytics)
 
+  const [captures, setCaptures] = useState<EmailCaptureItem[] | null>(null)
+  const [capturesStatus, setCapturesStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+
   useEffect(() => {
     if (!slug || !pageId) return
     void loadAnalytics(slug, pageId)
@@ -35,9 +38,6 @@ export function LandingPageAnalyticsPage() {
 
   const isLoading = analyticsStatus === 'idle' || analyticsStatus === 'loading'
   const pageAnalytics = analytics[pageId] ?? null
-
-  const [captures, setCaptures] = useState<EmailCaptureItem[] | null>(null)
-  const [capturesStatus, setCapturesStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
 
   const handleLoadCaptures = () => {
     if (!slug || !pageId) return
@@ -252,17 +252,21 @@ const axisProps = {
 
 function TimeSeriesCharts({ slug, pageId }: { slug: string; pageId: string }) {
   const [period, setPeriod] = useState<TimeSeriesPeriod>('Month')
-  const [data, setData] = useState<TimeSeriesResponse | null>(null)
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const timeSeries = useLandingPageStore((s) => s.timeSeries)
+  const timeSeriesStatus = useLandingPageStore((s) => s.timeSeriesStatus)
+  const timeSeriesPageKey = useLandingPageStore((s) => s.timeSeriesPageKey)
+  const loadTimeSeries = useLandingPageStore((s) => s.loadTimeSeries)
 
   useEffect(() => {
-    let cancelled = false
-    setStatus('loading')
-    getLandingPageTimeSeries(slug, pageId, period)
-      .then((res) => { if (!cancelled) { setData(res); setStatus('success') } })
-      .catch(() => { if (!cancelled) setStatus('error') })
-    return () => { cancelled = true }
-  }, [slug, pageId, period])
+    void loadTimeSeries(slug, pageId, period)
+  }, [slug, pageId, period, loadTimeSeries])
+
+  const isCurrentPage = timeSeriesPageKey === `${slug}:${pageId}`
+  const data = isCurrentPage ? timeSeries : null
+  const status: 'loading' | 'success' | 'error' =
+    isCurrentPage && (timeSeriesStatus === 'success' || timeSeriesStatus === 'error')
+      ? timeSeriesStatus
+      : 'loading'
 
   const bucketUnit = data?.bucketUnit ?? 'day'
   const currency = data?.currency ?? 'EUR'
