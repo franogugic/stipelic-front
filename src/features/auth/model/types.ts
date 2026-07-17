@@ -17,6 +17,7 @@ export type AuthUser = {
   email: string
   isEmailVerified?: boolean
   status?: string
+  roles?: string[]
 }
 
 export type AccountStatus = 'pendingVerification' | 'active'

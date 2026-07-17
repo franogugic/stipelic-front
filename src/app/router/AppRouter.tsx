@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { AdminPayoutsPage } from '../../features/admin/pages/AdminPayoutsPage'
 import { HomePage } from '../../features/auth/pages/HomePage'
 import { LoginPage } from '../../features/auth/pages/LoginPage'
 import { RegisterPage } from '../../features/auth/pages/RegisterPage'
@@ -14,6 +15,7 @@ import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSucces
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { OrdersPage } from '../../features/orders/pages/OrdersPage'
+import { AdminRoute } from './AdminRoute'
 import { AuthBootstrap } from './AuthBootstrap'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
@@ -43,6 +45,10 @@ export function AppRouter() {
           <Route path="/app/:slug/landing-pages/:pageId/edit" element={<LandingPageEditorPage />} />
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />
           <Route path="/creators/new" element={<CreateCreatorPage />} />
+        </Route>
+
+        <Route element={<AdminRoute />}>
+          <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

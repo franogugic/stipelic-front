@@ -10,8 +10,10 @@ import {
   Landmark,
   Loader2,
   Palette,
+  Pencil,
   Save,
   User,
+  X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
@@ -654,6 +656,9 @@ function BankTransferPayoutsPanel({
   const [iban, setIban] = useState('')
   const [bankCountryCode, setBankCountryCode] = useState(creator.countryCode)
   const [ibanTouched, setIbanTouched] = useState(false)
+  // Existing profile → start read-only, require an explicit Edit click before fields are editable.
+  // No profile yet → go straight to the form, there's nothing to protect.
+  const [isEditing, setIsEditing] = useState(!payoutProfile)
 
   // Adjust form state when the loaded payout profile changes — done during render (React's
   // recommended pattern for this) rather than in an effect, since an effect would set state
@@ -665,6 +670,7 @@ function BankTransferPayoutsPanel({
       setAccountHolderName(payoutProfile.accountHolderName)
       setBankCountryCode(payoutProfile.bankCountryCode)
     }
+    setIsEditing(!payoutProfile)
   }
 
   const ibanError = ibanTouched && iban.trim() && !isPlausibleIban(iban) ? 'This doesn’t look like a valid IBAN.' : undefined
@@ -674,11 +680,25 @@ function BankTransferPayoutsPanel({
     /^[A-Z]{2}$/.test(bankCountryCode.trim().toUpperCase()) &&
     updateStatus !== 'submitting'
 
+  const cancelEdit = () => {
+    onResetFeedback()
+    setIban('')
+    setIbanTouched(false)
+    if (payoutProfile) {
+      setAccountHolderName(payoutProfile.accountHolderName)
+      setBankCountryCode(payoutProfile.bankCountryCode)
+      setIsEditing(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
     const saved = await onSave({ accountHolderName, iban, bankCountryCode: bankCountryCode.toUpperCase() })
-    if (saved) setIban('')
+    if (saved) {
+      setIban('')
+      setIsEditing(false)
+    }
   }
 
   if (payoutProfileStatus === 'loading' || payoutProfileStatus === 'idle') {
@@ -706,90 +726,145 @@ function BankTransferPayoutsPanel({
         </div>
       </div>
 
-      <form
-        className="grid gap-4 rounded-xl border border-white/10 p-5 light:border-neutral-200"
-        onSubmit={(e) => void handleSubmit(e)}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-1.5">
-            <label className="flex items-center gap-1.5 text-sm font-medium text-white/80 light:text-neutral-700">
-              <User size={14} className="text-white/40 light:text-neutral-400" />
-              Account holder name
-            </label>
-            <input
-              className="h-[42px] w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
-              placeholder="Jane Doe"
-              maxLength={100}
-              value={accountHolderName}
-              onChange={(e) => { onResetFeedback(); setAccountHolderName(e.target.value) }}
-            />
+      {payoutProfile && !isEditing ? (
+        <div className="grid gap-4 rounded-xl border border-white/10 p-5 light:border-neutral-200">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ReadOnlyField icon={User} label="Account holder name" value={payoutProfile.accountHolderName} />
+            <ReadOnlyField icon={Landmark} label="Bank country" value={payoutProfile.bankCountryCode} />
           </div>
-          <div className="grid gap-1.5">
-            <label className="flex items-center gap-1.5 text-sm font-medium text-white/80 light:text-neutral-700">
-              <Landmark size={14} className="text-white/40 light:text-neutral-400" />
-              Bank country
-            </label>
-            <input
-              className="h-[42px] w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 text-sm uppercase text-white outline-none transition placeholder:text-white/30 focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
-              placeholder={creator.countryCode}
-              maxLength={2}
-              value={bankCountryCode}
-              onChange={(e) => { onResetFeedback(); setBankCountryCode(e.target.value.toUpperCase()) }}
-            />
+          <ReadOnlyField icon={CreditCard} label="IBAN" value={payoutProfile.maskedIban} mono />
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => { onResetFeedback(); setIsEditing(true) }}
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/80 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+            >
+              <Pencil size={14} />
+              Edit bank details
+            </button>
           </div>
         </div>
+      ) : (
+        <form
+          className="grid gap-4 rounded-xl border border-white/10 p-5 light:border-neutral-200"
+          onSubmit={(e) => void handleSubmit(e)}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <label className="flex items-center gap-1.5 text-sm font-medium text-white/80 light:text-neutral-700">
+                <User size={14} className="text-white/40 light:text-neutral-400" />
+                Account holder name
+              </label>
+              <input
+                className="h-[42px] w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
+                placeholder="Jane Doe"
+                maxLength={100}
+                value={accountHolderName}
+                onChange={(e) => { onResetFeedback(); setAccountHolderName(e.target.value) }}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="flex items-center gap-1.5 text-sm font-medium text-white/80 light:text-neutral-700">
+                <Landmark size={14} className="text-white/40 light:text-neutral-400" />
+                Bank country
+              </label>
+              <input
+                className="h-[42px] w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 text-sm uppercase text-white outline-none transition placeholder:text-white/30 focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
+                placeholder={creator.countryCode}
+                maxLength={2}
+                value={bankCountryCode}
+                onChange={(e) => { onResetFeedback(); setBankCountryCode(e.target.value.toUpperCase()) }}
+              />
+            </div>
+          </div>
 
-        <div className="grid gap-1.5">
-          <label className="text-sm font-medium text-white/80 light:text-neutral-700">IBAN</label>
-          <input
-            className={[
-              'h-[42px] w-full rounded-xl border px-3.5 font-mono text-sm uppercase tracking-wide text-white outline-none transition placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-white/30',
-              'focus:ring-2',
-              ibanError
-                ? 'border-red-400/50 bg-red-500/5 focus:border-red-400 focus:ring-red-500/20'
-                : 'border-white/10 bg-white/[0.03] focus:border-white/25 focus:ring-white/10',
-              'light:text-neutral-950 light:placeholder-neutral-400',
-              ibanError ? 'light:border-red-300 light:bg-red-50/50' : 'light:border-neutral-200 light:bg-white light:focus:border-neutral-400 light:focus:ring-neutral-100',
-            ].join(' ')}
-            placeholder={payoutProfile ? payoutProfile.maskedIban : 'e.g. DE89370400440532013000'}
-            maxLength={34}
-            value={iban}
-            onBlur={() => setIbanTouched(true)}
-            onChange={(e) => { onResetFeedback(); setIban(e.target.value) }}
-          />
-          {ibanError ? (
-            <p className="text-xs font-medium text-red-400 light:text-red-600">{ibanError}</p>
-          ) : (
-            <p className="text-xs text-white/40 light:text-neutral-400">
-              Never shown again in full once saved — only the last 4 digits are displayed.
+          <div className="grid gap-1.5">
+            <label className="text-sm font-medium text-white/80 light:text-neutral-700">IBAN</label>
+            <input
+              className={[
+                'h-[42px] w-full rounded-xl border px-3.5 font-mono text-sm uppercase tracking-wide text-white outline-none transition placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-white/30',
+                'focus:ring-2',
+                ibanError
+                  ? 'border-red-400/50 bg-red-500/5 focus:border-red-400 focus:ring-red-500/20'
+                  : 'border-white/10 bg-white/[0.03] focus:border-white/25 focus:ring-white/10',
+                'light:text-neutral-950 light:placeholder-neutral-400',
+                ibanError ? 'light:border-red-300 light:bg-red-50/50' : 'light:border-neutral-200 light:bg-white light:focus:border-neutral-400 light:focus:ring-neutral-100',
+              ].join(' ')}
+              placeholder={payoutProfile ? payoutProfile.maskedIban : 'e.g. DE89370400440532013000'}
+              maxLength={34}
+              value={iban}
+              onBlur={() => setIbanTouched(true)}
+              onChange={(e) => { onResetFeedback(); setIban(e.target.value) }}
+            />
+            {ibanError ? (
+              <p className="text-xs font-medium text-red-400 light:text-red-600">{ibanError}</p>
+            ) : (
+              <p className="text-xs text-white/40 light:text-neutral-400">
+                Never shown again in full once saved — only the last 4 digits are displayed.
+              </p>
+            )}
+          </div>
+
+          {updateError ? (
+            <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">
+              {updateError}
             </p>
-          )}
-        </div>
+          ) : null}
+          {updateStatus === 'success' ? (
+            <p className="rounded-xl bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300 light:bg-emerald-50 light:text-emerald-700">
+              Payout details saved.
+            </p>
+          ) : null}
 
-        {updateError ? (
-          <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">
-            {updateError}
-          </p>
-        ) : null}
-        {updateStatus === 'success' ? (
-          <p className="rounded-xl bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300 light:bg-emerald-50 light:text-emerald-700">
-            Payout details saved.
-          </p>
-        ) : null}
-
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 light:text-neutral-950"
-          >
-            {updateStatus === 'submitting' ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
-            Save bank details
-          </button>
-        </div>
-      </form>
+          <div className="flex justify-end gap-2">
+            {payoutProfile ? (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+              >
+                <X size={14} />
+                Cancel
+              </button>
+            ) : null}
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 light:text-neutral-950"
+            >
+              {updateStatus === 'submitting' ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+              Save bank details
+            </button>
+          </div>
+        </form>
+      )}
 
       <PayoutHistoryTable payoutHistory={payoutHistory} payoutHistoryStatus={payoutHistoryStatus} />
+    </div>
+  )
+}
+
+function ReadOnlyField({
+  icon: Icon,
+  label,
+  value,
+  mono,
+}: {
+  icon: typeof User
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <label className="flex items-center gap-1.5 text-sm font-medium text-white/80 light:text-neutral-700">
+        <Icon size={14} className="text-white/40 light:text-neutral-400" />
+        {label}
+      </label>
+      <p className={`flex h-[42px] items-center rounded-xl border border-white/10 bg-white/[0.02] px-3.5 text-sm text-white/70 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-600 ${mono ? 'font-mono uppercase tracking-wide' : ''}`}>
+        {value}
+      </p>
     </div>
   )
 }

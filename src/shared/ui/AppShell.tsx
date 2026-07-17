@@ -6,6 +6,7 @@ import {
   Moon,
   Package,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   Sun,
 } from 'lucide-react'
@@ -134,6 +135,18 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
                 Settings
               </button>
             </li>
+            {user?.roles?.includes('platform_admin') ? (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/payouts')}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/60 transition-all hover:bg-white/5 hover:text-white"
+                >
+                  <ShieldCheck size={16} strokeWidth={1.8} />
+                  Admin payouts
+                </button>
+              </li>
+            ) : null}
           </ul>
         </nav>
 
