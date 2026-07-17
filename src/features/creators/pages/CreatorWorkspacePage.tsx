@@ -5,7 +5,6 @@ import {
   CreditCard,
   ExternalLink,
   FileText,
-  Landmark,
   Loader2,
   Mail,
   Package,
@@ -49,8 +48,6 @@ export function CreatorWorkspacePage() {
   const payoutSummary = usePayoutStore((s) => s.payoutSummary)
   const payoutSummaryStatus = usePayoutStore((s) => s.payoutSummaryStatus)
   const loadPayoutSummary = usePayoutStore((s) => s.loadPayoutSummary)
-  const connectOnboardingStatus = usePayoutStore((s) => s.connectOnboardingStatus)
-  const startConnectOnboardingLink = usePayoutStore((s) => s.startConnectOnboardingLink)
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
@@ -121,11 +118,6 @@ export function CreatorWorkspacePage() {
   const startCheckout = async () => {
     const checkout = await startCreatorCheckout()
     if (checkout?.checkoutUrl) window.location.assign(checkout.checkoutUrl)
-  }
-
-  const startOnboarding = async () => {
-    const url = await startConnectOnboardingLink()
-    if (url) window.location.href = url
   }
 
   if (!slug) return null
@@ -429,96 +421,41 @@ export function CreatorWorkspacePage() {
                   </div>
                 </div>
 
-                {/* Payouts */}
-                <div className="animate-rise rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 backdrop-blur-sm" style={{ animationDelay: '230ms' }}>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
-                    Payouts
-                  </p>
-
-                  {creator.payoutMode === 'StripeConnect' ? (
-                    <>
-                      <div className="mt-3 flex items-center gap-2">
-                        <PayoutStatusBadge
-                          label={
-                            creator.stripeConnectPayoutsEnabled
-                              ? 'Ready'
-                              : creator.stripeConnectDetailsSubmitted
-                                ? 'In progress'
-                                : 'Not connected'
-                          }
-                          tone={
-                            creator.stripeConnectPayoutsEnabled
-                              ? 'success'
-                              : creator.stripeConnectDetailsSubmitted
-                                ? 'warning'
-                                : 'neutral'
-                          }
-                        />
-                      </div>
-                      {!creator.stripeConnectPayoutsEnabled ? (
-                        <>
-                          <p className="mt-3 text-sm leading-5 text-white/40 light:text-neutral-950/40">
-                            {creator.stripeConnectDetailsSubmitted
-                              ? 'Stripe is still verifying your account details.'
-                              : 'Connect your Stripe account to receive payouts.'}
-                          </p>
-                          <button
-                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-50"
-                            type="button"
-                            disabled={connectOnboardingStatus === 'submitting'}
-                            onClick={() => void startOnboarding()}
-                          >
-                            {connectOnboardingStatus === 'submitting' ? (
-                              <Loader2 className="animate-spin" size={14} />
-                            ) : (
-                              <CreditCard size={14} />
-                            )}
-                            {creator.stripeConnectDetailsSubmitted ? 'Continue onboarding' : 'Connect Stripe'}
-                          </button>
-                        </>
-                      ) : (
-                        <p className="mt-3 text-sm text-white/40 light:text-neutral-950/40">
-                          Payouts are sent directly to your connected Stripe account.
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="mt-3 flex items-center gap-2">
-                        <PayoutStatusBadge
-                          label={creator.hasPayoutProfile ? 'Ready' : 'Bank details missing'}
-                          tone={creator.hasPayoutProfile ? 'success' : 'warning'}
-                        />
-                      </div>
-                      {!creator.hasPayoutProfile ? (
-                        <>
-                          <p className="mt-3 text-sm leading-5 text-white/40 light:text-neutral-950/40">
-                            Add your bank details to start receiving payouts.
-                          </p>
-                          <button
-                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
-                            type="button"
-                            onClick={() => navigate(`/app/${creator.slug}/settings`)}
-                          >
-                            <Landmark size={14} />
-                            Add bank details
-                          </button>
-                        </>
-                      ) : payoutSummaryStatus === 'loading' ? (
-                        <div className="mt-4 flex items-center gap-2 text-sm text-white/40 light:text-neutral-950/40">
-                          <Loader2 className="animate-spin" size={14} />
+                {/* Payouts — mini card, full detail lives on the Payouts tab */}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/app/${creator.slug}/payouts`)}
+                  className="animate-rise flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 text-left backdrop-blur-sm transition hover:bg-white/[0.06] light:hover:bg-neutral-950/[0.06]"
+                  style={{ animationDelay: '230ms' }}
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
+                      Payouts
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <PayoutStatusBadge
+                        label={payoutStatusLabel(creator)}
+                        tone={payoutStatusTone(creator)}
+                      />
+                    </div>
+                    {creator.payoutMode === 'BankTransfer' && creator.hasPayoutProfile ? (
+                      payoutSummaryStatus === 'loading' ? (
+                        <p className="mt-2 flex items-center gap-1.5 text-sm text-white/40 light:text-neutral-950/40">
+                          <Loader2 className="animate-spin" size={12} />
                           Loading balance…
-                        </div>
+                        </p>
                       ) : payoutSummary ? (
-                        <div className="mt-4 grid gap-2.5">
-                          <PayoutInfoRow label="Balance" value={formatCurrency(payoutSummary.balanceCents, payoutSummary.currency)} />
-                          <PayoutInfoRow label="Pending payouts" value={formatCurrency(payoutSummary.pendingPayoutCents, payoutSummary.currency)} />
-                          <PayoutInfoRow label="Minimum payout" value={formatCurrency(payoutSummary.minPayoutCents, payoutSummary.currency)} />
-                        </div>
-                      ) : null}
-                    </>
-                  )}
-                </div>
+                        <p className="font-data mt-2 text-lg font-bold tabular-nums text-white light:text-neutral-950">
+                          {formatCurrency(payoutSummary.balanceCents, payoutSummary.currency)}
+                        </p>
+                      ) : null
+                    ) : null}
+                  </div>
+                  <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-white/40 light:text-neutral-950/40">
+                    View payouts
+                    <ArrowRight size={11} />
+                  </span>
+                </button>
 
                 {/* Danger zone */}
                 <div className="animate-rise rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 backdrop-blur-sm" style={{ animationDelay: '260ms' }}>
@@ -724,13 +661,19 @@ function PayoutStatusBadge({ label, tone }: { label: string; tone: 'success' | '
   )
 }
 
-function PayoutInfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-xs text-white/40 light:text-neutral-950/40">{label}</span>
-      <span className="font-data text-xs font-semibold text-white/80 tabular-nums light:text-neutral-950/80">{value}</span>
-    </div>
-  )
+function payoutStatusLabel(creator: { payoutMode: string; stripeConnectPayoutsEnabled: boolean; stripeConnectDetailsSubmitted: boolean; hasPayoutProfile: boolean }): string {
+  if (creator.payoutMode === 'StripeConnect') {
+    return creator.stripeConnectPayoutsEnabled ? 'Ready' : creator.stripeConnectDetailsSubmitted ? 'In progress' : 'Not connected'
+  }
+  return creator.hasPayoutProfile ? 'Ready' : 'Bank details missing'
+}
+
+function payoutStatusTone(creator: { payoutMode: string; stripeConnectPayoutsEnabled: boolean; stripeConnectDetailsSubmitted: boolean; hasPayoutProfile: boolean }): 'success' | 'warning' | 'neutral' {
+  if (creator.payoutMode === 'StripeConnect') {
+    if (creator.stripeConnectPayoutsEnabled) return 'success'
+    return creator.stripeConnectDetailsSubmitted ? 'warning' : 'neutral'
+  }
+  return creator.hasPayoutProfile ? 'success' : 'warning'
 }
 
 function OnboardingChecklist({

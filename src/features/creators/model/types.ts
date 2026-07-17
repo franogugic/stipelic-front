@@ -89,7 +89,7 @@ export type UpdateCreatorSettingsRequest = {
   language: string
 }
 
-export type PayoutStatus = 'Pending' | 'Paid' | 'Failed'
+export type PayoutStatus = 'Pending' | 'Paid' | 'Failed' | 'Cancelled'
 
 export type PayoutSummary = {
   currency: string

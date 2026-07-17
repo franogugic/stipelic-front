@@ -2,9 +2,11 @@ import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
 import { getPayoutCountries, startConnectOnboarding } from '../api/creators-api'
 import {
+  cancelPayoutRequest,
   getPayoutProfile,
   getPayoutSummary,
   listPayouts,
+  requestPayout,
   updatePayoutProfile,
 } from '../api/payouts-api'
 import type { Payout, PayoutCountry, PayoutProfile, PayoutSummary, UpdatePayoutProfileRequest } from './types'
@@ -37,6 +39,12 @@ type PayoutState = {
   updatePayoutProfileStatus: SubmitStatus
   updatePayoutProfileError: string | null
 
+  requestPayoutStatus: SubmitStatus
+  requestPayoutError: string | null
+
+  cancelPayoutStatus: SubmitStatus
+  cancelPayoutError: string | null
+
   loadPayoutCountries: () => Promise<void>
   startConnectOnboardingLink: () => Promise<string | null>
   loadPayoutSummary: (slug: string) => Promise<void>
@@ -48,6 +56,10 @@ type PayoutState = {
   ) => Promise<PayoutProfile | null>
   resetUpdatePayoutProfileFeedback: () => void
   resetConnectOnboardingFeedback: () => void
+  requestPayoutForSlug: (slug: string, amountCents: number | null) => Promise<Payout | null>
+  cancelPayoutRequestForSlug: (slug: string, payoutPublicId: string) => Promise<Payout | null>
+  resetRequestPayoutFeedback: () => void
+  resetCancelPayoutFeedback: () => void
 }
 
 export const usePayoutStore = create<PayoutState>((set, get) => ({
@@ -74,6 +86,12 @@ export const usePayoutStore = create<PayoutState>((set, get) => ({
 
   updatePayoutProfileStatus: 'idle',
   updatePayoutProfileError: null,
+
+  requestPayoutStatus: 'idle',
+  requestPayoutError: null,
+
+  cancelPayoutStatus: 'idle',
+  cancelPayoutError: null,
 
   loadPayoutCountries: async () => {
     const currentStatus = get().payoutCountriesStatus
@@ -201,5 +219,48 @@ export const usePayoutStore = create<PayoutState>((set, get) => ({
   },
   resetConnectOnboardingFeedback: () => {
     set({ connectOnboardingStatus: 'idle', connectOnboardingError: null })
+  },
+
+  requestPayoutForSlug: async (slug, amountCents) => {
+    set({ requestPayoutStatus: 'submitting', requestPayoutError: null })
+    try {
+      const payout = await requestPayout(slug, amountCents)
+      set({ requestPayoutStatus: 'success', requestPayoutError: null })
+      void get().loadPayoutSummary(slug)
+      void get().loadPayoutHistory(slug)
+      return payout
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'We could not submit your payout request. Please try again.'
+      set({ requestPayoutStatus: 'error', requestPayoutError: message })
+      return null
+    }
+  },
+
+  cancelPayoutRequestForSlug: async (slug, payoutPublicId) => {
+    set({ cancelPayoutStatus: 'submitting', cancelPayoutError: null })
+    try {
+      const payout = await cancelPayoutRequest(slug, payoutPublicId)
+      set({ cancelPayoutStatus: 'success', cancelPayoutError: null })
+      void get().loadPayoutSummary(slug)
+      void get().loadPayoutHistory(slug)
+      return payout
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'We could not cancel this payout request. Please try again.'
+      set({ cancelPayoutStatus: 'error', cancelPayoutError: message })
+      return null
+    }
+  },
+
+  resetRequestPayoutFeedback: () => {
+    set({ requestPayoutStatus: 'idle', requestPayoutError: null })
+  },
+  resetCancelPayoutFeedback: () => {
+    set({ cancelPayoutStatus: 'idle', cancelPayoutError: null })
   },
 }))

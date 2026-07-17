@@ -5,6 +5,7 @@ import { LoginPage } from '../../features/auth/pages/LoginPage'
 import { RegisterPage } from '../../features/auth/pages/RegisterPage'
 import { VerifyEmailPage } from '../../features/auth/pages/VerifyEmailPage'
 import { CreateCreatorPage } from '../../features/creators/pages/CreateCreatorPage'
+import { CreatorPayoutsPage } from '../../features/creators/pages/CreatorPayoutsPage'
 import { CreatorSettingsPage } from '../../features/creators/pages/CreatorSettingsPage'
 import { CreatorWorkspacePage } from '../../features/creators/pages/CreatorWorkspacePage'
 import { PaymentStatusPage } from '../../features/creators/pages/PaymentStatusPage'
@@ -43,6 +44,7 @@ export function AppRouter() {
           <Route path="/app/:slug/landing-pages" element={<LandingPagesPage />} />
           <Route path="/app/:slug/landing-pages/:pageId" element={<LandingPageAnalyticsPage />} />
           <Route path="/app/:slug/landing-pages/:pageId/edit" element={<LandingPageEditorPage />} />
+          <Route path="/app/:slug/payouts" element={<CreatorPayoutsPage />} />
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />
           <Route path="/creators/new" element={<CreateCreatorPage />} />
         </Route>

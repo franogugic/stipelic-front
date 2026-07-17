@@ -1,4 +1,5 @@
 import {
+  Banknote,
   FileText,
   LayoutDashboard,
   Loader2,
@@ -16,7 +17,7 @@ import { useAuthStore } from '../../features/auth/model/auth-store'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { useThemeStore } from '../model/theme-store'
 
-type NavSection = 'overview' | 'landing-pages' | 'products' | 'orders' | 'settings'
+type NavSection = 'overview' | 'landing-pages' | 'products' | 'orders' | 'payouts' | 'settings'
 
 type AppShellProps = {
   slug: string
@@ -29,6 +30,7 @@ const navItems: { section: NavSection; label: string; icon: typeof LayoutDashboa
   { section: 'landing-pages',  label: 'Landing Pages',  icon: FileText,        href: (s) => `/app/${s}/landing-pages` },
   { section: 'products',       label: 'Products',       icon: Package,         href: (s) => `/app/${s}/products` },
   { section: 'orders',         label: 'Orders',         icon: ShoppingBag,     href: (s) => `/app/${s}/orders` },
+  { section: 'payouts',        label: 'Payouts',        icon: Banknote,        href: (s) => `/app/${s}/payouts` },
 ]
 
 export function AppShell({ slug, activeSection, children }: AppShellProps) {

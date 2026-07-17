@@ -43,3 +43,20 @@ export function updatePayoutProfile(slug: string, request: UpdatePayoutProfileRe
     },
   ).then(unwrapApiResponse)
 }
+
+export function requestPayout(slug: string, amountCents: number | null) {
+  return apiRequest<ApiResponse<Payout>>(
+    `/api/creators/${encodeURIComponent(slug)}/payouts/request`,
+    {
+      method: 'POST',
+      body: { amountCents },
+    },
+  ).then(unwrapApiResponse)
+}
+
+export function cancelPayoutRequest(slug: string, payoutPublicId: string) {
+  return apiRequest<ApiResponse<Payout>>(
+    `/api/creators/${encodeURIComponent(slug)}/payouts/${encodeURIComponent(payoutPublicId)}`,
+    { method: 'DELETE' },
+  ).then(unwrapApiResponse)
+}
