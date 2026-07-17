@@ -250,13 +250,26 @@ export function LandingPageEditorPage() {
         <div className="flex items-center gap-3 border-b border-amber-500/25 bg-amber-500/10 px-5 py-3 light:border-amber-200 light:bg-amber-50">
           <AlertTriangle size={16} className="shrink-0 text-amber-400 light:text-amber-600" />
           <p className="flex-1 text-sm text-amber-200 light:text-amber-800">{mutateError}</p>
-          <button
-            type="button"
-            className="shrink-0 text-sm font-semibold text-amber-300 underline transition hover:text-amber-100 light:text-amber-700 light:hover:text-amber-900"
-            onClick={() => navigate(`/app/${slug ?? ''}/settings`)}
-          >
-            Complete payout setup
-          </button>
+          {/* The 409 can mean either "payout setup incomplete" (→ Settings) or "subscription
+              payment incomplete" (→ workspace, where the "complete payment" action lives) — the
+              backend error code is the same (CONFLICT) for both, so route off the message text. */}
+          {isSubscriptionPaymentError(mutateError) ? (
+            <button
+              type="button"
+              className="shrink-0 text-sm font-semibold text-amber-300 underline transition hover:text-amber-100 light:text-amber-700 light:hover:text-amber-900"
+              onClick={() => navigate(`/app/${slug ?? ''}`)}
+            >
+              Go to workspace
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="shrink-0 text-sm font-semibold text-amber-300 underline transition hover:text-amber-100 light:text-amber-700 light:hover:text-amber-900"
+              onClick={() => navigate(`/app/${slug ?? ''}/settings`)}
+            >
+              Complete payout setup
+            </button>
+          )}
         </div>
       ) : null}
 
@@ -854,4 +867,8 @@ function SectionIcon({ type, size = 14 }: { type: SectionType; size?: number }) 
 
 function parseJson(json: string): Record<string, unknown> {
   try { return JSON.parse(json) as Record<string, unknown> } catch { return {} }
+}
+
+function isSubscriptionPaymentError(message: string): boolean {
+  return message.toLowerCase().includes('subscription payment')
 }
