@@ -389,8 +389,19 @@ function ActivePayoutPanel({
 /* ─── Helpers ─────────────────────────────────────────────────── */
 
 function formatCurrency(cents: number, currency: string): string {
-  return (cents / 100).toLocaleString(undefined, {
-    style: 'currency',
-    currency: currency.toUpperCase(),
-  })
+  // Defensive: the real fix is the backend always sending currency as a string code (see
+  // CreatorBalanceSummaryDto), but this stays cheap insurance against a future enum-as-number
+  // regression instead of crashing the whole page on `.toUpperCase()`.
+  if (typeof currency !== 'string' || !currency.trim()) {
+    return `${(cents / 100).toFixed(2)} (unknown currency: ${String(currency)})`
+  }
+
+  try {
+    return (cents / 100).toLocaleString(undefined, {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+    })
+  } catch {
+    return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`
+  }
 }
