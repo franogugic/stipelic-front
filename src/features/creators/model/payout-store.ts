@@ -22,14 +22,17 @@ type PayoutState = {
   payoutSummary: PayoutSummary | null
   payoutSummaryStatus: LoadStatus
   payoutSummarySlug: string | null
+  payoutSummaryRevalidating: boolean
 
   payoutHistory: Payout[]
   payoutHistoryStatus: LoadStatus
   payoutHistorySlug: string | null
+  payoutHistoryRevalidating: boolean
 
   payoutProfile: PayoutProfile | null
   payoutProfileStatus: LoadStatus
   payoutProfileSlug: string | null
+  payoutProfileRevalidating: boolean
 
   updatePayoutProfileStatus: SubmitStatus
   updatePayoutProfileError: string | null
@@ -57,14 +60,17 @@ export const usePayoutStore = create<PayoutState>((set, get) => ({
   payoutSummary: null,
   payoutSummaryStatus: 'idle',
   payoutSummarySlug: null,
+  payoutSummaryRevalidating: false,
 
   payoutHistory: [],
   payoutHistoryStatus: 'idle',
   payoutHistorySlug: null,
+  payoutHistoryRevalidating: false,
 
   payoutProfile: null,
   payoutProfileStatus: 'idle',
   payoutProfileSlug: null,
+  payoutProfileRevalidating: false,
 
   updatePayoutProfileStatus: 'idle',
   updatePayoutProfileError: null,
@@ -99,44 +105,72 @@ export const usePayoutStore = create<PayoutState>((set, get) => ({
   },
 
   loadPayoutSummary: async (slug) => {
-    const { payoutSummaryStatus, payoutSummarySlug } = get()
-    if (payoutSummaryStatus === 'loading') return
-    if (payoutSummaryStatus === 'success' && payoutSummarySlug === slug) return
+    const { payoutSummaryStatus, payoutSummarySlug, payoutSummaryRevalidating } = get()
+    if (payoutSummaryStatus === 'loading' || payoutSummaryRevalidating) return
 
-    set({ payoutSummaryStatus: 'loading', payoutSummarySlug: slug })
+    // Stale-while-revalidate: balance changes server-side (purchases, payouts), so every call
+    // refetches — but with data already on screen for this slug we do it silently, without
+    // flipping to 'loading', so the card never flickers back to a spinner.
+    const revalidatingSilently = payoutSummaryStatus === 'success' && payoutSummarySlug === slug
+    if (revalidatingSilently) set({ payoutSummaryRevalidating: true })
+    else set({ payoutSummaryStatus: 'loading', payoutSummarySlug: slug })
+
     try {
       const summary = await getPayoutSummary(slug)
-      set({ payoutSummary: summary, payoutSummaryStatus: 'success' })
+      set({
+        payoutSummary: summary,
+        payoutSummaryStatus: 'success',
+        payoutSummarySlug: slug,
+        payoutSummaryRevalidating: false,
+      })
     } catch {
-      set({ payoutSummaryStatus: 'error' })
+      // A failed silent refresh keeps showing the last known balance.
+      if (revalidatingSilently) set({ payoutSummaryRevalidating: false })
+      else set({ payoutSummaryStatus: 'error', payoutSummaryRevalidating: false })
     }
   },
 
   loadPayoutHistory: async (slug) => {
-    const { payoutHistoryStatus, payoutHistorySlug } = get()
-    if (payoutHistoryStatus === 'loading') return
-    if (payoutHistoryStatus === 'success' && payoutHistorySlug === slug) return
+    const { payoutHistoryStatus, payoutHistorySlug, payoutHistoryRevalidating } = get()
+    if (payoutHistoryStatus === 'loading' || payoutHistoryRevalidating) return
 
-    set({ payoutHistoryStatus: 'loading', payoutHistorySlug: slug })
+    const revalidatingSilently = payoutHistoryStatus === 'success' && payoutHistorySlug === slug
+    if (revalidatingSilently) set({ payoutHistoryRevalidating: true })
+    else set({ payoutHistoryStatus: 'loading', payoutHistorySlug: slug })
+
     try {
       const history = await listPayouts(slug)
-      set({ payoutHistory: history, payoutHistoryStatus: 'success' })
+      set({
+        payoutHistory: history,
+        payoutHistoryStatus: 'success',
+        payoutHistorySlug: slug,
+        payoutHistoryRevalidating: false,
+      })
     } catch {
-      set({ payoutHistoryStatus: 'error' })
+      if (revalidatingSilently) set({ payoutHistoryRevalidating: false })
+      else set({ payoutHistoryStatus: 'error', payoutHistoryRevalidating: false })
     }
   },
 
   loadPayoutProfile: async (slug) => {
-    const { payoutProfileStatus, payoutProfileSlug } = get()
-    if (payoutProfileStatus === 'loading') return
-    if (payoutProfileStatus === 'success' && payoutProfileSlug === slug) return
+    const { payoutProfileStatus, payoutProfileSlug, payoutProfileRevalidating } = get()
+    if (payoutProfileStatus === 'loading' || payoutProfileRevalidating) return
 
-    set({ payoutProfileStatus: 'loading', payoutProfileSlug: slug })
+    const revalidatingSilently = payoutProfileStatus === 'success' && payoutProfileSlug === slug
+    if (revalidatingSilently) set({ payoutProfileRevalidating: true })
+    else set({ payoutProfileStatus: 'loading', payoutProfileSlug: slug })
+
     try {
       const profile = await getPayoutProfile(slug)
-      set({ payoutProfile: profile, payoutProfileStatus: 'success' })
+      set({
+        payoutProfile: profile,
+        payoutProfileStatus: 'success',
+        payoutProfileSlug: slug,
+        payoutProfileRevalidating: false,
+      })
     } catch {
-      set({ payoutProfileStatus: 'error' })
+      if (revalidatingSilently) set({ payoutProfileRevalidating: false })
+      else set({ payoutProfileStatus: 'error', payoutProfileRevalidating: false })
     }
   },
 

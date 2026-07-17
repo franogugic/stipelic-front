@@ -117,10 +117,15 @@ export function CreatorSettingsPage() {
 
   useEffect(() => {
     if (!normalizedSlug || !creator) return
-    if (creator.payoutMode === 'BankTransfer') {
+    if (creator.payoutMode !== 'BankTransfer') return
+    void loadPayoutProfile(normalizedSlug)
+    void loadPayoutHistory(normalizedSlug)
+    const refetchOnFocus = () => {
       void loadPayoutProfile(normalizedSlug)
       void loadPayoutHistory(normalizedSlug)
     }
+    window.addEventListener('focus', refetchOnFocus)
+    return () => window.removeEventListener('focus', refetchOnFocus)
   }, [creator, normalizedSlug, loadPayoutProfile, loadPayoutHistory])
 
   // Stripe Connect return/refresh flow — see CreatorConnectService.StartConnectOnboardingAsync

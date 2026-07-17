@@ -106,7 +106,16 @@ export function CreatorWorkspacePage() {
   }, [slug])
 
   useEffect(() => {
-    if (creator?.payoutMode === 'BankTransfer') void loadPayoutSummary(creator.slug)
+    if (creator?.payoutMode !== 'BankTransfer') return
+    const creatorSlug = creator.slug
+    void loadPayoutSummary(creatorSlug)
+    // Balance moves server-side (purchases, admin payouts) — refresh it whenever the user
+    // comes back to this tab, e.g. after paying in Stripe Checkout or browsing the dashboard.
+    const refetchOnFocus = () => {
+      void loadPayoutSummary(creatorSlug)
+    }
+    window.addEventListener('focus', refetchOnFocus)
+    return () => window.removeEventListener('focus', refetchOnFocus)
   }, [creator?.payoutMode, creator?.slug, loadPayoutSummary])
 
   const startCheckout = async () => {
