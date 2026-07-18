@@ -11,6 +11,23 @@ export type AdminPayout = {
   paidAt: string | null
 }
 
+export type AdminPayoutQueueItem = {
+  publicId: string
+  creatorPublicId: string
+  creatorName: string
+  creatorSlug: string
+  amountCents: number
+  currency: string
+  status: PayoutStatus
+  bankReference: string | null
+  note: string | null
+  createdAt: string
+  paidAt: string | null
+  accountHolderName: string
+  iban: string
+  bankCountryCode: string
+}
+
 export type CreatorBalanceSummary = {
   creatorPublicId: string
   name: string

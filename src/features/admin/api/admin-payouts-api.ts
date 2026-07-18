@@ -1,10 +1,12 @@
 import { apiRequest } from '../../../shared/api/http-client'
 import type {
   AdminPayout,
+  AdminPayoutQueueItem,
   CreatePayoutRequest,
   CreatorBalanceSummary,
   MarkPayoutFailedRequest,
   MarkPayoutPaidRequest,
+  PayoutStatus,
 } from '../model/types'
 
 type ApiResponse<TData> = {
@@ -16,6 +18,17 @@ type ApiResponse<TData> = {
 
 function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
   return response.data
+}
+
+export function getPayoutQueue(status?: PayoutStatus, limit?: number) {
+  const params = new URLSearchParams()
+  if (status !== undefined) params.set('status', status)
+  if (limit !== undefined) params.set('limit', String(limit))
+  const query = params.toString()
+
+  return apiRequest<ApiResponse<AdminPayoutQueueItem[]>>(
+    `/api/admin/payouts${query ? `?${query}` : ''}`,
+  ).then(unwrapApiResponse)
 }
 
 export function getPayoutBalances(minCents?: number, limit?: number) {

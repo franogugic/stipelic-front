@@ -3,21 +3,29 @@ import { ApiError } from '../../../shared/api/http-client'
 import {
   createPayout,
   getPayoutBalances,
+  getPayoutQueue,
   markPayoutFailed,
   markPayoutPaid,
 } from '../api/admin-payouts-api'
 import type {
   AdminPayout,
+  AdminPayoutQueueItem,
   CreatePayoutRequest,
   CreatorBalanceSummary,
   MarkPayoutFailedRequest,
   MarkPayoutPaidRequest,
+  PayoutStatus,
 } from './types'
 
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
 type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error'
 
 type AdminPayoutsState = {
+  queue: AdminPayoutQueueItem[]
+  queueStatus: LoadStatus
+  queueError: string | null
+  queueFilter: PayoutStatus | undefined
+
   balances: CreatorBalanceSummary[]
   balancesStatus: LoadStatus
   balancesError: string | null
@@ -29,6 +37,7 @@ type AdminPayoutsState = {
   actionStatus: SubmitStatus
   actionError: string | null
 
+  loadQueue: (status?: PayoutStatus, limit?: number) => Promise<void>
   loadBalances: (minCents?: number, limit?: number) => Promise<void>
   createPayoutForCreator: (request: CreatePayoutRequest) => Promise<AdminPayout | null>
   markPaid: (creatorPublicId: string, payoutPublicId: string, request: MarkPayoutPaidRequest) => Promise<AdminPayout | null>
@@ -36,7 +45,12 @@ type AdminPayoutsState = {
   resetActionFeedback: () => void
 }
 
-export const useAdminPayoutsStore = create<AdminPayoutsState>((set) => ({
+export const useAdminPayoutsStore = create<AdminPayoutsState>((set, get) => ({
+  queue: [],
+  queueStatus: 'idle',
+  queueError: null,
+  queueFilter: 'Pending',
+
   balances: [],
   balancesStatus: 'idle',
   balancesError: null,
@@ -45,6 +59,18 @@ export const useAdminPayoutsStore = create<AdminPayoutsState>((set) => ({
 
   actionStatus: 'idle',
   actionError: null,
+
+  loadQueue: async (status, limit) => {
+    set({ queueStatus: 'loading', queueError: null, queueFilter: status })
+    try {
+      const queue = await getPayoutQueue(status, limit)
+      set({ queue, queueStatus: 'success' })
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'We could not load the payout queue. Please try again.'
+      set({ queueStatus: 'error', queueError: message })
+    }
+  },
 
   loadBalances: async (minCents, limit) => {
     set({ balancesStatus: 'loading', balancesError: null })
@@ -89,7 +115,9 @@ export const useAdminPayoutsStore = create<AdminPayoutsState>((set) => ({
         actionStatus: 'success',
         actionError: null,
         activePayouts: { ...s.activePayouts, [creatorPublicId]: payout },
+        queue: s.queue.filter((q) => q.publicId !== payoutPublicId),
       }))
+      void get().loadQueue(get().queueFilter)
       return payout
     } catch (error) {
       const message =
@@ -112,7 +140,9 @@ export const useAdminPayoutsStore = create<AdminPayoutsState>((set) => ({
         balances: s.balances.map((b) =>
           b.creatorPublicId === creatorPublicId ? { ...b, balanceCents: b.balanceCents + payout.amountCents } : b,
         ),
+        queue: s.queue.filter((q) => q.publicId !== payoutPublicId),
       }))
+      void get().loadQueue(get().queueFilter)
       return payout
     } catch (error) {
       const message =
