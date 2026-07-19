@@ -7,7 +7,7 @@ import { useLandingPageStore } from '../../landing-pages/model/landing-page-stor
 import { useProductStore } from '../../products/model/product-store'
 import { CampaignFormModal } from '../components/CampaignFormModal'
 import { useCampaignStore } from '../model/campaign-store'
-import type { CampaignListItem, CampaignStatus } from '../model/types'
+import type { CampaignListItem } from '../model/types'
 
 export function EmailsPage() {
   const navigate = useNavigate()
@@ -153,22 +153,20 @@ export function EmailsPage() {
               </div>
             ) : (
               <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-                <div className="grid grid-cols-[1fr_160px_100px_110px_160px_100px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
+                <div className="grid grid-cols-[1fr_160px_160px_160px_100px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
                   <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Subject</p>
                   <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Audience</p>
                   <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Progress</p>
                   <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Date</p>
                   <span />
                 </div>
                 <ul className="divide-y divide-white/10 light:divide-neutral-100">
                   {campaigns.map((campaign) => (
                     <li key={campaign.publicId} className="group">
-                      <div className="grid grid-cols-[1fr_160px_100px_110px_160px_100px] items-center px-5 py-4">
+                      <div className="grid grid-cols-[1fr_160px_160px_160px_100px] items-center px-5 py-4">
                         <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{campaign.subject}</p>
                         <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{targetName(campaign)}</p>
-                        <StatusBadge status={campaign.status} />
-                        <ProgressCell campaign={campaign} />
+                        <StatusCell campaign={campaign} />
                         <p className="text-xs text-white/50 light:text-neutral-500">
                           {new Date(campaign.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                         </p>
@@ -203,14 +201,24 @@ export function EmailsPage() {
       </div>
 
       {isEditorOpen && slug ? (
-        <CampaignFormModal
-          slug={slug}
-          campaign={editingCampaignId ? editingCampaignDetail ?? undefined : undefined}
-          landingPages={pages}
-          products={products}
-          creatorSettings={creatorSettings}
-          onClose={closeEditor}
-        />
+        editingCampaignId && editingCampaignDetail?.publicId !== editingCampaignId ? (
+          // Loading the existing draft's detail before mounting the form — CampaignFormModal only reads
+          // its `campaign` prop once (on mount) to seed its local state, so mounting it early with a
+          // stale/undefined value would silently treat "edit" as "create".
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <Loader2 className="animate-spin text-white" size={24} />
+          </div>
+        ) : (
+          <CampaignFormModal
+            key={editingCampaignId ?? 'new'}
+            slug={slug}
+            campaign={editingCampaignId ? editingCampaignDetail ?? undefined : undefined}
+            landingPages={pages}
+            products={products}
+            creatorSettings={creatorSettings}
+            onClose={closeEditor}
+          />
+        )
       ) : null}
 
       {deletingCampaign ? (
@@ -227,33 +235,36 @@ export function EmailsPage() {
   )
 }
 
-function ProgressCell({ campaign }: { campaign: CampaignListItem }) {
+function StatusCell({ campaign }: { campaign: CampaignListItem }) {
   if (campaign.status === 'Draft') {
-    return <p className="text-xs text-white/30 light:text-neutral-400">—</p>
-  }
-  return (
-    <p className="font-data text-xs font-medium tabular-nums text-white/70 light:text-neutral-600">
-      Sent {campaign.sentCount}/{campaign.recipientCount}
-      {campaign.failedCount > 0 ? (
-        <span className="ml-1 text-red-400 light:text-red-600">· {campaign.failedCount} failed</span>
-      ) : null}
-    </p>
-  )
-}
-
-function StatusBadge({ status }: { status: CampaignStatus }) {
-  if (status === 'Queued')
     return (
-      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-300 light:bg-emerald-50 light:text-emerald-700">
-        <span className="size-1.5 rounded-full bg-emerald-500" />
-        Queued
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
+        <span className="size-1.5 rounded-full bg-white/40 light:bg-neutral-400" />
+        Draft
       </span>
     )
+  }
+
+  const allSent = campaign.sentCount + campaign.failedCount >= campaign.recipientCount
+  const tone = campaign.failedCount > 0
+    ? 'text-amber-300 light:text-amber-700'
+    : allSent
+      ? 'text-emerald-300 light:text-emerald-700'
+      : 'text-white/70 light:text-neutral-600'
+  const dot = campaign.failedCount > 0
+    ? 'bg-amber-400'
+    : allSent
+      ? 'bg-emerald-500'
+      : 'bg-white/40 light:bg-neutral-400'
+
   return (
-    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
-      <span className="size-1.5 rounded-full bg-white/40 light:bg-neutral-400" />
-      Draft
-    </span>
+    <p className={`font-data flex items-center gap-1.5 text-xs font-semibold tabular-nums ${tone}`}>
+      <span className={`size-1.5 shrink-0 rounded-full ${dot}`} />
+      Sent {campaign.sentCount}/{campaign.recipientCount}
+      {campaign.failedCount > 0 ? (
+        <span className="text-red-400 light:text-red-600">· {campaign.failedCount} failed</span>
+      ) : null}
+    </p>
   )
 }
 
