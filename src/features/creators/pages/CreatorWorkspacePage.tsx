@@ -82,6 +82,7 @@ export function CreatorWorkspacePage() {
     homeSummary && homeSummary.paidOrderCount > 0
       ? Math.round(homeSummary.totalPaidAmountCents / homeSummary.paidOrderCount)
       : null
+  const emailsSentThisMonth = homeSummary?.emailsSentThisMonth ?? 0
 
   // Onboarding done = has product + has landing page + status active
   const onboardingDone =
@@ -210,7 +211,12 @@ export function CreatorWorkspacePage() {
               <StatCard
                 icon={Mail}
                 label="Emails this month"
-                value={maxEmailsPerMonth != null ? `0 / ${maxEmailsPerMonth.toLocaleString()}` : '—'}
+                value={
+                  maxEmailsPerMonth != null
+                    ? `${emailsSentThisMonth.toLocaleString()} / ${maxEmailsPerMonth < 0 ? '∞' : maxEmailsPerMonth.toLocaleString()}`
+                    : '—'
+                }
+                onClick={() => navigate(`/app/${creator.slug}/emails`)}
                 delay={160}
               />
             </div>
@@ -304,7 +310,11 @@ export function CreatorWorkspacePage() {
                           ? maxEmailsPerMonth < 0 ? 'Unlimited' : maxEmailsPerMonth.toLocaleString()
                           : '—'
                       }
-                      progress={maxEmailsPerMonth != null && maxEmailsPerMonth > 0 ? 0 : null}
+                      progress={
+                        maxEmailsPerMonth != null && maxEmailsPerMonth > 0
+                          ? emailsSentThisMonth / maxEmailsPerMonth
+                          : null
+                      }
                       icon={Mail}
                     />
                   </div>

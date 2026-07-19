@@ -231,6 +231,7 @@ function CtaButton({
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [checkoutErrorMessage, setCheckoutErrorMessage] = useState<string | null>(null)
+  const [captureErrorMessage, setCaptureErrorMessage] = useState<string | null>(null)
 
   if (pageType === 'LeadGen') {
     if (status === 'success') {
@@ -247,9 +248,19 @@ function CtaButton({
           onSubmit={(e) => {
             e.preventDefault()
             setStatus('submitting')
+            setCaptureErrorMessage(null)
             captureEmail(creatorSlug, pageSlug, email)
               .then(() => setStatus('success'))
-              .catch(() => setStatus('error'))
+              .catch((err) => {
+                // Never surface the creator's actual reason (contact-list plan limit) to the visitor —
+                // same principle as the checkout 409 below.
+                setCaptureErrorMessage(
+                  err instanceof ApiError && err.status === 409
+                    ? 'Sign-ups are temporarily closed.'
+                    : 'Something went wrong. Please try again.',
+                )
+                setStatus('error')
+              })
           }}
         >
           <input
@@ -271,7 +282,9 @@ function CtaButton({
           </button>
         </form>
         {status === 'error' ? (
-          <p className="text-center text-sm text-red-500">Something went wrong. Please try again.</p>
+          <p className="text-center text-sm text-red-500">
+            {captureErrorMessage ?? 'Something went wrong. Please try again.'}
+          </p>
         ) : null}
       </div>
     )

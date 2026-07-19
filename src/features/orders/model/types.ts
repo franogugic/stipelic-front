@@ -30,4 +30,6 @@ export interface HomeSummary {
   thisMonthRevenueCents: number
   topProduct: { name: string; totalCents: number } | null
   revenueTrend: number[]
+  emailsSentThisMonth: number
+  emailsMonthlyLimit: number
 }
