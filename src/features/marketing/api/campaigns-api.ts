@@ -4,7 +4,7 @@ import type {
   CampaignAudienceType,
   CampaignDetail,
   CampaignListItem,
-  SaveCampaignRequest,
+  SendCampaignRequest,
 } from '../model/types'
 
 type ApiResponse<TData> = {
@@ -41,30 +41,9 @@ export function getCampaign(slug: string, campaignPublicId: string) {
   ).then(unwrapApiResponse)
 }
 
-export function createCampaign(slug: string, request: SaveCampaignRequest) {
+export function sendCampaign(slug: string, request: SendCampaignRequest) {
   return apiRequest<ApiResponse<CampaignDetail>>(
-    `/api/creators/${encodeURIComponent(slug)}/campaigns`,
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/send`,
     { method: 'POST', body: request },
-  ).then(unwrapApiResponse)
-}
-
-export function updateCampaign(slug: string, campaignPublicId: string, request: SaveCampaignRequest) {
-  return apiRequest<ApiResponse<CampaignDetail>>(
-    `/api/creators/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignPublicId)}`,
-    { method: 'PUT', body: request },
-  ).then(unwrapApiResponse)
-}
-
-export function deleteCampaign(slug: string, campaignPublicId: string) {
-  return apiRequest<unknown>(
-    `/api/creators/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignPublicId)}`,
-    { method: 'DELETE' },
-  ).then(() => undefined)
-}
-
-export function sendCampaign(slug: string, campaignPublicId: string) {
-  return apiRequest<ApiResponse<CampaignDetail>>(
-    `/api/creators/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignPublicId)}/send`,
-    { method: 'POST' },
   ).then(unwrapApiResponse)
 }

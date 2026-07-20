@@ -1,20 +1,17 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
 import {
-  createCampaign,
-  deleteCampaign,
   getAudiencePreview,
   getCampaign,
   listCampaigns,
   sendCampaign,
-  updateCampaign,
 } from '../api/campaigns-api'
 import type {
   AudiencePreview,
   CampaignAudienceType,
   CampaignDetail,
   CampaignListItem,
-  SaveCampaignRequest,
+  SendCampaignRequest,
 } from './types'
 
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -32,12 +29,6 @@ type CampaignState = {
   audiencePreview: AudiencePreview | null
   audiencePreviewStatus: LoadStatus
 
-  saveCampaignStatus: SubmitStatus
-  saveCampaignError: string | null
-
-  deleteCampaignStatus: SubmitStatus
-  deleteCampaignError: string | null
-
   sendCampaignStatus: SubmitStatus
   sendCampaignError: string | null
 
@@ -50,15 +41,7 @@ type CampaignState = {
     targetPublicId: string,
   ) => Promise<void>
   clearAudiencePreview: () => void
-  saveCampaign: (
-    slug: string,
-    campaignPublicId: string | null,
-    request: SaveCampaignRequest,
-  ) => Promise<CampaignDetail | null>
-  resetSaveCampaignFeedback: () => void
-  deleteCampaignForSlug: (slug: string, campaignPublicId: string) => Promise<boolean>
-  resetDeleteCampaignFeedback: () => void
-  sendCampaignForSlug: (slug: string, campaignPublicId: string) => Promise<CampaignDetail | null>
+  sendCampaignForSlug: (slug: string, request: SendCampaignRequest) => Promise<CampaignDetail | null>
   resetSendCampaignFeedback: () => void
 }
 
@@ -73,12 +56,6 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   audiencePreview: null,
   audiencePreviewStatus: 'idle',
-
-  saveCampaignStatus: 'idle',
-  saveCampaignError: null,
-
-  deleteCampaignStatus: 'idle',
-  deleteCampaignError: null,
 
   sendCampaignStatus: 'idle',
   sendCampaignError: null,
@@ -133,50 +110,10 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     set({ audiencePreview: null, audiencePreviewStatus: 'idle' })
   },
 
-  saveCampaign: async (slug, campaignPublicId, request) => {
-    set({ saveCampaignStatus: 'submitting', saveCampaignError: null })
-    try {
-      const campaign = campaignPublicId
-        ? await updateCampaign(slug, campaignPublicId, request)
-        : await createCampaign(slug, request)
-      set({ saveCampaignStatus: 'success', saveCampaignError: null, currentCampaign: campaign })
-      void get().loadCampaigns(slug)
-      return campaign
-    } catch (error) {
-      const message =
-        error instanceof ApiError ? error.message : 'We could not save this campaign. Please try again.'
-      set({ saveCampaignStatus: 'error', saveCampaignError: message })
-      return null
-    }
-  },
-
-  resetSaveCampaignFeedback: () => {
-    set({ saveCampaignStatus: 'idle', saveCampaignError: null })
-  },
-
-  deleteCampaignForSlug: async (slug, campaignPublicId) => {
-    set({ deleteCampaignStatus: 'submitting', deleteCampaignError: null })
-    try {
-      await deleteCampaign(slug, campaignPublicId)
-      set({ deleteCampaignStatus: 'success', deleteCampaignError: null })
-      void get().loadCampaigns(slug)
-      return true
-    } catch (error) {
-      const message =
-        error instanceof ApiError ? error.message : 'We could not delete this campaign. Please try again.'
-      set({ deleteCampaignStatus: 'error', deleteCampaignError: message })
-      return false
-    }
-  },
-
-  resetDeleteCampaignFeedback: () => {
-    set({ deleteCampaignStatus: 'idle', deleteCampaignError: null })
-  },
-
-  sendCampaignForSlug: async (slug, campaignPublicId) => {
+  sendCampaignForSlug: async (slug, request) => {
     set({ sendCampaignStatus: 'submitting', sendCampaignError: null })
     try {
-      const campaign = await sendCampaign(slug, campaignPublicId)
+      const campaign = await sendCampaign(slug, request)
       set({ sendCampaignStatus: 'success', sendCampaignError: null, currentCampaign: campaign })
       void get().loadCampaigns(slug)
       return campaign

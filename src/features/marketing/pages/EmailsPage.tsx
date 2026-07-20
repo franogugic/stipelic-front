@@ -1,13 +1,17 @@
-import { AlertTriangle, Loader2, Mail, Pencil, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, Send } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
 import { useProductStore } from '../../products/model/product-store'
-import { CampaignFormModal } from '../components/CampaignFormModal'
+import { SendWizardModal } from '../components/SendWizardModal'
+import { TemplateEditorModal } from '../components/TemplateEditorModal'
 import { useCampaignStore } from '../model/campaign-store'
-import type { CampaignListItem } from '../model/types'
+import { useTemplateStore } from '../model/template-store'
+import type { CampaignListItem, EmailTemplate } from '../model/types'
+
+type EmailsTab = 'send' | 'templates' | 'history'
 
 export function EmailsPage() {
   const navigate = useNavigate()
@@ -27,20 +31,15 @@ export function EmailsPage() {
   const products = useProductStore((s) => s.products)
   const loadProducts = useProductStore((s) => s.loadProducts)
 
+  const templates = useTemplateStore((s) => s.templates)
+  const templatesStatus = useTemplateStore((s) => s.templatesStatus)
+  const loadTemplates = useTemplateStore((s) => s.loadTemplates)
+
   const campaigns = useCampaignStore((s) => s.campaigns)
   const campaignsStatus = useCampaignStore((s) => s.campaignsStatus)
   const loadCampaigns = useCampaignStore((s) => s.loadCampaigns)
-  const deleteCampaignForSlug = useCampaignStore((s) => s.deleteCampaignForSlug)
-  const deleteCampaignStatus = useCampaignStore((s) => s.deleteCampaignStatus)
-  const resetDeleteCampaignFeedback = useCampaignStore((s) => s.resetDeleteCampaignFeedback)
-  const clearCurrentCampaign = useCampaignStore((s) => s.clearCurrentCampaign)
 
-  const [isEditorOpen, setIsEditorOpen] = useState(false)
-  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null)
-  const [deletingCampaign, setDeletingCampaign] = useState<CampaignListItem | null>(null)
-
-  const editingCampaignDetail = useCampaignStore((s) => s.currentCampaign)
-  const loadCampaign = useCampaignStore((s) => s.loadCampaign)
+  const [tab, setTab] = useState<EmailsTab>('send')
 
   const isLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
@@ -53,38 +52,15 @@ export function EmailsPage() {
     void loadCreatorSettings(normalizedSlug)
     void loadPages(normalizedSlug)
     void loadProducts(normalizedSlug)
+    void loadTemplates(normalizedSlug)
     void loadCampaigns(normalizedSlug)
-    const refetchOnFocus = () => void loadCampaigns(normalizedSlug)
+    const refetchOnFocus = () => {
+      void loadTemplates(normalizedSlug)
+      void loadCampaigns(normalizedSlug)
+    }
     window.addEventListener('focus', refetchOnFocus)
     return () => window.removeEventListener('focus', refetchOnFocus)
-  }, [normalizedSlug, loadCreatorSettings, loadPages, loadProducts, loadCampaigns])
-
-  const openCreate = () => {
-    clearCurrentCampaign()
-    setEditingCampaignId(null)
-    setIsEditorOpen(true)
-  }
-
-  const openEdit = (campaignPublicId: string) => {
-    void loadCampaign(normalizedSlug, campaignPublicId)
-    setEditingCampaignId(campaignPublicId)
-    setIsEditorOpen(true)
-  }
-
-  const closeEditor = () => {
-    setIsEditorOpen(false)
-    setEditingCampaignId(null)
-    clearCurrentCampaign()
-  }
-
-  const targetName = useMemo(() => {
-    const lpByPublicId = new Map(pages.map((p) => [p.publicId, p.title]))
-    const productByPublicId = new Map(products.map((p) => [p.publicId, p.name]))
-    return (campaign: CampaignListItem) =>
-      campaign.audienceType === 'LandingPage'
-        ? lpByPublicId.get(campaign.targetPublicId) ?? '—'
-        : productByPublicId.get(campaign.targetPublicId) ?? '—'
-  }, [pages, products])
+  }, [normalizedSlug, loadCreatorSettings, loadPages, loadProducts, loadTemplates, loadCampaigns])
 
   if (!slug) return null
 
@@ -109,142 +85,375 @@ export function EmailsPage() {
           </div>
         ) : (
           <div className="grid gap-8">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">Emails</h1>
-                <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
-                  Send campaign emails to your captured contacts.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
-                onClick={openCreate}
-              >
-                <Plus size={15} />
-                New campaign
-              </button>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">Emails</h1>
+              <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
+                Build reusable templates and send them to your captured contacts.
+              </p>
             </div>
 
-            {campaignsStatus === 'loading' ? (
-              <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-                <Loader2 className="animate-spin" size={16} />
-                Loading campaigns…
-              </div>
-            ) : campaigns.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-20 text-center light:border-neutral-300 light:bg-white">
-                <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
-                  <Mail size={24} strokeWidth={1.5} />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-white light:text-neutral-950">No campaigns yet</p>
-                  <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
-                    Send an update to the people who signed up on your landing pages.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
-                  onClick={openCreate}
-                >
-                  <Plus size={15} />
-                  New campaign
-                </button>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-                <div className="grid grid-cols-[1fr_160px_160px_160px_100px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Subject</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Audience</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Date</p>
-                  <span />
-                </div>
-                <ul className="divide-y divide-white/10 light:divide-neutral-100">
-                  {campaigns.map((campaign) => (
-                    <li key={campaign.publicId} className="group">
-                      <div className="grid grid-cols-[1fr_160px_160px_160px_100px] items-center px-5 py-4">
-                        <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{campaign.subject}</p>
-                        <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{targetName(campaign)}</p>
-                        <StatusCell campaign={campaign} />
-                        <p className="text-xs text-white/50 light:text-neutral-500">
-                          {new Date(campaign.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                        </p>
-                        <div className="flex items-center justify-end gap-1.5 opacity-0 transition group-hover:opacity-100">
-                          <button
-                            type="button"
-                            title={campaign.status === 'Draft' ? 'Edit' : 'View'}
-                            className="inline-flex size-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
-                            onClick={() => openEdit(campaign.publicId)}
-                          >
-                            <Pencil size={12} />
-                          </button>
-                          {campaign.status === 'Draft' ? (
-                            <button
-                              type="button"
-                              title="Delete"
-                              className="inline-flex size-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/60 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:border-neutral-200 light:bg-white light:text-neutral-500 light:hover:border-red-200 light:hover:bg-red-50 light:hover:text-red-600"
-                              onClick={() => setDeletingCampaign(campaign)}
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <div className="flex gap-1.5 border-b border-white/10 light:border-neutral-200">
+              <TabButton icon={Send} label="Send" active={tab === 'send'} onClick={() => setTab('send')} />
+              <TabButton icon={FileText} label="Templates" active={tab === 'templates'} onClick={() => setTab('templates')} />
+              <TabButton icon={History} label="History" active={tab === 'history'} onClick={() => setTab('history')} />
+            </div>
+
+            {tab === 'send' ? (
+              <SendTab
+                slug={normalizedSlug}
+                templates={templates}
+                templatesStatus={templatesStatus}
+                pages={pages}
+                products={products}
+                creatorSettings={creatorSettings}
+                onGoToTemplates={() => setTab('templates')}
+                onSent={() => setTab('history')}
+              />
+            ) : null}
+
+            {tab === 'templates' ? (
+              <TemplatesTab
+                slug={normalizedSlug}
+                templates={templates}
+                templatesStatus={templatesStatus}
+                creatorSettings={creatorSettings}
+              />
+            ) : null}
+
+            {tab === 'history' ? (
+              <HistoryTab
+                campaigns={campaigns}
+                campaignsStatus={campaignsStatus}
+                pages={pages}
+                products={products}
+              />
+            ) : null}
           </div>
         )}
       </div>
+    </AppShell>
+  )
+}
 
-      {isEditorOpen && slug ? (
-        editingCampaignId && editingCampaignDetail?.publicId !== editingCampaignId ? (
-          // Loading the existing draft's detail before mounting the form — CampaignFormModal only reads
-          // its `campaign` prop once (on mount) to seed its local state, so mounting it early with a
-          // stale/undefined value would silently treat "edit" as "create".
+function TabButton({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: typeof Send
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-semibold transition ${
+        active
+          ? 'border-accent text-white light:text-neutral-950'
+          : 'border-transparent text-white/40 hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-700'
+      }`}
+    >
+      <Icon size={14} />
+      {label}
+    </button>
+  )
+}
+
+function SendTab({
+  slug,
+  templates,
+  templatesStatus,
+  pages,
+  products,
+  creatorSettings,
+  onGoToTemplates,
+  onSent,
+}: {
+  slug: string
+  templates: EmailTemplate[]
+  templatesStatus: 'idle' | 'loading' | 'success' | 'error'
+  pages: ReturnType<typeof useLandingPageStore.getState>['pages']
+  products: ReturnType<typeof useProductStore.getState>['products']
+  creatorSettings: ReturnType<typeof useCreatorStore.getState>['creatorSettings']
+  onGoToTemplates: () => void
+  onSent: () => void
+}) {
+  const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const activeTemplates = templates.filter((t) => t.status === 'Active')
+  const publishedPages = pages.filter((p) => p.status === 'Published')
+  const activeProducts = products.filter((p) => p.status === 'Active')
+  const hasAudience = publishedPages.length > 0 || activeProducts.length > 0
+
+  if (templatesStatus === 'loading') {
+    return (
+      <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
+        <Loader2 className="animate-spin" size={16} />
+        Loading templates…
+      </div>
+    )
+  }
+
+  if (activeTemplates.length === 0) {
+    return (
+      <EmptyState
+        icon={FileText}
+        title="No templates yet"
+        description="Create a reusable template first — then you can send it to any audience."
+        actionLabel="Create your first template"
+        onAction={onGoToTemplates}
+      />
+    )
+  }
+
+  if (!hasAudience) {
+    return (
+      <EmptyState
+        icon={Mail}
+        title="No audience yet"
+        description="Publish a landing page and capture some contacts before you can send an email."
+      />
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-20 text-center light:border-neutral-300 light:bg-white">
+      <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
+        <Send size={24} strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-semibold text-white light:text-neutral-950">Ready to send</p>
+        <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
+          Pick a template and an audience, then send it.
+        </p>
+      </div>
+      <button
+        type="button"
+        className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
+        onClick={() => setIsWizardOpen(true)}
+      >
+        <Send size={15} />
+        Send email
+      </button>
+
+      {isWizardOpen ? (
+        <SendWizardModal
+          slug={slug}
+          templates={templates}
+          landingPages={pages}
+          products={products}
+          creatorSettings={creatorSettings}
+          onClose={() => setIsWizardOpen(false)}
+          onSent={() => { setIsWizardOpen(false); onSent() }}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function TemplatesTab({
+  slug,
+  templates,
+  templatesStatus,
+  creatorSettings,
+}: {
+  slug: string
+  templates: EmailTemplate[]
+  templatesStatus: 'idle' | 'loading' | 'success' | 'error'
+  creatorSettings: ReturnType<typeof useCreatorStore.getState>['creatorSettings']
+}) {
+  const [isEditorOpen, setIsEditorOpen] = useState(false)
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
+
+  const currentTemplate = useTemplateStore((s) => s.currentTemplate)
+  const loadTemplate = useTemplateStore((s) => s.loadTemplate)
+  const clearCurrentTemplate = useTemplateStore((s) => s.clearCurrentTemplate)
+
+  const openCreate = () => {
+    clearCurrentTemplate()
+    setEditingTemplateId(null)
+    setIsEditorOpen(true)
+  }
+
+  const openEdit = (templatePublicId: string) => {
+    void loadTemplate(slug, templatePublicId)
+    setEditingTemplateId(templatePublicId)
+    setIsEditorOpen(true)
+  }
+
+  const closeEditor = () => {
+    setIsEditorOpen(false)
+    setEditingTemplateId(null)
+    clearCurrentTemplate()
+  }
+
+  return (
+    <div className="grid gap-6">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
+          onClick={openCreate}
+        >
+          <Plus size={15} />
+          New template
+        </button>
+      </div>
+
+      {templatesStatus === 'loading' ? (
+        <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
+          <Loader2 className="animate-spin" size={16} />
+          Loading templates…
+        </div>
+      ) : templates.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title="No templates yet"
+          description="Templates are reusable — write the content once, then send it to any audience whenever you like."
+          actionLabel="Create your first template"
+          onAction={openCreate}
+        />
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+          <div className="grid grid-cols-[1fr_1fr_120px_160px_60px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Name</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Subject</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Last modified</p>
+            <span />
+          </div>
+          <ul className="divide-y divide-white/10 light:divide-neutral-100">
+            {templates.map((template) => (
+              <li key={template.publicId} className="group">
+                <div className="grid grid-cols-[1fr_1fr_120px_160px_60px] items-center px-5 py-4">
+                  <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{template.name}</p>
+                  <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{template.subject}</p>
+                  <TemplateStatusBadge status={template.status} />
+                  <p className="text-xs text-white/50 light:text-neutral-500">
+                    {new Date(template.updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </p>
+                  <div className="flex items-center justify-end opacity-0 transition group-hover:opacity-100">
+                    <button
+                      type="button"
+                      title="Edit"
+                      className="inline-flex size-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
+                      onClick={() => openEdit(template.publicId)}
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {isEditorOpen ? (
+        editingTemplateId && currentTemplate?.publicId !== editingTemplateId ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <Loader2 className="animate-spin text-white" size={24} />
           </div>
         ) : (
-          <CampaignFormModal
-            key={editingCampaignId ?? 'new'}
+          <TemplateEditorModal
+            key={editingTemplateId ?? 'new'}
             slug={slug}
-            campaign={editingCampaignId ? editingCampaignDetail ?? undefined : undefined}
-            landingPages={pages}
-            products={products}
+            template={editingTemplateId ? currentTemplate ?? undefined : undefined}
             creatorSettings={creatorSettings}
             onClose={closeEditor}
           />
         )
       ) : null}
-
-      {deletingCampaign ? (
-        <DeleteCampaignDialog
-          slug={slug}
-          campaign={deletingCampaign}
-          status={deleteCampaignStatus}
-          onDelete={deleteCampaignForSlug}
-          onResetFeedback={resetDeleteCampaignFeedback}
-          onClose={() => setDeletingCampaign(null)}
-        />
-      ) : null}
-    </AppShell>
+    </div>
   )
 }
 
-function StatusCell({ campaign }: { campaign: CampaignListItem }) {
-  if (campaign.status === 'Draft') {
+function TemplateStatusBadge({ status }: { status: EmailTemplate['status'] }) {
+  if (status === 'Archived') {
     return (
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
-        <span className="size-1.5 rounded-full bg-white/40 light:bg-neutral-400" />
-        Draft
+        <Archive size={10} />
+        Archived
       </span>
     )
   }
 
+  return (
+    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-300 light:bg-emerald-50 light:text-emerald-700">
+      <span className="size-1.5 rounded-full bg-emerald-400" />
+      Active
+    </span>
+  )
+}
+
+function HistoryTab({
+  campaigns,
+  campaignsStatus,
+  pages,
+  products,
+}: {
+  campaigns: CampaignListItem[]
+  campaignsStatus: 'idle' | 'loading' | 'success' | 'error'
+  pages: ReturnType<typeof useLandingPageStore.getState>['pages']
+  products: ReturnType<typeof useProductStore.getState>['products']
+}) {
+  const targetName = useMemo(() => {
+    const lpByPublicId = new Map(pages.map((p) => [p.publicId, p.title]))
+    const productByPublicId = new Map(products.map((p) => [p.publicId, p.name]))
+    return (campaign: CampaignListItem) =>
+      campaign.audienceType === 'LandingPage'
+        ? lpByPublicId.get(campaign.targetPublicId) ?? '—'
+        : productByPublicId.get(campaign.targetPublicId) ?? '—'
+  }, [pages, products])
+
+  if (campaignsStatus === 'loading') {
+    return (
+      <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
+        <Loader2 className="animate-spin" size={16} />
+        Loading sends…
+      </div>
+    )
+  }
+
+  if (campaigns.length === 0) {
+    return (
+      <EmptyState
+        icon={History}
+        title="No sends yet"
+        description="Once you send an email, it will show up here with its delivery progress."
+      />
+    )
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+      <div className="grid grid-cols-[1fr_160px_160px_160px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Subject</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Audience</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Progress</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Date</p>
+      </div>
+      <ul className="divide-y divide-white/10 light:divide-neutral-100">
+        {campaigns.map((campaign) => (
+          <li key={campaign.publicId}>
+            <div className="grid grid-cols-[1fr_160px_160px_160px] items-center px-5 py-4">
+              <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{campaign.subject}</p>
+              <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{targetName(campaign)}</p>
+              <ProgressCell campaign={campaign} />
+              <p className="text-xs text-white/50 light:text-neutral-500">
+                {new Date(campaign.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function ProgressCell({ campaign }: { campaign: CampaignListItem }) {
   const allSent = campaign.sentCount + campaign.failedCount >= campaign.recipientCount
   const tone = campaign.failedCount > 0
     ? 'text-amber-300 light:text-amber-700'
@@ -268,46 +477,38 @@ function StatusCell({ campaign }: { campaign: CampaignListItem }) {
   )
 }
 
-function DeleteCampaignDialog({
-  slug,
-  campaign,
-  status,
-  onDelete,
-  onResetFeedback,
-  onClose,
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
 }: {
-  slug: string
-  campaign: CampaignListItem
-  status: 'idle' | 'submitting' | 'success' | 'error'
-  onDelete: (slug: string, campaignPublicId: string) => Promise<boolean>
-  onResetFeedback: () => void
-  onClose: () => void
+  icon: typeof AlertTriangle
+  title: string
+  description: string
+  actionLabel?: string
+  onAction?: () => void
 }) {
-  const isSubmitting = status === 'submitting'
-
-  const handleConfirm = async () => {
-    const ok = await onDelete(slug, campaign.publicId)
-    if (ok) { onResetFeedback(); onClose() }
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl light:border-neutral-200 light:bg-white">
-        <div className="grid size-11 place-items-center rounded-xl bg-amber-500/15 light:bg-amber-50">
-          <AlertTriangle className="text-amber-400 light:text-amber-600" size={22} />
-        </div>
-        <h2 className="mt-4 text-lg font-semibold text-white light:text-neutral-950">Delete this draft?</h2>
-        <p className="mt-2 text-sm leading-6 text-white/50 light:text-neutral-500">
-          <span className="font-medium text-white/80 light:text-neutral-800">{campaign.subject}</span> will be permanently deleted.
-        </p>
-        <div className="mt-6 flex gap-3">
-          <button type="button" className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-          <button type="button" disabled={isSubmitting} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 text-sm font-semibold text-white transition hover:bg-red-400 disabled:opacity-40" onClick={() => void handleConfirm()}>
-            {isSubmitting ? <Loader2 className="animate-spin" size={15} /> : null}
-            Delete
-          </button>
-        </div>
+    <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-20 text-center light:border-neutral-300 light:bg-white">
+      <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
+        <Icon size={24} strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-semibold text-white light:text-neutral-950">{title}</p>
+        <p className="mt-1 max-w-sm text-sm text-white/40 light:text-neutral-400">{description}</p>
       </div>
+      {actionLabel && onAction ? (
+        <button
+          type="button"
+          className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
+          onClick={onAction}
+        >
+          <Plus size={15} />
+          {actionLabel}
+        </button>
+      ) : null}
     </div>
   )
 }

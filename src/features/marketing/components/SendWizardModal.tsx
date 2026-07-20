@@ -1,0 +1,333 @@
+import { CheckCircle2, ChevronLeft, Loader2, Send, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import type { LandingPage } from '../../landing-pages/model/types'
+import type { Product } from '../../products/model/types'
+import type { CreatorSettings } from '../../creators/model/types'
+import { useCampaignStore } from '../model/campaign-store'
+import type { CampaignAudienceType, EmailTemplate } from '../model/types'
+import { MailPreview } from './TemplateEditorModal'
+
+const AUDIENCE_PREVIEW_DEBOUNCE_MS = 400
+
+export function SendWizardModal({
+  slug,
+  templates,
+  landingPages,
+  products,
+  creatorSettings,
+  onClose,
+  onSent,
+}: {
+  slug: string
+  templates: EmailTemplate[]
+  landingPages: LandingPage[]
+  products: Product[]
+  creatorSettings: CreatorSettings | null
+  onClose: () => void
+  onSent: () => void
+}) {
+  const activeTemplates = useMemo(() => templates.filter((t) => t.status === 'Active'), [templates])
+  const publishedLandingPages = useMemo(() => landingPages.filter((p) => p.status === 'Published'), [landingPages])
+  const activeProducts = useMemo(() => products.filter((p) => p.status === 'Active'), [products])
+
+  const [step, setStep] = useState<1 | 2>(1)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(activeTemplates[0]?.publicId ?? null)
+  const [audienceType, setAudienceType] = useState<CampaignAudienceType>('LandingPage')
+  const [targetPublicId, setTargetPublicId] = useState(publishedLandingPages[0]?.publicId ?? '')
+  const [isConfirming, setIsConfirming] = useState(false)
+
+  const selectedTemplate = activeTemplates.find((t) => t.publicId === selectedTemplateId) ?? null
+
+  const audiencePreview = useCampaignStore((s) => s.audiencePreview)
+  const audiencePreviewStatus = useCampaignStore((s) => s.audiencePreviewStatus)
+  const loadAudiencePreview = useCampaignStore((s) => s.loadAudiencePreview)
+  const clearAudiencePreview = useCampaignStore((s) => s.clearAudiencePreview)
+
+  const sendCampaignForSlug = useCampaignStore((s) => s.sendCampaignForSlug)
+  const sendCampaignStatus = useCampaignStore((s) => s.sendCampaignStatus)
+  const sendCampaignError = useCampaignStore((s) => s.sendCampaignError)
+  const resetSendCampaignFeedback = useCampaignStore((s) => s.resetSendCampaignFeedback)
+
+  const isSending = sendCampaignStatus === 'submitting'
+
+  useEffect(() => {
+    if (step !== 2 || !targetPublicId) { clearAudiencePreview(); return }
+    const handle = setTimeout(() => {
+      void loadAudiencePreview(slug, audienceType, targetPublicId)
+    }, AUDIENCE_PREVIEW_DEBOUNCE_MS)
+    return () => clearTimeout(handle)
+  }, [step, slug, audienceType, targetPublicId, loadAudiencePreview, clearAudiencePreview])
+
+  const overLimit =
+    audiencePreview !== null &&
+    audiencePreview.monthlyLimit >= 0 &&
+    audiencePreview.recipientCount > audiencePreview.remaining
+
+  const handleConfirmSend = async () => {
+    if (!selectedTemplate) return
+    const result = await sendCampaignForSlug(slug, {
+      templatePublicId: selectedTemplate.publicId,
+      audienceType,
+      targetPublicId,
+    })
+    if (result) {
+      setIsConfirming(false)
+      onSent()
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 py-8 backdrop-blur-sm">
+      <div className="grid max-h-[90vh] w-full max-w-4xl grid-rows-[auto_1fr] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl light:border-neutral-200 light:bg-white">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 light:border-neutral-100">
+          <div className="flex items-center gap-3">
+            {step === 2 ? (
+              <button
+                type="button"
+                className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
+                onClick={() => setStep(1)}
+              >
+                <ChevronLeft size={16} />
+              </button>
+            ) : null}
+            <h2 className="text-base font-semibold text-white light:text-neutral-950">
+              {step === 1 ? 'Send email · Step 1: pick a template' : 'Send email · Step 2: pick an audience'}
+            </h2>
+          </div>
+          <button
+            type="button"
+            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
+            onClick={onClose}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {step === 1 ? (
+          <div className="grid grid-cols-1 overflow-y-auto lg:grid-cols-[1.2fr_1fr]">
+            <div className="grid gap-2 overflow-y-auto border-b border-white/10 p-6 lg:border-b-0 lg:border-r light:border-neutral-100">
+              {activeTemplates.length === 0 ? (
+                <p className="text-sm text-white/40 light:text-neutral-400">
+                  No active templates. Create one in the Templates tab first.
+                </p>
+              ) : (
+                activeTemplates.map((t) => (
+                  <button
+                    key={t.publicId}
+                    type="button"
+                    onClick={() => setSelectedTemplateId(t.publicId)}
+                    className={`rounded-xl border px-4 py-3 text-left transition ${
+                      selectedTemplateId === t.publicId
+                        ? 'border-accent/50 bg-accent/10'
+                        : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.05] light:border-neutral-200 light:bg-white light:hover:bg-neutral-50'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-white light:text-neutral-950">{t.name}</p>
+                    <p className="mt-0.5 truncate text-xs text-white/50 light:text-neutral-500">{t.subject}</p>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="bg-white/[0.02] p-6 light:bg-neutral-50">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-400">
+                Preview
+              </p>
+              {selectedTemplate ? (
+                <MailPreview
+                  subject={selectedTemplate.subject}
+                  bodyText={selectedTemplate.bodyText}
+                  ctaLabel={selectedTemplate.ctaLabel}
+                  ctaUrl={selectedTemplate.ctaUrl}
+                  brandName={creatorSettings?.brandName ?? creatorSettings?.creatorName ?? 'Your brand'}
+                  logoUrl={creatorSettings?.logoUrl ?? null}
+                  primaryColor={creatorSettings?.primaryColor ?? '#4C7CF0'}
+                />
+              ) : (
+                <p className="text-sm text-white/40 light:text-neutral-400">Pick a template to preview it.</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-5 overflow-y-auto p-6">
+            <div className="grid gap-1.5">
+              <p className="text-sm font-medium text-white/80 light:text-neutral-700">Audience</p>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm text-white/70 light:text-neutral-600">
+                  <input
+                    type="radio"
+                    checked={audienceType === 'LandingPage'}
+                    onChange={() => {
+                      setAudienceType('LandingPage')
+                      setTargetPublicId(publishedLandingPages[0]?.publicId ?? '')
+                    }}
+                  />
+                  Landing page
+                </label>
+                <label className="flex items-center gap-2 text-sm text-white/70 light:text-neutral-600">
+                  <input
+                    type="radio"
+                    checked={audienceType === 'Product'}
+                    onChange={() => {
+                      setAudienceType('Product')
+                      setTargetPublicId(activeProducts[0]?.publicId ?? '')
+                    }}
+                  />
+                  Product
+                </label>
+              </div>
+              <select
+                value={targetPublicId}
+                onChange={(e) => setTargetPublicId(e.target.value)}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950"
+              >
+                {(audienceType === 'LandingPage' ? publishedLandingPages : activeProducts).map((p) => (
+                  <option key={p.publicId} value={p.publicId}>
+                    {'title' in p ? p.title : p.name}
+                  </option>
+                ))}
+              </select>
+              {(audienceType === 'LandingPage' ? publishedLandingPages : activeProducts).length === 0 ? (
+                <p className="text-xs text-white/40 light:text-neutral-400">
+                  {audienceType === 'LandingPage'
+                    ? 'No published landing pages yet.'
+                    : 'No active products yet.'}
+                </p>
+              ) : null}
+            </div>
+
+            <AudiencePreviewCard status={audiencePreviewStatus} preview={audiencePreview} overLimit={overLimit} />
+
+            {sendCampaignError ? (
+              <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">
+                {sendCampaignError}
+              </p>
+            ) : null}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 border-t border-white/10 px-6 py-4 light:border-neutral-100">
+          {step === 1 ? (
+            <button
+              type="button"
+              disabled={!selectedTemplate}
+              onClick={() => setStep(2)}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 light:text-neutral-950"
+            >
+              Continue
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={!targetPublicId || overLimit || isSending}
+              title={overLimit ? 'This audience exceeds your remaining monthly sends' : undefined}
+              onClick={() => { resetSendCampaignFeedback(); setIsConfirming(true) }}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 light:text-neutral-950"
+            >
+              <Send size={14} />
+              Review and send
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isConfirming ? (
+        <SendConfirmDialog
+          preview={audiencePreview}
+          isSending={isSending}
+          error={sendCampaignError}
+          onCancel={() => setIsConfirming(false)}
+          onConfirm={() => void handleConfirmSend()}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function AudiencePreviewCard({
+  status,
+  preview,
+  overLimit,
+}: {
+  status: 'idle' | 'loading' | 'success' | 'error'
+  preview: { recipientCount: number; monthlyLimit: number; usedThisMonth: number; remaining: number } | null
+  overLimit: boolean
+}) {
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white/40 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-400">
+        <Loader2 className="animate-spin" size={14} />
+        Checking audience…
+      </div>
+    )
+  }
+
+  if (!preview) return null
+
+  const remainingLabel = preview.monthlyLimit < 0 ? 'unlimited' : `${preview.remaining} of ${preview.monthlyLimit}`
+
+  return (
+    <div
+      className={`rounded-xl border px-4 py-3 text-sm ${
+        overLimit
+          ? 'border-red-500/30 bg-red-500/5 text-red-300 light:border-red-200 light:bg-red-50 light:text-red-700'
+          : 'border-white/10 bg-white/[0.02] text-white/70 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-600'
+      }`}
+    >
+      This will send to <span className="font-semibold">{preview.recipientCount}</span> recipient
+      {preview.recipientCount === 1 ? '' : 's'} · {remainingLabel} monthly sends remaining
+      {overLimit ? ' — exceeds your remaining monthly sends.' : ''}
+    </div>
+  )
+}
+
+function SendConfirmDialog({
+  preview,
+  isSending,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  preview: { recipientCount: number; remaining: number; monthlyLimit: number } | null
+  isSending: boolean
+  error: string | null
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl light:border-neutral-200 light:bg-white">
+        <div className="grid size-11 place-items-center rounded-xl bg-accent/15">
+          <CheckCircle2 className="text-accent-strong" size={20} />
+        </div>
+        <h2 className="mt-4 text-lg font-semibold text-white light:text-neutral-950">Send this email?</h2>
+        <p className="mt-2 text-sm leading-6 text-white/50 light:text-neutral-500">
+          This will immediately email{' '}
+          <span className="font-medium text-white/80 light:text-neutral-800">
+            {preview?.recipientCount ?? 0} recipient{preview?.recipientCount === 1 ? '' : 's'}
+          </span>
+          . This cannot be undone.
+        </p>
+        {error ? <p className="mt-3 text-sm text-red-300 light:text-red-600">{error}</p> : null}
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            disabled={isSending}
+            onClick={onCancel}
+            className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isSending}
+            onClick={onConfirm}
+            className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-40 light:text-neutral-950"
+          >
+            {isSending ? <Loader2 className="animate-spin" size={15} /> : <Send size={14} />}
+            Send now
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

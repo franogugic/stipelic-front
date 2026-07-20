@@ -1,5 +1,26 @@
 export type CampaignAudienceType = 'LandingPage' | 'Product'
 export type CampaignStatus = 'Draft' | 'Queued'
+export type EmailTemplateStatus = 'Active' | 'Archived'
+
+export type EmailTemplate = {
+  publicId: string
+  name: string
+  subject: string
+  bodyText: string
+  ctaLabel: string | null
+  ctaUrl: string | null
+  status: EmailTemplateStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export type SaveTemplateRequest = {
+  name: string
+  subject: string
+  bodyText: string
+  ctaLabel: string | null
+  ctaUrl: string | null
+}
 
 export type CampaignListItem = {
   publicId: string
@@ -38,20 +59,8 @@ export type AudiencePreview = {
   remaining: number
 }
 
-export type CampaignFormValues = {
-  subject: string
-  bodyText: string
-  ctaLabel: string
-  ctaUrl: string
-  audienceType: CampaignAudienceType
-  targetPublicId: string
-}
-
-export type SaveCampaignRequest = {
-  subject: string
-  bodyText: string
-  ctaLabel: string | null
-  ctaUrl: string | null
+export type SendCampaignRequest = {
+  templatePublicId: string
   audienceType: CampaignAudienceType
   targetPublicId: string
 }
