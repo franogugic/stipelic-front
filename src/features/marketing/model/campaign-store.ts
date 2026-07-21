@@ -3,6 +3,7 @@ import { ApiError } from '../../../shared/api/http-client'
 import {
   getAudiencePreview,
   getCampaign,
+  getFailedRecipients,
   listCampaigns,
   sendCampaign,
 } from '../api/campaigns-api'
@@ -11,6 +12,7 @@ import type {
   CampaignAudienceType,
   CampaignDetail,
   CampaignListItem,
+  FailedRecipient,
   SendCampaignRequest,
 } from './types'
 
@@ -32,6 +34,9 @@ type CampaignState = {
   sendCampaignStatus: SubmitStatus
   sendCampaignError: string | null
 
+  failedRecipients: FailedRecipient[]
+  failedRecipientsStatus: LoadStatus
+
   loadCampaigns: (slug: string) => Promise<void>
   loadCampaign: (slug: string, campaignPublicId: string) => Promise<void>
   clearCurrentCampaign: () => void
@@ -43,6 +48,8 @@ type CampaignState = {
   clearAudiencePreview: () => void
   sendCampaignForSlug: (slug: string, request: SendCampaignRequest) => Promise<CampaignDetail | null>
   resetSendCampaignFeedback: () => void
+  loadFailedRecipients: (slug: string, campaignPublicId: string) => Promise<void>
+  clearFailedRecipients: () => void
 }
 
 export const useCampaignStore = create<CampaignState>((set, get) => ({
@@ -59,6 +66,9 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   sendCampaignStatus: 'idle',
   sendCampaignError: null,
+
+  failedRecipients: [],
+  failedRecipientsStatus: 'idle',
 
   loadCampaigns: async (slug) => {
     const { campaignsStatus, campaignsSlug, campaignsRevalidating } = get()
@@ -127,5 +137,19 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   resetSendCampaignFeedback: () => {
     set({ sendCampaignStatus: 'idle', sendCampaignError: null })
+  },
+
+  loadFailedRecipients: async (slug, campaignPublicId) => {
+    set({ failedRecipientsStatus: 'loading' })
+    try {
+      const recipients = await getFailedRecipients(slug, campaignPublicId)
+      set({ failedRecipients: recipients, failedRecipientsStatus: 'success' })
+    } catch {
+      set({ failedRecipients: [], failedRecipientsStatus: 'error' })
+    }
+  },
+
+  clearFailedRecipients: () => {
+    set({ failedRecipients: [], failedRecipientsStatus: 'idle' })
   },
 }))

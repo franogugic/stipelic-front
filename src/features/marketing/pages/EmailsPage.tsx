@@ -1,4 +1,4 @@
-import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, Send } from 'lucide-react'
+import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, Send, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -122,6 +122,7 @@ export function EmailsPage() {
 
             {tab === 'history' ? (
               <HistoryTab
+                slug={normalizedSlug}
                 campaigns={campaigns}
                 campaignsStatus={campaignsStatus}
                 pages={pages}
@@ -389,16 +390,20 @@ function TemplateStatusBadge({ status }: { status: EmailTemplate['status'] }) {
 }
 
 function HistoryTab({
+  slug,
   campaigns,
   campaignsStatus,
   pages,
   products,
 }: {
+  slug: string
   campaigns: CampaignListItem[]
   campaignsStatus: 'idle' | 'loading' | 'success' | 'error'
   pages: ReturnType<typeof useLandingPageStore.getState>['pages']
   products: ReturnType<typeof useProductStore.getState>['products']
 }) {
+  const [selectedCampaign, setSelectedCampaign] = useState<CampaignListItem | null>(null)
+
   const targetName = useMemo(() => {
     const lpByPublicId = new Map(pages.map((p) => [p.publicId, p.title]))
     const productByPublicId = new Map(products.map((p) => [p.publicId, p.name]))
@@ -438,17 +443,108 @@ function HistoryTab({
       <ul className="divide-y divide-white/10 light:divide-neutral-100">
         {campaigns.map((campaign) => (
           <li key={campaign.publicId}>
-            <div className="grid grid-cols-[1fr_160px_160px_160px] items-center px-5 py-4">
+            <button
+              type="button"
+              onClick={() => setSelectedCampaign(campaign)}
+              className="grid w-full grid-cols-[1fr_160px_160px_160px] items-center px-5 py-4 text-left transition hover:bg-white/[0.03] light:hover:bg-neutral-50"
+            >
               <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{campaign.subject}</p>
               <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{targetName(campaign)}</p>
               <ProgressCell campaign={campaign} />
               <p className="text-xs text-white/50 light:text-neutral-500">
                 {new Date(campaign.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
               </p>
-            </div>
+            </button>
           </li>
         ))}
       </ul>
+
+      {selectedCampaign ? (
+        <CampaignDetailModal
+          slug={slug}
+          campaign={selectedCampaign}
+          audienceName={targetName(selectedCampaign)}
+          onClose={() => setSelectedCampaign(null)}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function CampaignDetailModal({
+  slug,
+  campaign,
+  audienceName,
+  onClose,
+}: {
+  slug: string
+  campaign: CampaignListItem
+  audienceName: string
+  onClose: () => void
+}) {
+  const failedRecipients = useCampaignStore((s) => s.failedRecipients)
+  const failedRecipientsStatus = useCampaignStore((s) => s.failedRecipientsStatus)
+  const loadFailedRecipients = useCampaignStore((s) => s.loadFailedRecipients)
+  const clearFailedRecipients = useCampaignStore((s) => s.clearFailedRecipients)
+
+  useEffect(() => {
+    if (campaign.failedCount > 0) void loadFailedRecipients(slug, campaign.publicId)
+    return () => clearFailedRecipients()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, campaign.publicId, campaign.failedCount])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 py-8 backdrop-blur-sm">
+      <div className="grid max-h-[85vh] w-full max-w-2xl grid-rows-[auto_1fr] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl light:border-neutral-200 light:bg-white">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 light:border-neutral-100">
+          <div>
+            <h2 className="text-base font-semibold text-white light:text-neutral-950">{campaign.subject}</h2>
+            <p className="mt-0.5 text-xs text-white/40 light:text-neutral-400">
+              {audienceName} · {new Date(campaign.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
+            onClick={onClose}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="grid gap-5 overflow-y-auto p-6">
+          <ProgressCell campaign={campaign} />
+
+          {campaign.failedCount > 0 ? (
+            <div className="grid gap-3">
+              <p className="text-sm font-semibold text-white light:text-neutral-950">
+                Failed ({campaign.failedCount})
+              </p>
+              <p className="text-xs text-white/40 light:text-neutral-400">
+                Monthly limit was refunded for failed recipients.
+              </p>
+
+              {failedRecipientsStatus === 'loading' ? (
+                <div className="flex items-center gap-2 text-sm text-white/40 light:text-neutral-400">
+                  <Loader2 className="animate-spin" size={14} />
+                  Loading failed recipients…
+                </div>
+              ) : (
+                <ul className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10 light:divide-neutral-100 light:border-neutral-200">
+                  {failedRecipients.map((recipient) => (
+                    <li key={recipient.email} className="px-4 py-3">
+                      <p className="text-sm font-medium text-white light:text-neutral-950">{recipient.email}</p>
+                      {recipient.lastError ? (
+                        <p className="mt-0.5 truncate text-xs text-white/40 light:text-neutral-400">{recipient.lastError}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   )
 }

@@ -64,3 +64,8 @@ export type SendCampaignRequest = {
   audienceType: CampaignAudienceType
   targetPublicId: string
 }
+
+export type FailedRecipient = {
+  email: string
+  lastError: string | null
+}

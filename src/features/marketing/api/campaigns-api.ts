@@ -4,6 +4,7 @@ import type {
   CampaignAudienceType,
   CampaignDetail,
   CampaignListItem,
+  FailedRecipient,
   SendCampaignRequest,
 } from '../model/types'
 
@@ -38,6 +39,12 @@ export function listCampaigns(slug: string) {
 export function getCampaign(slug: string, campaignPublicId: string) {
   return apiRequest<ApiResponse<CampaignDetail>>(
     `/api/creators/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignPublicId)}`,
+  ).then(unwrapApiResponse)
+}
+
+export function getFailedRecipients(slug: string, campaignPublicId: string) {
+  return apiRequest<ApiResponse<FailedRecipient[]>>(
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignPublicId)}/failed-recipients`,
   ).then(unwrapApiResponse)
 }
 
