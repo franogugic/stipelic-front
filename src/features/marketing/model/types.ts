@@ -69,3 +69,16 @@ export type FailedRecipient = {
   email: string
   lastError: string | null
 }
+
+export type Contact = {
+  email: string
+  firstCapturedAt: string
+  sourcesCount: number
+  sources: string
+  isUnsubscribed: boolean
+}
+
+export type ContactsPage = {
+  contacts: Contact[]
+  hasMore: boolean
+}
