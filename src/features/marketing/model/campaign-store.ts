@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
 import {
   getAudiencePreview,
+  getAudienceRecipients,
   getCampaign,
   getFailedRecipients,
   listCampaigns,
@@ -19,6 +20,8 @@ import type {
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
 type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error'
 
+const AUDIENCE_RECIPIENTS_PAGE_SIZE = 10
+
 type CampaignState = {
   campaigns: CampaignListItem[]
   campaignsStatus: LoadStatus
@@ -30,6 +33,11 @@ type CampaignState = {
 
   audiencePreview: AudiencePreview | null
   audiencePreviewStatus: LoadStatus
+
+  audienceRecipients: string[]
+  audienceRecipientsStatus: LoadStatus
+  audienceRecipientsHasMore: boolean
+  audienceRecipientsLoadMoreStatus: LoadStatus
 
   sendCampaignStatus: SubmitStatus
   sendCampaignError: string | null
@@ -46,6 +54,17 @@ type CampaignState = {
     targetPublicId: string,
   ) => Promise<void>
   clearAudiencePreview: () => void
+  loadAudienceRecipients: (
+    slug: string,
+    audienceType: CampaignAudienceType,
+    targetPublicId: string,
+  ) => Promise<void>
+  loadMoreAudienceRecipients: (
+    slug: string,
+    audienceType: CampaignAudienceType,
+    targetPublicId: string,
+  ) => Promise<void>
+  clearAudienceRecipients: () => void
   sendCampaignForSlug: (slug: string, request: SendCampaignRequest) => Promise<CampaignDetail | null>
   resetSendCampaignFeedback: () => void
   loadFailedRecipients: (slug: string, campaignPublicId: string) => Promise<void>
@@ -63,6 +82,11 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   audiencePreview: null,
   audiencePreviewStatus: 'idle',
+
+  audienceRecipients: [],
+  audienceRecipientsStatus: 'idle',
+  audienceRecipientsHasMore: false,
+  audienceRecipientsLoadMoreStatus: 'idle',
 
   sendCampaignStatus: 'idle',
   sendCampaignError: null,
@@ -118,6 +142,52 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   clearAudiencePreview: () => {
     set({ audiencePreview: null, audiencePreviewStatus: 'idle' })
+  },
+
+  loadAudienceRecipients: async (slug, audienceType, targetPublicId) => {
+    set({ audienceRecipientsStatus: 'loading' })
+    try {
+      const page = await getAudienceRecipients(slug, audienceType, targetPublicId, {
+        limit: AUDIENCE_RECIPIENTS_PAGE_SIZE,
+      })
+      set({
+        audienceRecipients: page.emails,
+        audienceRecipientsHasMore: page.hasMore,
+        audienceRecipientsStatus: 'success',
+      })
+    } catch {
+      set({ audienceRecipients: [], audienceRecipientsHasMore: false, audienceRecipientsStatus: 'error' })
+    }
+  },
+
+  loadMoreAudienceRecipients: async (slug, audienceType, targetPublicId) => {
+    const { audienceRecipients, audienceRecipientsLoadMoreStatus } = get()
+    if (audienceRecipientsLoadMoreStatus === 'loading' || audienceRecipients.length === 0) return
+
+    set({ audienceRecipientsLoadMoreStatus: 'loading' })
+    try {
+      const afterEmail = audienceRecipients[audienceRecipients.length - 1]
+      const page = await getAudienceRecipients(slug, audienceType, targetPublicId, {
+        afterEmail,
+        limit: AUDIENCE_RECIPIENTS_PAGE_SIZE,
+      })
+      set({
+        audienceRecipients: [...audienceRecipients, ...page.emails],
+        audienceRecipientsHasMore: page.hasMore,
+        audienceRecipientsLoadMoreStatus: 'success',
+      })
+    } catch {
+      set({ audienceRecipientsLoadMoreStatus: 'error' })
+    }
+  },
+
+  clearAudienceRecipients: () => {
+    set({
+      audienceRecipients: [],
+      audienceRecipientsHasMore: false,
+      audienceRecipientsStatus: 'idle',
+      audienceRecipientsLoadMoreStatus: 'idle',
+    })
   },
 
   sendCampaignForSlug: async (slug, request) => {

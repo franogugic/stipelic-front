@@ -1,6 +1,7 @@
 import { apiRequest } from '../../../shared/api/http-client'
 import type {
   AudiencePreview,
+  AudienceRecipientsPage,
   CampaignAudienceType,
   CampaignDetail,
   CampaignListItem,
@@ -27,6 +28,21 @@ export function getAudiencePreview(
   const params = new URLSearchParams({ audienceType, targetPublicId })
   return apiRequest<ApiResponse<AudiencePreview>>(
     `/api/creators/${encodeURIComponent(slug)}/campaigns/audience-preview?${params.toString()}`,
+  ).then(unwrapApiResponse)
+}
+
+export function getAudienceRecipients(
+  slug: string,
+  audienceType: CampaignAudienceType,
+  targetPublicId: string,
+  options: { afterEmail?: string; limit?: number } = {},
+) {
+  const params = new URLSearchParams({ audienceType, targetPublicId })
+  if (options.afterEmail) params.set('afterEmail', options.afterEmail)
+  if (options.limit) params.set('limit', String(options.limit))
+
+  return apiRequest<ApiResponse<AudienceRecipientsPage>>(
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/audience-preview/recipients?${params.toString()}`,
   ).then(unwrapApiResponse)
 }
 

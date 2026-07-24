@@ -82,3 +82,8 @@ export type ContactsPage = {
   contacts: Contact[]
   hasMore: boolean
 }
+
+export type AudienceRecipientsPage = {
+  emails: string[]
+  hasMore: boolean
+}

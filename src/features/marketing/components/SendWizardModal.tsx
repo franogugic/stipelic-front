@@ -38,10 +38,20 @@ export function SendWizardModal({
 
   const selectedTemplate = activeTemplates.find((t) => t.publicId === selectedTemplateId) ?? null
 
+  const [isRecipientsOpen, setIsRecipientsOpen] = useState(false)
+
   const audiencePreview = useCampaignStore((s) => s.audiencePreview)
   const audiencePreviewStatus = useCampaignStore((s) => s.audiencePreviewStatus)
   const loadAudiencePreview = useCampaignStore((s) => s.loadAudiencePreview)
   const clearAudiencePreview = useCampaignStore((s) => s.clearAudiencePreview)
+
+  const audienceRecipients = useCampaignStore((s) => s.audienceRecipients)
+  const audienceRecipientsStatus = useCampaignStore((s) => s.audienceRecipientsStatus)
+  const audienceRecipientsHasMore = useCampaignStore((s) => s.audienceRecipientsHasMore)
+  const audienceRecipientsLoadMoreStatus = useCampaignStore((s) => s.audienceRecipientsLoadMoreStatus)
+  const loadAudienceRecipients = useCampaignStore((s) => s.loadAudienceRecipients)
+  const loadMoreAudienceRecipients = useCampaignStore((s) => s.loadMoreAudienceRecipients)
+  const clearAudienceRecipients = useCampaignStore((s) => s.clearAudienceRecipients)
 
   const sendCampaignForSlug = useCampaignStore((s) => s.sendCampaignForSlug)
   const sendCampaignStatus = useCampaignStore((s) => s.sendCampaignStatus)
@@ -51,12 +61,13 @@ export function SendWizardModal({
   const isSending = sendCampaignStatus === 'submitting'
 
   useEffect(() => {
+    clearAudienceRecipients()
     if (step !== 2 || !targetPublicId) { clearAudiencePreview(); return }
     const handle = setTimeout(() => {
       void loadAudiencePreview(slug, audienceType, targetPublicId)
     }, AUDIENCE_PREVIEW_DEBOUNCE_MS)
     return () => clearTimeout(handle)
-  }, [step, slug, audienceType, targetPublicId, loadAudiencePreview, clearAudiencePreview])
+  }, [step, slug, audienceType, targetPublicId, loadAudiencePreview, clearAudiencePreview, clearAudienceRecipients])
 
   const overLimit =
     audiencePreview !== null &&
@@ -85,7 +96,7 @@ export function SendWizardModal({
               <button
                 type="button"
                 className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
-                onClick={() => setStep(1)}
+                onClick={() => { setStep(1); setIsRecipientsOpen(false) }}
               >
                 <ChevronLeft size={16} />
               </button>
@@ -159,6 +170,7 @@ export function SendWizardModal({
                     onChange={() => {
                       setAudienceType('LandingPage')
                       setTargetPublicId(publishedLandingPages[0]?.publicId ?? '')
+                      setIsRecipientsOpen(false)
                     }}
                   />
                   Landing page
@@ -170,6 +182,7 @@ export function SendWizardModal({
                     onChange={() => {
                       setAudienceType('Product')
                       setTargetPublicId(activeProducts[0]?.publicId ?? '')
+                      setIsRecipientsOpen(false)
                     }}
                   />
                   Product
@@ -177,7 +190,7 @@ export function SendWizardModal({
               </div>
               <select
                 value={targetPublicId}
-                onChange={(e) => setTargetPublicId(e.target.value)}
+                onChange={(e) => { setTargetPublicId(e.target.value); setIsRecipientsOpen(false) }}
                 className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950"
               >
                 {(audienceType === 'LandingPage' ? publishedLandingPages : activeProducts).map((p) => (
@@ -195,7 +208,29 @@ export function SendWizardModal({
               ) : null}
             </div>
 
-            <AudiencePreviewCard status={audiencePreviewStatus} preview={audiencePreview} overLimit={overLimit} />
+            <AudiencePreviewCard
+              status={audiencePreviewStatus}
+              preview={audiencePreview}
+              overLimit={overLimit}
+              onToggleRecipients={() => {
+                const next = !isRecipientsOpen
+                setIsRecipientsOpen(next)
+                if (next && audienceRecipientsStatus === 'idle') {
+                  void loadAudienceRecipients(slug, audienceType, targetPublicId)
+                }
+              }}
+              isRecipientsOpen={isRecipientsOpen}
+            />
+
+            {isRecipientsOpen ? (
+              <RecipientsListPanel
+                status={audienceRecipientsStatus}
+                emails={audienceRecipients}
+                hasMore={audienceRecipientsHasMore}
+                loadMoreStatus={audienceRecipientsLoadMoreStatus}
+                onLoadMore={() => void loadMoreAudienceRecipients(slug, audienceType, targetPublicId)}
+              />
+            ) : null}
 
             {sendCampaignError ? (
               <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">
@@ -247,10 +282,14 @@ function AudiencePreviewCard({
   status,
   preview,
   overLimit,
+  onToggleRecipients,
+  isRecipientsOpen,
 }: {
   status: 'idle' | 'loading' | 'success' | 'error'
   preview: { recipientCount: number; monthlyLimit: number; usedThisMonth: number; remaining: number } | null
   overLimit: boolean
+  onToggleRecipients: () => void
+  isRecipientsOpen: boolean
 }) {
   if (status === 'loading') {
     return (
@@ -273,9 +312,68 @@ function AudiencePreviewCard({
           : 'border-white/10 bg-white/[0.02] text-white/70 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-600'
       }`}
     >
-      This will send to <span className="font-semibold">{preview.recipientCount}</span> recipient
+      This will send to{' '}
+      <button
+        type="button"
+        onClick={onToggleRecipients}
+        aria-expanded={isRecipientsOpen}
+        className="font-semibold text-inherit underline decoration-current/40 underline-offset-2 transition hover:decoration-current"
+      >
+        {preview.recipientCount}
+      </button>{' '}
+      recipient
       {preview.recipientCount === 1 ? '' : 's'} · {remainingLabel} monthly sends remaining
       {overLimit ? ' — exceeds your remaining monthly sends.' : ''}
+    </div>
+  )
+}
+
+function RecipientsListPanel({
+  status,
+  emails,
+  hasMore,
+  loadMoreStatus,
+  onLoadMore,
+}: {
+  status: 'idle' | 'loading' | 'success' | 'error'
+  emails: string[]
+  hasMore: boolean
+  loadMoreStatus: 'idle' | 'loading' | 'success' | 'error'
+  onLoadMore: () => void
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.02] light:border-neutral-200 light:bg-neutral-50">
+      {status === 'loading' ? (
+        <div className="flex items-center gap-2 px-4 py-3 text-sm text-white/40 light:text-neutral-400">
+          <Loader2 className="animate-spin" size={14} />
+          Loading recipients…
+        </div>
+      ) : emails.length === 0 ? (
+        <p className="px-4 py-3 text-sm text-white/40 light:text-neutral-400">No recipients to show.</p>
+      ) : (
+        <>
+          <ul className="max-h-56 divide-y divide-white/10 overflow-y-auto light:divide-neutral-100">
+            {emails.map((email) => (
+              <li key={email} className="truncate px-4 py-2 text-sm text-white/80 light:text-neutral-700">
+                {email}
+              </li>
+            ))}
+          </ul>
+          {hasMore ? (
+            <div className="flex justify-center border-t border-white/10 py-2 light:border-neutral-100">
+              <button
+                type="button"
+                disabled={loadMoreStatus === 'loading'}
+                onClick={onLoadMore}
+                className="inline-flex h-8 items-center gap-2 rounded-lg px-3 text-xs font-medium text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 light:text-neutral-600 light:hover:bg-neutral-100"
+              >
+                {loadMoreStatus === 'loading' ? <Loader2 className="animate-spin" size={12} /> : null}
+                Load more
+              </button>
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   )
 }
