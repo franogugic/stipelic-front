@@ -4,7 +4,7 @@ import type { Contact } from './types'
 
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 10
 
 type ContactsState = {
   contacts: Contact[]
