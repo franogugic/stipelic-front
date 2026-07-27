@@ -25,8 +25,6 @@ import { DeleteCreatorDialog } from '../components/DeleteCreatorDialog'
 import { useCreatorStore } from '../model/creator-store'
 import { usePayoutStore } from '../model/payout-store'
 
-const TREND_DAYS = 14
-
 export function CreatorWorkspacePage() {
   const navigate = useNavigate()
   const { slug } = useParams<{ slug: string }>()
@@ -549,9 +547,10 @@ function HeroRevenueCard({
             {formatCurrency(Math.round(animatedCents), currency)}
           </p>
           <p className="mt-2 text-xs font-medium text-white/40 light:text-neutral-950/40">
-            {hasTrendSignal ? `Zadnjih ${TREND_DAYS} dana` : 'Sav prihod od početka rada'}
+            Sav prihod od početka rada
           </p>
         </div>
+        {hasTrendSignal ? (
         <svg width={220} height={64} viewBox="0 0 220 64" className="hidden shrink-0 sm:block">
           <defs>
             <linearGradient id="heroSparkFill" x1="0" y1="0" x2="0" y2="1">
@@ -575,6 +574,7 @@ function HeroRevenueCard({
             style={{ '--draw-length': 340 } as CSSProperties}
           />
         </svg>
+        ) : null}
       </div>
     </div>
   )
