@@ -7,6 +7,7 @@ import {
   getCampaign,
   getFailedRecipients,
   listCampaigns,
+  resendFailedRecipients,
   sendCampaign,
 } from '../api/campaigns-api'
 import type {
@@ -49,6 +50,9 @@ type CampaignState = {
   failedRecipients: FailedRecipient[]
   failedRecipientsStatus: LoadStatus
 
+  resendFailedStatus: SubmitStatus
+  resendFailedError: string | null
+
   loadCampaigns: (slug: string) => Promise<void>
   loadCampaign: (slug: string, campaignPublicId: string) => Promise<void>
   clearCurrentCampaign: () => void
@@ -75,6 +79,8 @@ type CampaignState = {
   resetCancelScheduleFeedback: () => void
   loadFailedRecipients: (slug: string, campaignPublicId: string) => Promise<void>
   clearFailedRecipients: () => void
+  resendFailedForSlug: (slug: string, campaignPublicId: string) => Promise<number | null>
+  resetResendFailedFeedback: () => void
   reset: () => void
 }
 
@@ -103,6 +109,9 @@ const initialCampaignState = {
 
   failedRecipients: [] as FailedRecipient[],
   failedRecipientsStatus: 'idle' as LoadStatus,
+
+  resendFailedStatus: 'idle' as SubmitStatus,
+  resendFailedError: null,
 }
 
 export const useCampaignStore = create<CampaignState>((set, get) => ({
@@ -255,6 +264,29 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   clearFailedRecipients: () => {
     set({ failedRecipients: [], failedRecipientsStatus: 'idle' })
   },
+
+  resendFailedForSlug: async (slug, campaignPublicId) => {
+    set({ resendFailedStatus: 'submitting', resendFailedError: null })
+    try {
+      const result = await resendFailedRecipients(slug, campaignPublicId)
+      set({ resendFailedStatus: 'success', resendFailedError: null })
+      // Refetch this campaign's own progress and the failed-recipients list, and the send history
+      // list (so its Failed(N) badge count reflects the requeue too).
+      void get().loadCampaign(slug, campaignPublicId)
+      void get().loadFailedRecipients(slug, campaignPublicId)
+      void get().loadCampaigns(slug)
+      return result.requeuedCount
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'We could not resend failed recipients. Please try again.'
+      set({ resendFailedStatus: 'error', resendFailedError: message })
+      return null
+    }
+  },
+  resetResendFailedFeedback: () => {
+    set({ resendFailedStatus: 'idle', resendFailedError: null })
+  },
+
   reset: () => {
     set(initialCampaignState)
   },

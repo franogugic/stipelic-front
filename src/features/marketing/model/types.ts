@@ -75,6 +75,10 @@ export type FailedRecipient = {
   lastError: string | null
 }
 
+export type ResendFailedResult = {
+  requeuedCount: number
+}
+
 export type Contact = {
   email: string
   firstCapturedAt: string

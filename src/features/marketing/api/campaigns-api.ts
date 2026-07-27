@@ -6,6 +6,7 @@ import type {
   CampaignDetail,
   CampaignListItem,
   FailedRecipient,
+  ResendFailedResult,
   SendCampaignRequest,
 } from '../model/types'
 
@@ -68,6 +69,13 @@ export function sendCampaign(slug: string, request: SendCampaignRequest) {
   return apiRequest<ApiResponse<CampaignDetail>>(
     `/api/creators/${encodeURIComponent(slug)}/campaigns/send`,
     { method: 'POST', body: request },
+  ).then(unwrapApiResponse)
+}
+
+export function resendFailedRecipients(slug: string, campaignPublicId: string) {
+  return apiRequest<ApiResponse<ResendFailedResult>>(
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignPublicId)}/resend-failed`,
+    { method: 'POST' },
   ).then(unwrapApiResponse)
 }
 

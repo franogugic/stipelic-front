@@ -1,4 +1,4 @@
-import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, Search, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, RotateCcw, Search, Send, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -494,6 +494,11 @@ function CampaignDetailModal({
   const failedRecipientsStatus = useCampaignStore((s) => s.failedRecipientsStatus)
   const loadFailedRecipients = useCampaignStore((s) => s.loadFailedRecipients)
   const clearFailedRecipients = useCampaignStore((s) => s.clearFailedRecipients)
+  const resendFailedStatus = useCampaignStore((s) => s.resendFailedStatus)
+  const resendFailedError = useCampaignStore((s) => s.resendFailedError)
+  const resendFailedForSlug = useCampaignStore((s) => s.resendFailedForSlug)
+  const resetResendFailedFeedback = useCampaignStore((s) => s.resetResendFailedFeedback)
+  const [isConfirmingResend, setIsConfirmingResend] = useState(false)
 
   useEffect(() => {
     if (campaign.failedCount > 0) void loadFailedRecipients(slug, campaign.publicId)
@@ -531,12 +536,25 @@ function CampaignDetailModal({
 
           {campaign.status === 'Queued' && campaign.failedCount > 0 ? (
             <div className="grid gap-3">
-              <p className="text-sm font-semibold text-white light:text-neutral-950">
-                Failed ({campaign.failedCount})
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-white light:text-neutral-950">
+                  Failed ({campaign.failedCount})
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { resetResendFailedFeedback(); setIsConfirmingResend(true) }}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
+                >
+                  <RotateCcw size={13} />
+                  Resend failed
+                </button>
+              </div>
               <p className="text-xs text-white/40 light:text-neutral-400">
-                Monthly limit was refunded for failed recipients.
+                Monthly limit was refunded for failed recipients — resending does not charge it again.
               </p>
+              {resendFailedStatus === 'error' && resendFailedError ? (
+                <p className="text-xs text-red-400 light:text-red-500">{resendFailedError}</p>
+              ) : null}
 
               {failedRecipientsStatus === 'loading' ? (
                 <div className="flex items-center gap-2 text-sm text-white/40 light:text-neutral-400">
@@ -557,6 +575,66 @@ function CampaignDetailModal({
               )}
             </div>
           ) : null}
+        </div>
+      </div>
+
+      {isConfirmingResend ? (
+        <ResendFailedConfirmDialog
+          failedCount={campaign.failedCount}
+          isSubmitting={resendFailedStatus === 'submitting'}
+          onCancel={() => setIsConfirmingResend(false)}
+          onConfirm={async () => {
+            const requeued = await resendFailedForSlug(slug, campaign.publicId)
+            if (requeued !== null) setIsConfirmingResend(false)
+          }}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function ResendFailedConfirmDialog({
+  failedCount,
+  isSubmitting,
+  onCancel,
+  onConfirm,
+}: {
+  failedCount: number
+  isSubmitting: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl light:border-neutral-200 light:bg-white">
+        <h2 className="text-base font-semibold text-white light:text-neutral-950">
+          Resend to {failedCount} failed recipient{failedCount === 1 ? '' : 's'}?
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-white/50 light:text-neutral-500">
+          They'll be retried with the same content. This does not use any of your monthly email
+          allowance.
+        </p>
+        <div className="mt-5 flex gap-3">
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={onCancel}
+            className="flex h-9 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={onConfirm}
+            className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40"
+          >
+            {isSubmitting ? <Loader2 className="animate-spin" size={14} /> : null}
+            Resend
+          </button>
         </div>
       </div>
     </div>
