@@ -1,5 +1,5 @@
 export type CampaignAudienceType = 'LandingPage' | 'Product'
-export type CampaignStatus = 'Draft' | 'Queued'
+export type CampaignStatus = 'Draft' | 'Queued' | 'Scheduled' | 'Failed' | 'Cancelled'
 export type EmailTemplateStatus = 'Active' | 'Archived'
 
 export type EmailTemplate = {
@@ -30,6 +30,8 @@ export type CampaignListItem = {
   targetPublicId: string
   recipientCount: number
   queuedAt: string | null
+  scheduledAt: string | null
+  note: string | null
   createdAt: string
   sentCount: number
   failedCount: number
@@ -46,6 +48,8 @@ export type CampaignDetail = {
   status: CampaignStatus
   recipientCount: number
   queuedAt: string | null
+  scheduledAt: string | null
+  note: string | null
   createdAt: string
   updatedAt: string
   sentCount: number
@@ -63,6 +67,7 @@ export type SendCampaignRequest = {
   templatePublicId: string
   audienceType: CampaignAudienceType
   targetPublicId: string
+  scheduledAt?: string
 }
 
 export type FailedRecipient = {

@@ -8,6 +8,15 @@ import type { CampaignAudienceType, EmailTemplate } from '../model/types'
 import { MailPreview } from './TemplateEditorModal'
 
 const AUDIENCE_PREVIEW_DEBOUNCE_MS = 400
+const MIN_SCHEDULE_BUFFER_MINUTES = 2
+const SCHEDULE_TOO_SOON_MESSAGE = `Scheduled time must be at least ${MIN_SCHEDULE_BUFFER_MINUTES} minutes from now.`
+
+/** Converts a `datetime-local` input value (no timezone) to an ISO string in the user's local timezone. */
+function localInputToIso(value: string): string | null {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
 
 export function SendWizardModal({
   slug,
@@ -35,6 +44,8 @@ export function SendWizardModal({
   const [audienceType, setAudienceType] = useState<CampaignAudienceType>('LandingPage')
   const [targetPublicId, setTargetPublicId] = useState(publishedLandingPages[0]?.publicId ?? '')
   const [isConfirming, setIsConfirming] = useState(false)
+  const [sendMode, setSendMode] = useState<'now' | 'schedule'>('now')
+  const [scheduledAtLocal, setScheduledAtLocal] = useState('')
 
   const selectedTemplate = activeTemplates.find((t) => t.publicId === selectedTemplateId) ?? null
 
@@ -74,12 +85,39 @@ export function SendWizardModal({
     audiencePreview.monthlyLimit >= 0 &&
     audiencePreview.recipientCount > audiencePreview.remaining
 
+  const scheduledAtIso = sendMode === 'schedule' ? localInputToIso(scheduledAtLocal) : null
+  const [scheduleWarning, setScheduleWarning] = useState<string | null>(null)
+
+  const isScheduleValid = (iso: string) =>
+    new Date(iso).getTime() >= Date.now() + MIN_SCHEDULE_BUFFER_MINUTES * 60_000
+
+  const handleScheduledAtChange = (value: string) => {
+    setScheduledAtLocal(value)
+    const iso = localInputToIso(value)
+    setScheduleWarning(iso && !isScheduleValid(iso) ? SCHEDULE_TOO_SOON_MESSAGE : null)
+  }
+
+  const isScheduleMissing = sendMode === 'schedule' && !scheduledAtLocal
+  const canProceedToConfirm = sendMode === 'now' || (!isScheduleMissing && !scheduleWarning)
+
+  const handleReviewClick = () => {
+    if (sendMode === 'schedule' && scheduledAtIso && !isScheduleValid(scheduledAtIso)) {
+      setScheduleWarning(SCHEDULE_TOO_SOON_MESSAGE)
+      return
+    }
+    resetSendCampaignFeedback()
+    setIsConfirming(true)
+  }
+
   const handleConfirmSend = async () => {
     if (!selectedTemplate) return
+    if (sendMode === 'schedule' && (!scheduledAtIso || !isScheduleValid(scheduledAtIso))) return
+
     const result = await sendCampaignForSlug(slug, {
       templatePublicId: selectedTemplate.publicId,
       audienceType,
       targetPublicId,
+      ...(scheduledAtIso ? { scheduledAt: scheduledAtIso } : {}),
     })
     if (result) {
       setIsConfirming(false)
@@ -208,10 +246,46 @@ export function SendWizardModal({
               ) : null}
             </div>
 
+            <div className="grid gap-1.5">
+              <p className="text-sm font-medium text-white/80 light:text-neutral-700">When to send</p>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm text-white/70 light:text-neutral-600">
+                  <input
+                    type="radio"
+                    checked={sendMode === 'now'}
+                    onChange={() => setSendMode('now')}
+                  />
+                  Send now
+                </label>
+                <label className="flex items-center gap-2 text-sm text-white/70 light:text-neutral-600">
+                  <input
+                    type="radio"
+                    checked={sendMode === 'schedule'}
+                    onChange={() => setSendMode('schedule')}
+                  />
+                  Schedule for later
+                </label>
+              </div>
+              {sendMode === 'schedule' ? (
+                <div className="mt-2">
+                  <input
+                    type="datetime-local"
+                    value={scheduledAtLocal}
+                    onChange={(e) => handleScheduledAtChange(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950"
+                  />
+                  {scheduleWarning ? (
+                    <p className="mt-1.5 text-xs text-red-400 light:text-red-600">{scheduleWarning}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
             <AudiencePreviewCard
               status={audiencePreviewStatus}
               preview={audiencePreview}
               overLimit={overLimit}
+              estimatedOnly={sendMode === 'schedule'}
               onToggleRecipients={() => {
                 const next = !isRecipientsOpen
                 setIsRecipientsOpen(next)
@@ -253,13 +327,13 @@ export function SendWizardModal({
           ) : (
             <button
               type="button"
-              disabled={!targetPublicId || overLimit || isSending}
+              disabled={!targetPublicId || overLimit || isSending || !canProceedToConfirm}
               title={overLimit ? 'This audience exceeds your remaining monthly sends' : undefined}
-              onClick={() => { resetSendCampaignFeedback(); setIsConfirming(true) }}
+              onClick={handleReviewClick}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 light:text-neutral-950"
             >
               <Send size={14} />
-              Review and send
+              {sendMode === 'schedule' ? 'Review and schedule' : 'Review and send'}
             </button>
           )}
         </div>
@@ -270,6 +344,7 @@ export function SendWizardModal({
           preview={audiencePreview}
           isSending={isSending}
           error={sendCampaignError}
+          scheduledAtIso={scheduledAtIso}
           onCancel={() => setIsConfirming(false)}
           onConfirm={() => void handleConfirmSend()}
         />
@@ -282,12 +357,14 @@ function AudiencePreviewCard({
   status,
   preview,
   overLimit,
+  estimatedOnly,
   onToggleRecipients,
   isRecipientsOpen,
 }: {
   status: 'idle' | 'loading' | 'success' | 'error'
   preview: { recipientCount: number; monthlyLimit: number; usedThisMonth: number; remaining: number } | null
   overLimit: boolean
+  estimatedOnly: boolean
   onToggleRecipients: () => void
   isRecipientsOpen: boolean
 }) {
@@ -324,6 +401,11 @@ function AudiencePreviewCard({
       recipient
       {preview.recipientCount === 1 ? '' : 's'} · {remainingLabel} monthly sends remaining
       {overLimit ? ' — exceeds your remaining monthly sends.' : ''}
+      {estimatedOnly ? (
+        <p className="mt-1 text-xs text-white/40 light:text-neutral-400">
+          Estimated — actual audience is resolved again at send time.
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -382,28 +464,49 @@ function SendConfirmDialog({
   preview,
   isSending,
   error,
+  scheduledAtIso,
   onCancel,
   onConfirm,
 }: {
   preview: { recipientCount: number; remaining: number; monthlyLimit: number } | null
   isSending: boolean
   error: string | null
+  scheduledAtIso: string | null
   onCancel: () => void
   onConfirm: () => void
 }) {
+  const scheduledLabel = scheduledAtIso
+    ? new Date(scheduledAtIso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+    : null
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl light:border-neutral-200 light:bg-white">
         <div className="grid size-11 place-items-center rounded-xl bg-accent/15">
           <CheckCircle2 className="text-accent-strong" size={20} />
         </div>
-        <h2 className="mt-4 text-lg font-semibold text-white light:text-neutral-950">Send this email?</h2>
+        <h2 className="mt-4 text-lg font-semibold text-white light:text-neutral-950">
+          {scheduledLabel ? 'Schedule this email?' : 'Send this email?'}
+        </h2>
         <p className="mt-2 text-sm leading-6 text-white/50 light:text-neutral-500">
-          This will immediately email{' '}
-          <span className="font-medium text-white/80 light:text-neutral-800">
-            {preview?.recipientCount ?? 0} recipient{preview?.recipientCount === 1 ? '' : 's'}
-          </span>
-          . This cannot be undone.
+          {scheduledLabel ? (
+            <>
+              This will send to an estimated{' '}
+              <span className="font-medium text-white/80 light:text-neutral-800">
+                {preview?.recipientCount ?? 0} recipient{preview?.recipientCount === 1 ? '' : 's'}
+              </span>{' '}
+              on <span className="font-medium text-white/80 light:text-neutral-800">{scheduledLabel}</span>. You
+              can cancel it any time before then.
+            </>
+          ) : (
+            <>
+              This will immediately email{' '}
+              <span className="font-medium text-white/80 light:text-neutral-800">
+                {preview?.recipientCount ?? 0} recipient{preview?.recipientCount === 1 ? '' : 's'}
+              </span>
+              . This cannot be undone.
+            </>
+          )}
         </p>
         {error ? <p className="mt-3 text-sm text-red-300 light:text-red-600">{error}</p> : null}
         <div className="mt-6 flex gap-3">
@@ -422,7 +525,7 @@ function SendConfirmDialog({
             className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-40 light:text-neutral-950"
           >
             {isSending ? <Loader2 className="animate-spin" size={15} /> : <Send size={14} />}
-            Send now
+            {scheduledLabel ? 'Schedule' : 'Send now'}
           </button>
         </div>
       </div>

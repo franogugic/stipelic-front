@@ -440,27 +440,29 @@ function HistoryTab({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-      <div className="grid grid-cols-[1fr_160px_160px_160px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
+      <div className="grid grid-cols-[1fr_160px_260px_160px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Subject</p>
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Audience</p>
-        <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Progress</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Date</p>
       </div>
       <ul className="divide-y divide-white/10 light:divide-neutral-100">
         {campaigns.map((campaign) => (
           <li key={campaign.publicId}>
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => setSelectedCampaign(campaign)}
-              className="grid w-full grid-cols-[1fr_160px_160px_160px] items-center px-5 py-4 text-left transition hover:bg-white/[0.03] light:hover:bg-neutral-50"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedCampaign(campaign) }}
+              className="grid w-full cursor-pointer grid-cols-[1fr_160px_260px_160px] items-center px-5 py-4 text-left transition hover:bg-white/[0.03] light:hover:bg-neutral-50"
             >
               <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{campaign.subject}</p>
               <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{targetName(campaign)}</p>
-              <ProgressCell campaign={campaign} />
+              <StatusCell campaign={campaign} slug={slug} />
               <p className="text-xs text-white/50 light:text-neutral-500">
                 {new Date(campaign.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
               </p>
-            </button>
+            </div>
           </li>
         ))}
       </ul>
@@ -519,9 +521,15 @@ function CampaignDetailModal({
         </div>
 
         <div className="grid gap-5 overflow-y-auto p-6">
-          <ProgressCell campaign={campaign} />
+          <StatusCell campaign={campaign} slug={slug} />
 
-          {campaign.failedCount > 0 ? (
+          {campaign.status === 'Failed' && campaign.note ? (
+            <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-700">
+              {campaign.note}
+            </p>
+          ) : null}
+
+          {campaign.status === 'Queued' && campaign.failedCount > 0 ? (
             <div className="grid gap-3">
               <p className="text-sm font-semibold text-white light:text-neutral-950">
                 Failed ({campaign.failedCount})
@@ -553,6 +561,110 @@ function CampaignDetailModal({
       </div>
     </div>
   )
+}
+
+function StatusCell({ campaign, slug }: { campaign: CampaignListItem; slug: string }) {
+  const [isConfirmingCancel, setIsConfirmingCancel] = useState(false)
+  const cancelScheduledCampaignForSlug = useCampaignStore((s) => s.cancelScheduledCampaignForSlug)
+  const cancelScheduleStatus = useCampaignStore((s) => s.cancelScheduleStatus)
+  const resetCancelScheduleFeedback = useCampaignStore((s) => s.resetCancelScheduleFeedback)
+
+  if (campaign.status === 'Scheduled') {
+    return (
+      <div className="flex items-center gap-2.5" onClick={(e) => e.stopPropagation()}>
+        <span className="inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-semibold text-cyan-300 light:bg-cyan-50 light:text-cyan-700">
+          <span className="size-1.5 shrink-0 rounded-full bg-cyan-400" />
+          Scheduled for {campaign.scheduledAt ? formatDateTime(campaign.scheduledAt) : '—'}
+        </span>
+        <button
+          type="button"
+          onClick={() => { resetCancelScheduleFeedback(); setIsConfirmingCancel(true) }}
+          className="text-xs font-medium text-white/40 underline decoration-white/20 underline-offset-2 transition hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-700"
+        >
+          Cancel
+        </button>
+        {isConfirmingCancel ? (
+          <CancelScheduleConfirmDialog
+            isSubmitting={cancelScheduleStatus === 'submitting'}
+            onCancel={() => setIsConfirmingCancel(false)}
+            onConfirm={async () => {
+              const ok = await cancelScheduledCampaignForSlug(slug, campaign.publicId)
+              if (ok) setIsConfirmingCancel(false)
+            }}
+          />
+        ) : null}
+      </div>
+    )
+  }
+
+  if (campaign.status === 'Failed') {
+    return (
+      <span
+        className="inline-flex w-fit items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-semibold text-red-300 light:bg-red-50 light:text-red-700"
+        title={campaign.note ?? undefined}
+      >
+        <span className="size-1.5 shrink-0 rounded-full bg-red-400" />
+        Failed
+      </span>
+    )
+  }
+
+  if (campaign.status === 'Cancelled') {
+    return (
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
+        Cancelled
+      </span>
+    )
+  }
+
+  return <ProgressCell campaign={campaign} />
+}
+
+function CancelScheduleConfirmDialog({
+  isSubmitting,
+  onCancel,
+  onConfirm,
+}: {
+  isSubmitting: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl light:border-neutral-200 light:bg-white">
+        <h2 className="text-base font-semibold text-white light:text-neutral-950">Cancel this scheduled send?</h2>
+        <p className="mt-2 text-sm leading-6 text-white/50 light:text-neutral-500">
+          It will never be dispatched. This cannot be undone.
+        </p>
+        <div className="mt-5 flex gap-3">
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={onCancel}
+            className="flex h-9 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+          >
+            Keep it
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={onConfirm}
+            className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-40"
+          >
+            {isSubmitting ? <Loader2 className="animate-spin" size={14} /> : null}
+            Cancel send
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 function ProgressCell({ campaign }: { campaign: CampaignListItem }) {

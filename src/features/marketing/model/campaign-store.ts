@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
 import {
+  cancelScheduledCampaign,
   getAudiencePreview,
   getAudienceRecipients,
   getCampaign,
@@ -42,6 +43,9 @@ type CampaignState = {
   sendCampaignStatus: SubmitStatus
   sendCampaignError: string | null
 
+  cancelScheduleStatus: SubmitStatus
+  cancelScheduleError: string | null
+
   failedRecipients: FailedRecipient[]
   failedRecipientsStatus: LoadStatus
 
@@ -67,6 +71,8 @@ type CampaignState = {
   clearAudienceRecipients: () => void
   sendCampaignForSlug: (slug: string, request: SendCampaignRequest) => Promise<CampaignDetail | null>
   resetSendCampaignFeedback: () => void
+  cancelScheduledCampaignForSlug: (slug: string, campaignPublicId: string) => Promise<boolean>
+  resetCancelScheduleFeedback: () => void
   loadFailedRecipients: (slug: string, campaignPublicId: string) => Promise<void>
   clearFailedRecipients: () => void
 }
@@ -90,6 +96,9 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   sendCampaignStatus: 'idle',
   sendCampaignError: null,
+
+  cancelScheduleStatus: 'idle',
+  cancelScheduleError: null,
 
   failedRecipients: [],
   failedRecipientsStatus: 'idle',
@@ -207,6 +216,25 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   resetSendCampaignFeedback: () => {
     set({ sendCampaignStatus: 'idle', sendCampaignError: null })
+  },
+
+  cancelScheduledCampaignForSlug: async (slug, campaignPublicId) => {
+    set({ cancelScheduleStatus: 'submitting', cancelScheduleError: null })
+    try {
+      await cancelScheduledCampaign(slug, campaignPublicId)
+      set({ cancelScheduleStatus: 'success', cancelScheduleError: null })
+      void get().loadCampaigns(slug)
+      return true
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'We could not cancel this send. Please try again.'
+      set({ cancelScheduleStatus: 'error', cancelScheduleError: message })
+      return false
+    }
+  },
+
+  resetCancelScheduleFeedback: () => {
+    set({ cancelScheduleStatus: 'idle', cancelScheduleError: null })
   },
 
   loadFailedRecipients: async (slug, campaignPublicId) => {

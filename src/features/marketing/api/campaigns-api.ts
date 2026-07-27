@@ -70,3 +70,10 @@ export function sendCampaign(slug: string, request: SendCampaignRequest) {
     { method: 'POST', body: request },
   ).then(unwrapApiResponse)
 }
+
+export function cancelScheduledCampaign(slug: string, campaignPublicId: string) {
+  return apiRequest<ApiResponse<CampaignDetail>>(
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignPublicId)}/schedule`,
+    { method: 'DELETE' },
+  ).then(unwrapApiResponse)
+}
