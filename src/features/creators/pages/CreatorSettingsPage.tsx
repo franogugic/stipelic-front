@@ -7,7 +7,6 @@ import {
   Fingerprint,
   Globe2,
   Hash,
-  Image,
   Loader2,
   Palette,
   Save,
@@ -15,6 +14,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { ImageUploadField } from '../../../shared/ui/ImageUploadField'
 import { creatorConstraints } from '../model/creator-constraints'
 import { useCreatorStore } from '../model/creator-store'
 import { usePayoutStore } from '../model/payout-store'
@@ -241,14 +241,11 @@ export function CreatorSettingsPage() {
                       error={validation.fieldErrors.supportEmail}
                       onChange={(v) => updateField('supportEmail', v)}
                     />
-                    <SettingsField
-                      icon={Image}
-                      label="Logo URL"
-                      type="url"
-                      maxLength={creatorConstraints.logoUrl.maxLength}
-                      placeholder="https://example.com/logo.png"
+                    <ImageUploadField
+                      slug={slug}
+                      purpose="CreatorLogo"
+                      label="Logo"
                       value={formValues.logoUrl}
-                      error={validation.fieldErrors.logoUrl}
                       onChange={(v) => updateField('logoUrl', v)}
                     />
 

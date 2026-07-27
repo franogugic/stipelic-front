@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { ImageUploadField } from '../../../shared/ui/ImageUploadField'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useProductStore } from '../model/product-store'
 import type {
@@ -324,9 +325,13 @@ function ProductFormModal({
               <input type="url" value={accessUrl} onChange={(e) => setAccessUrl(e.target.value)} placeholder="https://drive.google.com/…" className={inputClass} />
             </ModalField>
 
-            <ModalField label="Thumbnail URL">
-              <input type="url" value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} placeholder="https://…" className={inputClass} />
-            </ModalField>
+            <ImageUploadField
+              slug={slug}
+              purpose="ProductThumbnail"
+              label="Thumbnail"
+              value={thumbnailUrl}
+              onChange={setThumbnailUrl}
+            />
 
             {error ? (
               <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">{error}</p>
