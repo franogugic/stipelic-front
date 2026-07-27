@@ -14,6 +14,11 @@ export interface Order {
   netAmountCents: number
 }
 
+export interface OrdersPage {
+  orders: Order[]
+  hasMore: boolean
+}
+
 export interface OrderSummary {
   paidOrderCount: number
   totalPaidAmountCents: number

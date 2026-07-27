@@ -12,17 +12,34 @@ const STATUS_STYLES: Record<string, string> = {
   Refunded: 'bg-white/10 text-white/50 light:bg-neutral-100 light:text-neutral-500',
 }
 
+const PAGE_SIZE = 10
+
 export function OrdersPage() {
   const { slug } = useParams<{ slug: string }>()
   const [orders, setOrders] = useState<Order[]>([])
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [hasMore, setHasMore] = useState(false)
+  const [loadMoreStatus, setLoadMoreStatus] = useState<'idle' | 'loading' | 'error'>('idle')
 
   useEffect(() => {
     if (!slug) return
-    listOrders(slug)
-      .then((data) => { setOrders(data); setStatus('success') })
+    listOrders(slug, { limit: PAGE_SIZE })
+      .then((page) => { setOrders(page.orders); setHasMore(page.hasMore); setStatus('success') })
       .catch(() => setStatus('error'))
   }, [slug])
+
+  const loadMore = () => {
+    if (!slug || orders.length === 0) return
+    const last = orders[orders.length - 1]
+    setLoadMoreStatus('loading')
+    listOrders(slug, { afterCreatedAt: last.createdAt, afterId: last.publicId, limit: PAGE_SIZE })
+      .then((page) => {
+        setOrders((prev) => [...prev, ...page.orders])
+        setHasMore(page.hasMore)
+        setLoadMoreStatus('idle')
+      })
+      .catch(() => setLoadMoreStatus('error'))
+  }
 
   return (
     <AppShell slug={slug!} activeSection="orders">
@@ -95,6 +112,26 @@ export function OrdersPage() {
               </tbody>
             </table>
           </div>
+        )}
+
+        {status === 'success' && hasMore && (
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              disabled={loadMoreStatus === 'loading'}
+              onClick={loadMore}
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
+            >
+              {loadMoreStatus === 'loading' ? <Loader2 className="animate-spin" size={14} /> : null}
+              Load more
+            </button>
+          </div>
+        )}
+
+        {loadMoreStatus === 'error' && (
+          <p className="mt-3 text-center text-sm text-red-400 light:text-red-500">
+            Failed to load more orders. Please try again.
+          </p>
         )}
       </div>
     </AppShell>
