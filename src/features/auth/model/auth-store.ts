@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
+import { resetAllFeatureStores } from '../../../shared/model/reset-all-feature-stores'
 import {
   getCurrentUser,
   loginUser,
@@ -102,6 +103,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         loginStatus: 'idle',
         loginError: null,
       })
+      resetAllFeatureStores()
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -122,11 +124,16 @@ export const useAuthStore = create<AuthState>((set) => ({
         sessionStatus: 'authenticated',
       })
     } catch {
+      const hadUser = useAuthStore.getState().currentUser !== null
       set({
         currentUser: null,
         accountStatus: null,
         sessionStatus: 'unauthenticated',
       })
+      // A session that was valid a moment ago (or belongs to a previous browser tab's login)
+      // just turned out to be invalid — treat it the same as an explicit logout so no other
+      // account's data lingers in the feature stores for whoever logs in next.
+      if (hadUser) resetAllFeatureStores()
     }
   },
   register: async (values) => {

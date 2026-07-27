@@ -79,33 +79,38 @@ type CreatorState = {
   resetDeleteCreatorFeedback: () => void
   resetUpdateCreatorSettingsFeedback: () => void
   resetPollActivation: () => void
+  reset: () => void
+}
+
+const initialCreatorState = {
+  createdCreator: null,
+  currentCreator: null,
+  currentCreatorStatus: 'idle' as CreatorLoadStatus,
+  creatorPlans: [] as CreatorPlan[],
+  creatorPlansStatus: 'idle' as CreatorLoadStatus,
+  creatorPlansError: null,
+  creatorSettings: null,
+  creatorSettingsStatus: 'idle' as CreatorLoadStatus,
+  creatorSettingsError: null,
+  updateSettingsStatus: 'idle' as CreatorUpdateStatus,
+  updateSettingsError: null,
+  createStatus: 'idle' as CreatorCreateStatus,
+  createError: null,
+  checkoutResult: null,
+  checkoutStatus: 'idle' as CreatorCheckoutStatus,
+  checkoutError: null,
+  deleteStatus: 'idle' as CreatorDeleteStatus,
+  deleteError: null,
+  cancelSubscriptionStatus: 'idle' as CreatorCancelSubscriptionStatus,
+  cancelSubscriptionError: null,
+  pollActivationStatus: 'idle' as PollActivationStatus,
+  homeSummary: null,
+  homeSummaryStatus: 'idle' as CreatorLoadStatus,
+  homeSummarySlug: null,
 }
 
 export const useCreatorStore = create<CreatorState>((set) => ({
-  createdCreator: null,
-  currentCreator: null,
-  currentCreatorStatus: 'idle',
-  creatorPlans: [],
-  creatorPlansStatus: 'idle',
-  creatorPlansError: null,
-  creatorSettings: null,
-  creatorSettingsStatus: 'idle',
-  creatorSettingsError: null,
-  updateSettingsStatus: 'idle',
-  updateSettingsError: null,
-  createStatus: 'idle',
-  createError: null,
-  checkoutResult: null,
-  checkoutStatus: 'idle',
-  checkoutError: null,
-  deleteStatus: 'idle',
-  deleteError: null,
-  cancelSubscriptionStatus: 'idle',
-  cancelSubscriptionError: null,
-  pollActivationStatus: 'idle',
-  homeSummary: null,
-  homeSummaryStatus: 'idle',
-  homeSummarySlug: null,
+  ...initialCreatorState,
 
   loadHomeSummary: async (slug) => {
     const { homeSummaryStatus, homeSummarySlug } = useCreatorStore.getState()
@@ -375,5 +380,8 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
   resetPollActivation: () => {
     set({ pollActivationStatus: 'idle' })
+  },
+  reset: () => {
+    set(initialCreatorState)
   },
 }))

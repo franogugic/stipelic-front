@@ -60,38 +60,43 @@ type PayoutState = {
   cancelPayoutRequestForSlug: (slug: string, payoutPublicId: string) => Promise<Payout | null>
   resetRequestPayoutFeedback: () => void
   resetCancelPayoutFeedback: () => void
+  reset: () => void
 }
 
-export const usePayoutStore = create<PayoutState>((set, get) => ({
-  payoutCountries: [],
-  payoutCountriesStatus: 'idle',
+const initialPayoutState = {
+  payoutCountries: [] as PayoutCountry[],
+  payoutCountriesStatus: 'idle' as LoadStatus,
 
-  connectOnboardingStatus: 'idle',
+  connectOnboardingStatus: 'idle' as SubmitStatus,
   connectOnboardingError: null,
 
   payoutSummary: null,
-  payoutSummaryStatus: 'idle',
+  payoutSummaryStatus: 'idle' as LoadStatus,
   payoutSummarySlug: null,
   payoutSummaryRevalidating: false,
 
-  payoutHistory: [],
-  payoutHistoryStatus: 'idle',
+  payoutHistory: [] as Payout[],
+  payoutHistoryStatus: 'idle' as LoadStatus,
   payoutHistorySlug: null,
   payoutHistoryRevalidating: false,
 
   payoutProfile: null,
-  payoutProfileStatus: 'idle',
+  payoutProfileStatus: 'idle' as LoadStatus,
   payoutProfileSlug: null,
   payoutProfileRevalidating: false,
 
-  updatePayoutProfileStatus: 'idle',
+  updatePayoutProfileStatus: 'idle' as SubmitStatus,
   updatePayoutProfileError: null,
 
-  requestPayoutStatus: 'idle',
+  requestPayoutStatus: 'idle' as SubmitStatus,
   requestPayoutError: null,
 
-  cancelPayoutStatus: 'idle',
+  cancelPayoutStatus: 'idle' as SubmitStatus,
   cancelPayoutError: null,
+}
+
+export const usePayoutStore = create<PayoutState>((set, get) => ({
+  ...initialPayoutState,
 
   loadPayoutCountries: async () => {
     const currentStatus = get().payoutCountriesStatus
@@ -262,5 +267,8 @@ export const usePayoutStore = create<PayoutState>((set, get) => ({
   },
   resetCancelPayoutFeedback: () => {
     set({ cancelPayoutStatus: 'idle', cancelPayoutError: null })
+  },
+  reset: () => {
+    set(initialPayoutState)
   },
 }))

@@ -75,33 +75,38 @@ type CampaignState = {
   resetCancelScheduleFeedback: () => void
   loadFailedRecipients: (slug: string, campaignPublicId: string) => Promise<void>
   clearFailedRecipients: () => void
+  reset: () => void
 }
 
-export const useCampaignStore = create<CampaignState>((set, get) => ({
-  campaigns: [],
-  campaignsStatus: 'idle',
+const initialCampaignState = {
+  campaigns: [] as CampaignListItem[],
+  campaignsStatus: 'idle' as LoadStatus,
   campaignsSlug: null,
   campaignsRevalidating: false,
 
   currentCampaign: null,
-  currentCampaignStatus: 'idle',
+  currentCampaignStatus: 'idle' as LoadStatus,
 
   audiencePreview: null,
-  audiencePreviewStatus: 'idle',
+  audiencePreviewStatus: 'idle' as LoadStatus,
 
-  audienceRecipients: [],
-  audienceRecipientsStatus: 'idle',
+  audienceRecipients: [] as string[],
+  audienceRecipientsStatus: 'idle' as LoadStatus,
   audienceRecipientsHasMore: false,
-  audienceRecipientsLoadMoreStatus: 'idle',
+  audienceRecipientsLoadMoreStatus: 'idle' as LoadStatus,
 
-  sendCampaignStatus: 'idle',
+  sendCampaignStatus: 'idle' as SubmitStatus,
   sendCampaignError: null,
 
-  cancelScheduleStatus: 'idle',
+  cancelScheduleStatus: 'idle' as SubmitStatus,
   cancelScheduleError: null,
 
-  failedRecipients: [],
-  failedRecipientsStatus: 'idle',
+  failedRecipients: [] as FailedRecipient[],
+  failedRecipientsStatus: 'idle' as LoadStatus,
+}
+
+export const useCampaignStore = create<CampaignState>((set, get) => ({
+  ...initialCampaignState,
 
   loadCampaigns: async (slug) => {
     const { campaignsStatus, campaignsSlug, campaignsRevalidating } = get()
@@ -249,5 +254,8 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   clearFailedRecipients: () => {
     set({ failedRecipients: [], failedRecipientsStatus: 'idle' })
+  },
+  reset: () => {
+    set(initialCampaignState)
   },
 }))

@@ -38,22 +38,27 @@ type TemplateState = {
   resetSaveTemplateFeedback: () => void
   archiveTemplateForSlug: (slug: string, templatePublicId: string) => Promise<boolean>
   resetArchiveTemplateFeedback: () => void
+  reset: () => void
 }
 
-export const useTemplateStore = create<TemplateState>((set, get) => ({
-  templates: [],
-  templatesStatus: 'idle',
+const initialTemplateState = {
+  templates: [] as EmailTemplate[],
+  templatesStatus: 'idle' as LoadStatus,
   templatesSlug: null,
   templatesRevalidating: false,
 
   currentTemplate: null,
-  currentTemplateStatus: 'idle',
+  currentTemplateStatus: 'idle' as LoadStatus,
 
-  saveTemplateStatus: 'idle',
+  saveTemplateStatus: 'idle' as SubmitStatus,
   saveTemplateError: null,
 
-  archiveTemplateStatus: 'idle',
+  archiveTemplateStatus: 'idle' as SubmitStatus,
   archiveTemplateError: null,
+}
+
+export const useTemplateStore = create<TemplateState>((set, get) => ({
+  ...initialTemplateState,
 
   loadTemplates: async (slug) => {
     const { templatesStatus, templatesSlug, templatesRevalidating } = get()
@@ -129,5 +134,8 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
 
   resetArchiveTemplateFeedback: () => {
     set({ archiveTemplateStatus: 'idle', archiveTemplateError: null })
+  },
+  reset: () => {
+    set(initialTemplateState)
   },
 }))

@@ -43,22 +43,27 @@ type AdminPayoutsState = {
   markPaid: (creatorPublicId: string, payoutPublicId: string, request: MarkPayoutPaidRequest) => Promise<AdminPayout | null>
   markFailed: (creatorPublicId: string, payoutPublicId: string, request: MarkPayoutFailedRequest) => Promise<AdminPayout | null>
   resetActionFeedback: () => void
+  reset: () => void
+}
+
+const initialAdminPayoutsState = {
+  queue: [] as AdminPayoutQueueItem[],
+  queueStatus: 'idle' as LoadStatus,
+  queueError: null,
+  queueFilter: 'Pending' as PayoutStatus | undefined,
+
+  balances: [] as CreatorBalanceSummary[],
+  balancesStatus: 'idle' as LoadStatus,
+  balancesError: null,
+
+  activePayouts: {} as Record<string, AdminPayout>,
+
+  actionStatus: 'idle' as SubmitStatus,
+  actionError: null,
 }
 
 export const useAdminPayoutsStore = create<AdminPayoutsState>((set, get) => ({
-  queue: [],
-  queueStatus: 'idle',
-  queueError: null,
-  queueFilter: 'Pending',
-
-  balances: [],
-  balancesStatus: 'idle',
-  balancesError: null,
-
-  activePayouts: {},
-
-  actionStatus: 'idle',
-  actionError: null,
+  ...initialAdminPayoutsState,
 
   loadQueue: async (status, limit) => {
     set({ queueStatus: 'loading', queueError: null, queueFilter: status })
@@ -153,4 +158,5 @@ export const useAdminPayoutsStore = create<AdminPayoutsState>((set, get) => ({
   },
 
   resetActionFeedback: () => set({ actionStatus: 'idle', actionError: null }),
+  reset: () => set(initialAdminPayoutsState),
 }))

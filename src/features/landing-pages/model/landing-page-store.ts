@@ -60,28 +60,33 @@ type LandingPageState = {
   archivePage: (slug: string, pageId: string) => Promise<boolean>
   saveEditor: (slug: string, pageId: string, request: SaveEditorRequest) => Promise<LandingPageWithSections | null>
   resetMutateFeedback: () => void
+  reset: () => void
 }
 
 // Monotonic token so only the latest time-series request may write its result — rapid period
 // switches can resolve out of order.
 let timeSeriesRequestId = 0
 
-export const useLandingPageStore = create<LandingPageState>((set, get) => ({
-  pages: [],
+const initialLandingPageState = {
+  pages: [] as LandingPage[],
   currentPage: null,
-  templates: [],
-  analytics: {},
+  templates: [] as SectionTemplate[],
+  analytics: {} as Record<string, LandingPageAnalytics>,
   timeSeries: null,
-  timeSeriesStatus: 'idle',
+  timeSeriesStatus: 'idle' as LoadStatus,
   timeSeriesPageKey: null,
-  listStatus: 'idle',
-  pageStatus: 'idle',
+  listStatus: 'idle' as LoadStatus,
+  pageStatus: 'idle' as LoadStatus,
   pageError: null,
-  analyticsStatus: 'idle',
+  analyticsStatus: 'idle' as LoadStatus,
   analyticsError: null,
-  mutateStatus: 'idle',
+  mutateStatus: 'idle' as MutateStatus,
   mutateError: null,
   mutateErrorStatus: null,
+}
+
+export const useLandingPageStore = create<LandingPageState>((set, get) => ({
+  ...initialLandingPageState,
 
   loadPages: async (slug) => {
     set({ listStatus: 'loading' })
@@ -223,4 +228,5 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
   },
 
   resetMutateFeedback: () => set({ mutateStatus: 'idle', mutateError: null, mutateErrorStatus: null }),
+  reset: () => set(initialLandingPageState),
 }))

@@ -17,15 +17,20 @@ type ContactsState = {
   loadContacts: (slug: string, search?: string) => Promise<void>
   loadMoreContacts: (slug: string) => Promise<void>
   setSearch: (search: string) => void
+  reset: () => void
+}
+
+const initialContactsState = {
+  contacts: [] as Contact[],
+  contactsStatus: 'idle' as LoadStatus,
+  hasMore: false,
+  loadMoreStatus: 'idle' as LoadStatus,
+  search: '',
+  contactsSlug: null,
 }
 
 export const useContactsStore = create<ContactsState>((set, get) => ({
-  contacts: [],
-  contactsStatus: 'idle',
-  hasMore: false,
-  loadMoreStatus: 'idle',
-  search: '',
-  contactsSlug: null,
+  ...initialContactsState,
 
   loadContacts: async (slug, search = '') => {
     set({ contactsStatus: 'loading', search, contactsSlug: slug })
@@ -57,5 +62,8 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
 
   setSearch: (search) => {
     set({ search })
+  },
+  reset: () => {
+    set(initialContactsState)
   },
 }))

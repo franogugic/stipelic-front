@@ -24,18 +24,23 @@ type ProductState = {
   resetCreateFeedback: () => void
   resetUpdateFeedback: () => void
   resetArchiveFeedback: () => void
+  reset: () => void
+}
+
+const initialProductState = {
+  products: [] as Product[],
+  loadStatus: 'idle' as LoadStatus,
+  loadError: null,
+  createStatus: 'idle' as MutateStatus,
+  createError: null,
+  updateStatus: 'idle' as MutateStatus,
+  updateError: null,
+  archiveStatus: 'idle' as MutateStatus,
+  archiveError: null,
 }
 
 export const useProductStore = create<ProductState>((set) => ({
-  products: [],
-  loadStatus: 'idle',
-  loadError: null,
-  createStatus: 'idle',
-  createError: null,
-  updateStatus: 'idle',
-  updateError: null,
-  archiveStatus: 'idle',
-  archiveError: null,
+  ...initialProductState,
 
   loadProducts: async (slug) => {
     set({ loadStatus: 'loading', loadError: null })
@@ -96,4 +101,5 @@ export const useProductStore = create<ProductState>((set) => ({
   resetCreateFeedback: () => set({ createStatus: 'idle', createError: null }),
   resetUpdateFeedback: () => set({ updateStatus: 'idle', updateError: null }),
   resetArchiveFeedback: () => set({ archiveStatus: 'idle', archiveError: null }),
+  reset: () => set(initialProductState),
 }))
