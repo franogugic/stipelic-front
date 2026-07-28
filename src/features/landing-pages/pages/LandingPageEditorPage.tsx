@@ -7,19 +7,20 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Globe, GripVertical, Loader2, Lock,
-  Package, PanelLeftClose, PanelLeftOpen, Trash2, Type, Wrench, Zap,
+  AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Globe, GripVertical, HelpCircle, Images, Loader2, Lock,
+  MessageSquareQuote, Package, PanelLeftClose, PanelLeftOpen, Plus, Trash2, Type, Wrench, X, Zap,
 } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { ImageUploadField } from '../../../shared/ui/ImageUploadField'
 import { useLandingPageStore } from '../model/landing-page-store'
 import type {
-  CtaContent, FeaturesContent, FooterContent, HeroContent,
+  CtaContent, FaqContent, FeaturesContent, FooterContent, GalleryContent, HeroContent,
   LandingPageSection, LandingPageType, LandingPageWithSections,
   NavbarContent, ProductDetailsContent,
   SaveEditorRequest, SaveEditorSectionRequest,
-  SectionTemplate, SectionType,
+  SectionTemplate, SectionType, TestimonialsContent,
 } from '../model/types'
 
 type DraftSection = LandingPageSection & { isNew?: boolean }
@@ -31,6 +32,9 @@ const SECTION_LABELS: Record<SectionType, string> = {
   ProductDetails: 'Product details',
   Cta: 'Call to action',
   Footer: 'Footer',
+  Testimonials: 'Testimonials',
+  Faq: 'FAQ',
+  Gallery: 'Gallery',
 }
 
 const LOCKED_TYPES: SectionType[] = ['Navbar', 'Footer']
@@ -402,6 +406,7 @@ export function LandingPageEditorPage() {
               ) : selectedSection ? (
                 <SectionSettingsSidebar
                   key={selectedSection.publicId}
+                  slug={slug ?? ''}
                   section={selectedSection}
                   onContentChange={(json) => updateSectionContent(selectedSection.publicId, json)}
                   onColorChange={(color) => updateSectionColor(selectedSection.publicId, color)}
@@ -419,7 +424,7 @@ export function LandingPageEditorPage() {
 
 /* ─── SectionsPanel ───────────────────────────────────────────── */
 
-const ADDABLE_TYPES: SectionType[] = ['Hero', 'Features', 'ProductDetails', 'Cta']
+const ADDABLE_TYPES: SectionType[] = ['Hero', 'Features', 'ProductDetails', 'Cta', 'Testimonials', 'Faq', 'Gallery']
 
 function SectionsPanel({
   isOpen, templates, missingRequired, draftSections, onToggle, onAdd,
@@ -593,6 +598,52 @@ function MiniSectionPreview({ template }: { template: SectionTemplate }) {
         </div>
       )
     }
+    case 'Testimonials': {
+      const c = content as Partial<TestimonialsContent>
+      const items = (c.items ?? []).slice(0, 2)
+      return (
+        <div className="px-6 py-8" style={{ backgroundColor: template.defaultBackgroundColor }}>
+          {c.heading ? <p className="mb-4 text-center text-lg font-bold text-neutral-950">{c.heading}</p> : null}
+          <div className="grid grid-cols-2 gap-3">
+            {items.map((item, i) => (
+              <div key={i} className="rounded-lg border border-neutral-200 bg-white p-3">
+                <p className="text-xs italic text-neutral-600 line-clamp-2">"{item.quote}"</p>
+                <p className="mt-1 text-xs font-semibold text-neutral-950">{item.author}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    case 'Faq': {
+      const c = content as Partial<FaqContent>
+      const items = (c.items ?? []).slice(0, 2)
+      return (
+        <div className="px-6 py-8" style={{ backgroundColor: template.defaultBackgroundColor }}>
+          {c.heading ? <p className="mb-4 text-center text-lg font-bold text-neutral-950">{c.heading}</p> : null}
+          <div className="grid gap-2">
+            {items.map((item, i) => (
+              <div key={i} className="rounded-lg border border-neutral-200 bg-white p-3">
+                <p className="text-xs font-semibold text-neutral-950">{item.question}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    case 'Gallery': {
+      const c = content as Partial<GalleryContent>
+      return (
+        <div className="px-6 py-8" style={{ backgroundColor: template.defaultBackgroundColor }}>
+          {c.heading ? <p className="mb-4 text-center text-lg font-bold text-neutral-950">{c.heading}</p> : null}
+          <div className="grid grid-cols-3 gap-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="aspect-square rounded-lg border border-neutral-200 bg-neutral-100" />
+            ))}
+          </div>
+        </div>
+      )
+    }
     case 'Cta': {
       const c = content as Partial<CtaContent>
       return (
@@ -707,6 +758,9 @@ function SectionPreview({ section, pageType }: { section: DraftSection; pageType
       const c = content as Partial<HeroContent>
       return (
         <div className="px-8 py-16 text-center">
+          {c.imageUrl ? (
+            <img src={c.imageUrl} alt="" className="mx-auto mb-6 max-h-64 w-full max-w-xl rounded-2xl object-cover" />
+          ) : null}
           <h1 className="text-3xl font-bold text-neutral-950">{c.heading || 'Heading'}</h1>
           {c.subheading ? <p className="mt-3 text-lg text-neutral-600">{c.subheading}</p> : null}
           <div className="mt-6 flex flex-col items-center gap-3">
@@ -751,6 +805,9 @@ function SectionPreview({ section, pageType }: { section: DraftSection; pageType
       const c = content as Partial<ProductDetailsContent>
       return (
         <div className="px-8 py-12">
+          {c.imageUrl ? (
+            <img src={c.imageUrl} alt="" className="mb-6 max-h-64 w-full max-w-xl rounded-2xl object-cover" />
+          ) : null}
           {c.heading ? <h2 className="text-2xl font-bold text-neutral-950">{c.heading}</h2> : null}
           {c.description ? <p className="mt-3 text-neutral-600">{c.description}</p> : null}
           {c.showPrice ? <p className="mt-4 text-2xl font-bold text-neutral-950">€ —</p> : null}
@@ -763,6 +820,59 @@ function SectionPreview({ section, pageType }: { section: DraftSection; pageType
               ))}
             </ul>
           ) : null}
+        </div>
+      )
+    }
+    case 'Testimonials': {
+      const c = content as Partial<TestimonialsContent>
+      const items = c.items ?? []
+      return (
+        <div className="px-8 py-12">
+          {c.heading ? <h2 className="mb-8 text-center text-2xl font-bold text-neutral-950">{c.heading}</h2> : null}
+          <div className={`grid gap-4 ${items.length <= 1 ? 'grid-cols-1' : items.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+            {items.map((item, i) => (
+              <div key={i} className="rounded-xl border border-neutral-200 bg-white/60 p-4">
+                <p className="text-sm italic text-neutral-700">"{item.quote}"</p>
+                <p className="mt-3 text-sm font-semibold text-neutral-950">{item.author}</p>
+                {item.role ? <p className="text-xs text-neutral-500">{item.role}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    case 'Faq': {
+      const c = content as Partial<FaqContent>
+      const items = c.items ?? []
+      return (
+        <div className="px-8 py-12">
+          {c.heading ? <h2 className="mb-8 text-center text-2xl font-bold text-neutral-950">{c.heading}</h2> : null}
+          <div className="mx-auto max-w-2xl space-y-3">
+            {items.map((item, i) => (
+              <div key={i} className="rounded-xl border border-neutral-200 bg-white/60 p-4">
+                <p className="font-semibold text-neutral-950">{item.question}</p>
+                <p className="mt-1.5 text-sm text-neutral-600">{item.answer}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    case 'Gallery': {
+      const c = content as Partial<GalleryContent>
+      const imageUrls = c.imageUrls ?? []
+      return (
+        <div className="px-8 py-12">
+          {c.heading ? <h2 className="mb-8 text-center text-2xl font-bold text-neutral-950">{c.heading}</h2> : null}
+          {imageUrls.length > 0 ? (
+            <div className="grid grid-cols-3 gap-3">
+              {imageUrls.map((url, i) => (
+                <img key={i} src={url} alt="" className="aspect-square w-full rounded-xl object-cover" />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-sm text-neutral-400">No images added yet.</p>
+          )}
         </div>
       )
     }
@@ -840,7 +950,8 @@ function PageSettingsSidebar({
 
 /* ─── SectionSettingsSidebar ──────────────────────────────────── */
 
-function SectionSettingsSidebar({ section, onContentChange, onColorChange }: {
+function SectionSettingsSidebar({ slug, section, onContentChange, onColorChange }: {
+  slug: string
   section: DraftSection
   onContentChange: (json: string) => void
   onColorChange: (color: string) => void
@@ -873,6 +984,55 @@ function SectionSettingsSidebar({ section, onContentChange, onColorChange }: {
     updateContent({ bullets })
   }
 
+  const updateTestimonial = (index: number, key: string, value: string) => {
+    const items = [...((content.items as { quote: string; author: string; role: string }[]) ?? [])]
+    items[index] = { ...items[index], [key]: value }
+    updateContent({ items })
+  }
+
+  const addTestimonial = () => {
+    const items = [...((content.items as { quote: string; author: string; role: string }[]) ?? [])]
+    items.push({ quote: '', author: '', role: '' })
+    updateContent({ items })
+  }
+
+  const removeTestimonial = (index: number) => {
+    const items = [...((content.items as { quote: string; author: string; role: string }[]) ?? [])]
+    items.splice(index, 1)
+    updateContent({ items })
+  }
+
+  const updateFaqItem = (index: number, key: string, value: string) => {
+    const items = [...((content.items as { question: string; answer: string }[]) ?? [])]
+    items[index] = { ...items[index], [key]: value }
+    updateContent({ items })
+  }
+
+  const addFaqItem = () => {
+    const items = [...((content.items as { question: string; answer: string }[]) ?? [])]
+    items.push({ question: '', answer: '' })
+    updateContent({ items })
+  }
+
+  const removeFaqItem = (index: number) => {
+    const items = [...((content.items as { question: string; answer: string }[]) ?? [])]
+    items.splice(index, 1)
+    updateContent({ items })
+  }
+
+  const handleGalleryImageChange = (index: number, url: string) => {
+    const imageUrls = [...((content.imageUrls as string[]) ?? [])]
+    if (url) imageUrls[index] = url
+    else imageUrls.splice(index, 1)
+    updateContent({ imageUrls })
+  }
+
+  const addGalleryImage = (url: string) => {
+    if (!url) return
+    const imageUrls = [...((content.imageUrls as string[]) ?? []), url]
+    updateContent({ imageUrls })
+  }
+
   return (
     <div className="grid gap-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">
@@ -890,6 +1050,13 @@ function SectionSettingsSidebar({ section, onContentChange, onColorChange }: {
         <SidebarField label="Brand name" value={String(content.brandName ?? '')} onChange={(v) => updateContent({ brandName: v })} />
       ) : section.type === 'Hero' ? (
         <>
+          <ImageUploadField
+            slug={slug}
+            purpose="LandingPageHero"
+            label="Image"
+            value={String(content.imageUrl ?? '')}
+            onChange={(url) => updateContent({ imageUrl: url || null })}
+          />
           <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
           <SidebarField label="Subheading" value={String(content.subheading ?? '')} onChange={(v) => updateContent({ subheading: v })} />
           <SidebarField label="Button text" value={String(content.ctaText ?? '')} onChange={(v) => updateContent({ ctaText: v })} />
@@ -911,6 +1078,13 @@ function SectionSettingsSidebar({ section, onContentChange, onColorChange }: {
         </>
       ) : section.type === 'ProductDetails' ? (
         <>
+          <ImageUploadField
+            slug={slug}
+            purpose="LandingPageProductImage"
+            label="Image"
+            value={String(content.imageUrl ?? '')}
+            onChange={(url) => updateContent({ imageUrl: url || null })}
+          />
           <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
           <SidebarField label="Description" value={String(content.description ?? '')} onChange={(v) => updateContent({ description: v })} textarea />
           <div className="flex items-center gap-3">
@@ -924,6 +1098,96 @@ function SectionSettingsSidebar({ section, onContentChange, onColorChange }: {
                 <SidebarField label={`Bullet ${i + 1}`} value={b} onChange={(v) => updateBullet(i, v)} />
               </div>
             ))}
+          </div>
+        </>
+      ) : section.type === 'Testimonials' ? (
+        <>
+          <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Items</p>
+              <button
+                type="button"
+                onClick={addTestimonial}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-white/70 transition hover:bg-white/10 light:text-neutral-600 light:hover:bg-neutral-100"
+              >
+                <Plus size={12} /> Add
+              </button>
+            </div>
+            <div className="grid gap-3">
+              {((content.items as { quote: string; author: string; role: string }[]) ?? []).map((item, i) => (
+                <div key={i} className="relative rounded-xl border border-white/10 p-3 grid gap-2 light:border-neutral-100">
+                  <button
+                    type="button"
+                    onClick={() => removeTestimonial(i)}
+                    className="absolute right-2 top-2 text-white/30 transition hover:text-white/70 light:text-neutral-300 light:hover:text-neutral-600"
+                  >
+                    <X size={14} />
+                  </button>
+                  <SidebarField label="Quote" value={item.quote} onChange={(v) => updateTestimonial(i, 'quote', v)} textarea />
+                  <SidebarField label="Author" value={item.author} onChange={(v) => updateTestimonial(i, 'author', v)} />
+                  <SidebarField label="Role" value={item.role} onChange={(v) => updateTestimonial(i, 'role', v)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : section.type === 'Faq' ? (
+        <>
+          <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Items</p>
+              <button
+                type="button"
+                onClick={addFaqItem}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-white/70 transition hover:bg-white/10 light:text-neutral-600 light:hover:bg-neutral-100"
+              >
+                <Plus size={12} /> Add
+              </button>
+            </div>
+            <div className="grid gap-3">
+              {((content.items as { question: string; answer: string }[]) ?? []).map((item, i) => (
+                <div key={i} className="relative rounded-xl border border-white/10 p-3 grid gap-2 light:border-neutral-100">
+                  <button
+                    type="button"
+                    onClick={() => removeFaqItem(i)}
+                    className="absolute right-2 top-2 text-white/30 transition hover:text-white/70 light:text-neutral-300 light:hover:text-neutral-600"
+                  >
+                    <X size={14} />
+                  </button>
+                  <SidebarField label="Question" value={item.question} onChange={(v) => updateFaqItem(i, 'question', v)} />
+                  <SidebarField label="Answer" value={item.answer} onChange={(v) => updateFaqItem(i, 'answer', v)} textarea />
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : section.type === 'Gallery' ? (
+        <>
+          <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Images</p>
+            <div className="grid gap-3">
+              {((content.imageUrls as string[]) ?? []).map((url, i) => (
+                <ImageUploadField
+                  key={i}
+                  slug={slug}
+                  purpose="LandingPageProductImage"
+                  label={`Image ${i + 1}`}
+                  value={url}
+                  onChange={(v) => handleGalleryImageChange(i, v)}
+                />
+              ))}
+              <ImageUploadField
+                key={((content.imageUrls as string[]) ?? []).length}
+                slug={slug}
+                purpose="LandingPageProductImage"
+                label="Add image"
+                value=""
+                onChange={addGalleryImage}
+              />
+            </div>
           </div>
         </>
       ) : section.type === 'Cta' ? (
@@ -962,6 +1226,9 @@ function SectionIcon({ type, size = 14 }: { type: SectionType; size?: number }) 
     case 'ProductDetails': return <BookOpen size={size} />
     case 'Cta': return <Wrench size={size} />
     case 'Footer': return <Type size={size} />
+    case 'Testimonials': return <MessageSquareQuote size={size} />
+    case 'Faq': return <HelpCircle size={size} />
+    case 'Gallery': return <Images size={size} />
   }
 }
 
