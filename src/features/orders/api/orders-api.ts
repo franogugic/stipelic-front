@@ -1,10 +1,21 @@
 import { apiRequest } from '../../../shared/api/http-client'
-import type { HomeSummary, Order, OrderSummary } from '../model/types'
+import type { HomeSummary, OrdersPage, OrderSummary } from '../model/types'
 
 type ApiResponse<T> = { statusCode: number; message: string; code: string; data: T }
 
-export async function listOrders(slug: string): Promise<Order[]> {
-  const res = await apiRequest<ApiResponse<Order[]>>(`/api/creators/${slug}/orders`)
+export async function listOrders(
+  slug: string,
+  options: { afterCreatedAt?: string; afterId?: string; limit?: number } = {},
+): Promise<OrdersPage> {
+  const params = new URLSearchParams()
+  if (options.afterCreatedAt) params.set('afterCreatedAt', options.afterCreatedAt)
+  if (options.afterId) params.set('afterId', options.afterId)
+  if (options.limit) params.set('limit', String(options.limit))
+
+  const query = params.toString()
+  const res = await apiRequest<ApiResponse<OrdersPage>>(
+    `/api/creators/${slug}/orders${query ? `?${query}` : ''}`,
+  )
   return res.data
 }
 

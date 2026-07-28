@@ -1,13 +1,22 @@
 import {
-  BookOpen, ChevronLeft, ChevronRight, Globe, Loader2, Lock,
+  DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors,
+} from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import {
+  SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import {
+  AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Globe, GripVertical, Loader2, Lock,
   Package, PanelLeftClose, PanelLeftOpen, Trash2, Type, Wrench, Zap,
 } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useLandingPageStore } from '../model/landing-page-store'
 import type {
   CtaContent, FeaturesContent, FooterContent, HeroContent,
-  LandingPageSection, LandingPageType,
+  LandingPageSection, LandingPageType, LandingPageWithSections,
   NavbarContent, ProductDetailsContent,
   SaveEditorRequest, SaveEditorSectionRequest,
   SectionTemplate, SectionType,
@@ -36,6 +45,7 @@ export function LandingPageEditorPage() {
   const pageError = useLandingPageStore((s) => s.pageError)
   const mutateStatus = useLandingPageStore((s) => s.mutateStatus)
   const mutateError = useLandingPageStore((s) => s.mutateError)
+  const mutateErrorStatus = useLandingPageStore((s) => s.mutateErrorStatus)
   const templates = useLandingPageStore((s) => s.templates)
   const loadPage = useLandingPageStore((s) => s.loadPage)
   const loadTemplates = useLandingPageStore((s) => s.loadTemplates)
@@ -52,6 +62,21 @@ export function LandingPageEditorPage() {
   const [isDirty, setIsDirty] = useState(false)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [sidebarMode, setSidebarMode] = useState<'page' | 'section'>('page')
+  const [syncedPage, setSyncedPage] = useState<LandingPageWithSections | null>(null)
+
+  // Re-seed the drafts whenever the store hands us a new page object (initial load, save —
+  // which swaps temp section ids for server-issued ones — publish/unpublish). Guarded setState
+  // during render instead of an effect, per react.dev "storing information from previous renders".
+  if (currentPage !== syncedPage) {
+    setSyncedPage(currentPage)
+    if (currentPage) {
+      setDraftTitle(currentPage.title)
+      setDraftSlug(currentPage.slug)
+      setDraftType(currentPage.type)
+      setDraftSections(currentPage.sections.map((s) => ({ ...s })))
+      setIsDirty(false)
+    }
+  }
 
   const isLoading = pageStatus === 'idle' || pageStatus === 'loading'
   const isSaving = mutateStatus === 'submitting'
@@ -66,16 +91,6 @@ export function LandingPageEditorPage() {
       void loadTemplates(slug)
     }
   }, [slug, pageId, loadPage, loadTemplates])
-
-  useEffect(() => {
-    if (currentPage) {
-      setDraftTitle(currentPage.title)
-      setDraftSlug(currentPage.slug)
-      setDraftType(currentPage.type)
-      setDraftSections(currentPage.sections.map((s) => ({ ...s })))
-      setIsDirty(false)
-    }
-  }, [currentPage])
 
   const selectedSection = draftSections.find((s) => s.publicId === selectedSectionId) ?? null
   const markDirty = () => setIsDirty(true)
@@ -171,48 +186,85 @@ export function LandingPageEditorPage() {
 
   const [isPanelOpen, setIsPanelOpen] = useState(true)
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = draftSections.findIndex((s) => s.publicId === active.id)
+    const newIndex = draftSections.findIndex((s) => s.publicId === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    // Locked sections (Navbar/Footer) must never change position. Rather than hardcoding
+    // "index 0 and last", derive the allowed range from where locked sections actually sit
+    // in the array right now, and reject any drop whose result would move one.
+    const lockedIndexesOf = (sections: DraftSection[]) =>
+      sections
+        .map((s, i) => (LOCKED_TYPES.includes(s.type as SectionType) ? i : -1))
+        .filter((i) => i !== -1)
+
+    const lockedBefore = lockedIndexesOf(draftSections)
+    const reordered = arrayMove(draftSections, oldIndex, newIndex)
+    const lockedAfter = lockedIndexesOf(reordered)
+
+    const preservesLockedPositions =
+      lockedBefore.length === lockedAfter.length &&
+      lockedBefore.every((idx, i) => idx === lockedAfter[i])
+
+    if (!preservesLockedPositions) return
+
+    setDraftSections(reordered.map((s, i) => ({ ...s, sortOrder: i })))
+    markDirty()
+  }
+
   // Templates to show in left panel — exclude locked, show missing required prominently
   const addableTemplates = templates.filter(
     (t) => !LOCKED_TYPES.includes(t.type as SectionType)
   )
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-neutral-100 text-neutral-950">
+    <div className="flex h-screen flex-col overflow-hidden bg-neutral-950 text-white light:bg-neutral-100 light:text-neutral-950">
       {/* Top bar */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-5 z-10">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-neutral-950 px-5 z-10 light:border-neutral-200 light:bg-white">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-neutral-200 px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-3 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:text-neutral-600 light:hover:bg-neutral-50"
             onClick={() => navigate(`/app/${slug ?? ''}/landing-pages`)}
           >
             <ChevronLeft size={15} />
             Back
           </button>
-          <span className="text-sm font-medium text-neutral-950 truncate max-w-[180px]">{draftTitle || '…'}</span>
-          {isDirty ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Unsaved</span> : null}
+          <span className="text-sm font-medium text-white truncate max-w-[180px] light:text-neutral-950">{draftTitle || '…'}</span>
+          {isDirty ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300 light:bg-amber-100 light:text-amber-700">Unsaved</span> : null}
           {missingRequired.length > 0 ? (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+            <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-300 light:bg-red-100 light:text-red-700">
               Missing: {missingRequired.join(', ')}
             </span>
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          {mutateError ? <p className="text-xs text-red-600">{mutateError}</p> : null}
+          {mutateError && mutateErrorStatus !== 409 ? (
+            <p className="text-xs text-red-400 light:text-red-600">{mutateError}</p>
+          ) : null}
           {currentPage?.status === 'Published' ? (
             <a
               href={`/p/${slug}/${currentPage.slug}`}
               target="_blank"
               rel="noopener noreferrer"
               title="View live"
-              className="inline-flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-800"
+              className="inline-flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white light:border-neutral-200 light:bg-white light:text-neutral-500 light:hover:bg-neutral-50 light:hover:text-neutral-800"
             >
               <Globe size={15} />
             </a>
           ) : (
             <span
               title="Publish the page to view it live"
-              className="inline-flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-300 cursor-not-allowed"
+              className="inline-flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/25 cursor-not-allowed light:border-neutral-200 light:bg-white light:text-neutral-300"
             >
               <Globe size={15} />
             </span>
@@ -220,7 +272,7 @@ export function LandingPageEditorPage() {
           <button
             type="button"
             disabled={isSaving || !currentPage}
-            className="inline-flex h-9 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:opacity-40"
+            className="inline-flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50 disabled:opacity-40"
             onClick={() => void handlePublishToggle()}
           >
             {currentPage?.status === 'Published' ? 'Unpublish' : 'Publish'}
@@ -229,7 +281,7 @@ export function LandingPageEditorPage() {
             type="button"
             disabled={isSaving || !isDirty || missingRequired.length > 0}
             title={missingRequired.length > 0 ? `Add missing sections: ${missingRequired.join(', ')}` : undefined}
-            className="inline-flex h-9 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40"
+            className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40"
             onClick={() => void handleSave()}
           >
             {isSaving ? <Loader2 className="animate-spin" size={15} /> : null}
@@ -238,14 +290,41 @@ export function LandingPageEditorPage() {
         </div>
       </header>
 
+      {mutateErrorStatus === 409 && mutateError ? (
+        <div className="flex items-center gap-3 border-b border-amber-500/25 bg-amber-500/10 px-5 py-3 light:border-amber-200 light:bg-amber-50">
+          <AlertTriangle size={16} className="shrink-0 text-amber-400 light:text-amber-600" />
+          <p className="flex-1 text-sm text-amber-200 light:text-amber-800">{mutateError}</p>
+          {/* The 409 can mean either "payout setup incomplete" (→ Settings) or "subscription
+              payment incomplete" (→ workspace, where the "complete payment" action lives) — the
+              backend error code is the same (CONFLICT) for both, so route off the message text. */}
+          {isSubscriptionPaymentError(mutateError) ? (
+            <button
+              type="button"
+              className="shrink-0 text-sm font-semibold text-amber-300 underline transition hover:text-amber-100 light:text-amber-700 light:hover:text-amber-900"
+              onClick={() => navigate(`/app/${slug ?? ''}`)}
+            >
+              Go to workspace
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="shrink-0 text-sm font-semibold text-amber-300 underline transition hover:text-amber-100 light:text-amber-700 light:hover:text-amber-900"
+              onClick={() => navigate(`/app/${slug ?? ''}/settings`)}
+            >
+              Complete payout setup
+            </button>
+          )}
+        </div>
+      ) : null}
+
       {isLoading ? (
-        <div className="flex flex-1 items-center justify-center gap-3 text-sm text-neutral-400">
+        <div className="flex flex-1 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
           <Loader2 className="animate-spin" size={17} />
           Loading editor…
         </div>
       ) : pageError ? (
-        <div className="m-8 rounded-2xl border border-red-200 bg-red-50 p-6">
-          <p className="text-sm text-red-700">{pageError}</p>
+        <div className="m-8 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 light:border-red-200 light:bg-red-50">
+          <p className="text-sm text-red-300 light:text-red-700">{pageError}</p>
         </div>
       ) : (
         <div className="flex flex-1 overflow-hidden">
@@ -263,58 +342,45 @@ export function LandingPageEditorPage() {
           {/* Center: Preview */}
           <div className="flex flex-1 flex-col overflow-y-auto">
             <div className="mx-auto w-full max-w-3xl py-6 px-4">
-              {draftSections.map((section) => {
-                const isSelected = selectedSectionId === section.publicId
-                const isLocked = LOCKED_TYPES.includes(section.type as SectionType)
-                const isRequired = REQUIRED_TYPES.includes(section.type as SectionType)
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext
+                  items={draftSections.map((s) => s.publicId)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {draftSections.map((section) => {
+                    const isSelected = selectedSectionId === section.publicId
+                    const isLocked = LOCKED_TYPES.includes(section.type as SectionType)
 
-                return (
-                  <div
-                    key={section.publicId}
-                    className={`relative cursor-pointer rounded-xl transition-all mb-1 ${
-                      isSelected ? 'ring-2 ring-neutral-950' : 'ring-1 ring-transparent hover:ring-neutral-300'
-                    }`}
-                    style={{ backgroundColor: section.backgroundColor }}
-                    onClick={() => { setSelectedSectionId(section.publicId); setSidebarMode('section') }}
-                  >
-                    {/* Section label */}
-                    <div className={`absolute left-2 top-2 flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium shadow-sm ${isLocked ? 'bg-neutral-900/80 text-white' : 'bg-white/80 text-neutral-600 backdrop-blur-sm'}`}>
-                      {isLocked ? <Lock size={10} /> : null}
-                      <SectionIcon type={section.type as SectionType} size={11} />
-                      {SECTION_LABELS[section.type as SectionType]}
-                    </div>
-
-                    {/* Delete button — only non-locked sections */}
-                    {!isLocked && isSelected ? (
-                      <button
-                        type="button"
-                        className="absolute right-2 top-2 grid size-7 place-items-center rounded-lg bg-white/80 text-neutral-500 backdrop-blur-sm shadow-sm transition hover:bg-red-50 hover:text-red-600"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteSection(section.publicId) }}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    ) : null}
-
-                    <SectionPreview section={section} pageType={draftType} />
-                  </div>
-                )
-              })}
+                    return (
+                      <SortableSection
+                        key={section.publicId}
+                        section={section}
+                        isSelected={isSelected}
+                        isLocked={isLocked}
+                        pageType={draftType}
+                        onSelect={() => { setSelectedSectionId(section.publicId); setSidebarMode('section') }}
+                        onDelete={() => handleDeleteSection(section.publicId)}
+                      />
+                    )
+                  })}
+                </SortableContext>
+              </DndContext>
             </div>
           </div>
 
           {/* Right: Settings sidebar */}
-          <aside className="flex w-72 shrink-0 flex-col border-l border-neutral-200 bg-white overflow-y-auto">
-            <div className="flex border-b border-neutral-200">
+          <aside className="flex w-72 shrink-0 flex-col border-l border-white/10 bg-neutral-950 overflow-y-auto light:border-neutral-200 light:bg-white">
+            <div className="flex border-b border-white/10 light:border-neutral-200">
               <button
                 type="button"
-                className={`flex flex-1 items-center justify-center gap-2 py-3 text-xs font-semibold uppercase tracking-wide transition ${sidebarMode === 'page' ? 'border-b-2 border-neutral-950 text-neutral-950' : 'text-neutral-400 hover:text-neutral-600'}`}
+                className={`flex flex-1 items-center justify-center gap-2 py-3 text-xs font-semibold uppercase tracking-wide transition ${sidebarMode === 'page' ? 'border-b-2 border-accent text-white light:border-neutral-950 light:text-neutral-950' : 'text-white/40 hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-600'}`}
                 onClick={() => setSidebarMode('page')}
               >
                 Page
               </button>
               <button
                 type="button"
-                className={`flex flex-1 items-center justify-center gap-2 py-3 text-xs font-semibold uppercase tracking-wide transition ${sidebarMode === 'section' ? 'border-b-2 border-neutral-950 text-neutral-950' : 'text-neutral-400 hover:text-neutral-600'}`}
+                className={`flex flex-1 items-center justify-center gap-2 py-3 text-xs font-semibold uppercase tracking-wide transition ${sidebarMode === 'section' ? 'border-b-2 border-accent text-white light:border-neutral-950 light:text-neutral-950' : 'text-white/40 hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-600'}`}
                 onClick={() => { if (selectedSection) setSidebarMode('section') }}
               >
                 Section
@@ -341,7 +407,7 @@ export function LandingPageEditorPage() {
                   onColorChange={(color) => updateSectionColor(selectedSection.publicId, color)}
                 />
               ) : (
-                <p className="text-sm text-neutral-400">Click a section to edit it.</p>
+                <p className="text-sm text-white/40 light:text-neutral-400">Click a section to edit it.</p>
               )}
             </div>
           </aside>
@@ -371,13 +437,13 @@ function SectionsPanel({
 
   return (
     <aside
-      className={`relative flex shrink-0 flex-col border-r border-neutral-200 bg-white transition-all duration-200 ${isOpen ? 'w-72' : 'w-10'}`}
+      className={`relative flex shrink-0 flex-col border-r border-white/10 bg-neutral-950 transition-all duration-200 light:border-neutral-200 light:bg-white ${isOpen ? 'w-72' : 'w-10'}`}
     >
       {/* Toggle button */}
       <button
         type="button"
         title={isOpen ? 'Hide panel' : 'Show sections'}
-        className="absolute -right-3.5 top-4 z-20 grid size-7 place-items-center rounded-full border border-neutral-200 bg-white text-neutral-500 shadow-sm transition hover:bg-neutral-50 hover:text-neutral-800"
+        className="absolute -right-3.5 top-4 z-20 grid size-7 place-items-center rounded-full border border-white/10 bg-neutral-900 text-white/60 shadow-sm transition hover:bg-neutral-800 hover:text-white light:border-neutral-200 light:bg-white light:text-neutral-500 light:hover:bg-neutral-50 light:hover:text-neutral-800"
         onClick={onToggle}
       >
         {isOpen ? <PanelLeftClose size={13} /> : <PanelLeftOpen size={13} />}
@@ -385,8 +451,8 @@ function SectionsPanel({
 
       {isOpen ? (
         <>
-          <div className="border-b border-neutral-100 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Add section</p>
+          <div className="border-b border-white/10 px-4 py-3 light:border-neutral-100">
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Add section</p>
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -399,25 +465,25 @@ function SectionsPanel({
               const isExpanded = expandedType === type
 
               return (
-                <div key={type} className="border-b border-neutral-100 last:border-0">
+                <div key={type} className="border-b border-white/10 last:border-0 light:border-neutral-100">
                   {/* Accordion header */}
                   <button
                     type="button"
-                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-neutral-50"
+                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-white/5 light:hover:bg-neutral-50"
                     onClick={() => setExpandedType(isExpanded ? null : type)}
                   >
-                    <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${isMissing ? 'bg-red-50 text-red-500' : alreadyExists ? 'bg-emerald-50 text-emerald-600' : 'bg-neutral-100 text-neutral-500'}`}>
+                    <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${isMissing ? 'bg-red-500/15 text-red-400 light:bg-red-50 light:text-red-500' : alreadyExists ? 'bg-emerald-500/15 text-emerald-400 light:bg-emerald-50 light:text-emerald-600' : 'bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500'}`}>
                       <SectionIcon type={type} size={15} />
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold ${isMissing ? 'text-red-600' : 'text-neutral-950'}`}>
+                      <p className={`text-sm font-semibold ${isMissing ? 'text-red-400 light:text-red-600' : 'text-white light:text-neutral-950'}`}>
                         {SECTION_LABELS[type]}
                       </p>
-                      <p className="text-xs text-neutral-400">
+                      <p className="text-xs text-white/40 light:text-neutral-400">
                         {isMissing ? 'Required — add one' : alreadyExists ? 'Already added' : `${typeTemplates.length} template${typeTemplates.length !== 1 ? 's' : ''}`}
                       </p>
                     </div>
-                    <ChevronRight size={14} className={`shrink-0 text-neutral-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                    <ChevronRight size={14} className={`shrink-0 text-white/40 transition-transform light:text-neutral-400 ${isExpanded ? 'rotate-90' : ''}`} />
                   </button>
 
                   {/* Template list */}
@@ -438,11 +504,11 @@ function SectionsPanel({
                             type="button"
                             disabled={alreadyExists && REQUIRED_TYPES.includes(type)}
                             onClick={() => onAdd(template)}
-                            className="flex w-full items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-left transition hover:border-neutral-400 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left transition hover:border-white/25 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 light:border-neutral-200 light:bg-white light:hover:border-neutral-400 light:hover:bg-neutral-50"
                           >
-                            <span className="size-4 shrink-0 rounded border border-neutral-200" style={{ backgroundColor: template.defaultBackgroundColor }} />
-                            <span className="flex-1 text-sm font-medium text-neutral-800">{template.name}</span>
-                            <span className="text-xs font-semibold text-neutral-400">+</span>
+                            <span className="size-4 shrink-0 rounded border border-white/15 light:border-neutral-200" style={{ backgroundColor: template.defaultBackgroundColor }} />
+                            <span className="flex-1 text-sm font-medium text-white/80 light:text-neutral-800">{template.name}</span>
+                            <span className="text-xs font-semibold text-white/40 light:text-neutral-400">+</span>
                           </button>
                         </div>
                       ))}
@@ -456,11 +522,11 @@ function SectionsPanel({
           {/* Hover preview — floats to the right of the panel */}
           {hoverTemplate ? (
             <div
-              className="fixed z-50 w-72 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl pointer-events-none"
+              className="fixed z-50 w-72 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl pointer-events-none light:border-neutral-200 light:bg-white"
               style={{ left: 288, top: Math.min(hoverPos.top, window.innerHeight - 300) }}
             >
-              <div className="border-b border-neutral-100 px-4 py-2.5">
-                <p className="text-xs font-semibold text-neutral-500">{SECTION_LABELS[hoverTemplate.type as SectionType]} — {hoverTemplate.name}</p>
+              <div className="border-b border-white/10 px-4 py-2.5 light:border-neutral-100">
+                <p className="text-xs font-semibold text-white/60 light:text-neutral-500">{SECTION_LABELS[hoverTemplate.type as SectionType]} — {hoverTemplate.name}</p>
               </div>
               <div
                 className="overflow-hidden"
@@ -546,6 +612,74 @@ function MiniSectionPreview({ template }: { template: SectionTemplate }) {
       )
     }
   }
+}
+
+/* ─── SortableSection ─────────────────────────────────────────── */
+
+function SortableSection({
+  section, isSelected, isLocked, pageType, onSelect, onDelete,
+}: {
+  section: DraftSection
+  isSelected: boolean
+  isLocked: boolean
+  pageType: LandingPageType
+  onSelect: () => void
+  onDelete: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: section.publicId,
+    disabled: isLocked,
+  })
+
+  const style: CSSProperties = {
+    backgroundColor: section.backgroundColor,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative cursor-pointer rounded-xl mb-1 ${
+        isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-transparent hover:ring-white/30 light:hover:ring-neutral-300'
+      }`}
+      onClick={onSelect}
+    >
+      {/* Section label */}
+      <div className={`absolute left-2 top-2 flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium shadow-sm ${isLocked ? 'bg-neutral-900/80 text-white' : 'bg-white/80 text-neutral-600 backdrop-blur-sm'}`}>
+        {isLocked ? <Lock size={10} /> : null}
+        <SectionIcon type={section.type as SectionType} size={11} />
+        {SECTION_LABELS[section.type as SectionType]}
+      </div>
+
+      {/* Drag handle + delete button — only non-locked, selected sections */}
+      {!isLocked && isSelected ? (
+        <div className="absolute right-2 top-2 flex items-center gap-1.5">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            title="Drag to reorder"
+            className="grid size-7 cursor-grab touch-none place-items-center rounded-lg bg-white/80 text-neutral-500 backdrop-blur-sm shadow-sm transition hover:bg-neutral-100 hover:text-neutral-800 active:cursor-grabbing"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical size={12} />
+          </button>
+          <button
+            type="button"
+            className="grid size-7 place-items-center rounded-lg bg-white/80 text-neutral-500 backdrop-blur-sm shadow-sm transition hover:bg-red-50 hover:text-red-600"
+            onClick={(e) => { e.stopPropagation(); onDelete() }}
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      ) : null}
+
+      <SectionPreview section={section} pageType={pageType} />
+    </div>
+  )
 }
 
 /* ─── SectionPreview ──────────────────────────────────────────── */
@@ -684,19 +818,19 @@ function PageSettingsSidebar({
 }) {
   return (
     <div className="grid gap-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Page settings</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Page settings</p>
       <SidebarField label="Title" value={title} onChange={onTitleChange} />
       <SidebarField label="URL slug" value={slug} onChange={onSlugChange} />
       <div>
-        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-neutral-400">Type</label>
-        <select value={type} onChange={(e) => onTypeChange(e.target.value as LandingPageType)} className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm text-neutral-950 outline-none transition focus:border-neutral-400">
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Type</label>
+        <select value={type} onChange={(e) => onTypeChange(e.target.value as LandingPageType)} className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none transition focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400">
           <option value="LeadGen">Lead Gen — collect emails</option>
           <option value="Sales">Sales — sell a product</option>
         </select>
       </div>
-      <div className="pt-4 border-t border-neutral-100">
-        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 mb-3">Danger zone</p>
-        <button type="button" disabled={isArchiving} className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-40" onClick={onArchive}>
+      <div className="pt-4 border-t border-white/10 light:border-neutral-100">
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400 mb-3">Danger zone</p>
+        <button type="button" disabled={isArchiving} className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:opacity-40 light:border-red-200 light:bg-red-50 light:text-red-700 light:hover:bg-red-100" onClick={onArchive}>
           Archive page
         </button>
       </div>
@@ -741,14 +875,14 @@ function SectionSettingsSidebar({ section, onContentChange, onColorChange }: {
 
   return (
     <div className="grid gap-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+      <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">
         {SECTION_LABELS[section.type as SectionType]}
       </p>
       <div>
-        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-neutral-400">Background</label>
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Background</label>
         <div className="flex items-center gap-2">
-          <input type="color" value={bgColor} onChange={(e) => handleColorChange(e.target.value)} className="size-9 cursor-pointer rounded-lg border border-neutral-200" />
-          <input type="text" value={bgColor} onChange={(e) => handleColorChange(e.target.value)} maxLength={7} className="flex-1 rounded-xl border border-neutral-200 px-3 py-2 text-sm font-mono outline-none transition focus:border-neutral-400" />
+          <input type="color" value={bgColor} onChange={(e) => handleColorChange(e.target.value)} className="size-9 cursor-pointer rounded-lg border border-white/10 bg-transparent light:border-neutral-200" />
+          <input type="text" value={bgColor} onChange={(e) => handleColorChange(e.target.value)} maxLength={7} className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-mono text-white outline-none transition focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400" />
         </div>
       </div>
 
@@ -764,10 +898,10 @@ function SectionSettingsSidebar({ section, onContentChange, onColorChange }: {
         <>
           <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">Items</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Items</p>
             <div className="grid gap-3">
               {((content.items as { title: string; description: string }[]) ?? []).map((item, i) => (
-                <div key={i} className="rounded-xl border border-neutral-100 p-3 grid gap-2">
+                <div key={i} className="rounded-xl border border-white/10 p-3 grid gap-2 light:border-neutral-100">
                   <SidebarField label={`Title ${i + 1}`} value={item.title} onChange={(v) => updateItem(i, 'title', v)} />
                   <SidebarField label="Description" value={item.description} onChange={(v) => updateItem(i, 'description', v)} />
                 </div>
@@ -780,11 +914,11 @@ function SectionSettingsSidebar({ section, onContentChange, onColorChange }: {
           <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
           <SidebarField label="Description" value={String(content.description ?? '')} onChange={(v) => updateContent({ description: v })} textarea />
           <div className="flex items-center gap-3">
-            <input type="checkbox" id="showPrice" checked={Boolean(content.showPrice)} onChange={(e) => updateContent({ showPrice: e.target.checked })} className="size-4 rounded" />
-            <label htmlFor="showPrice" className="text-sm text-neutral-700">Show price</label>
+            <input type="checkbox" id="showPrice" checked={Boolean(content.showPrice)} onChange={(e) => updateContent({ showPrice: e.target.checked })} className="size-4 rounded accent-accent" />
+            <label htmlFor="showPrice" className="text-sm text-white/70 light:text-neutral-700">Show price</label>
           </div>
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">Bullets</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Bullets</p>
             {((content.bullets as string[]) ?? []).map((b, i) => (
               <div key={i} className="mb-2">
                 <SidebarField label={`Bullet ${i + 1}`} value={b} onChange={(v) => updateBullet(i, v)} />
@@ -810,11 +944,11 @@ function SectionSettingsSidebar({ section, onContentChange, onColorChange }: {
 function SidebarField({ label, value, onChange, textarea }: { label: string; value: string; onChange: (v: string) => void; textarea?: boolean }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-neutral-400">{label}</label>
+      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">{label}</label>
       {textarea ? (
-        <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} className="w-full resize-none rounded-xl border border-neutral-200 px-3 py-2.5 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100" />
+        <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400 light:focus:ring-neutral-100" />
       ) : (
-        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100" />
+        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400 light:focus:ring-neutral-100" />
       )}
     </div>
   )
@@ -833,4 +967,8 @@ function SectionIcon({ type, size = 14 }: { type: SectionType; size?: number }) 
 
 function parseJson(json: string): Record<string, unknown> {
   try { return JSON.parse(json) as Record<string, unknown> } catch { return {} }
+}
+
+function isSubscriptionPaymentError(message: string): boolean {
+  return message.toLowerCase().includes('subscription payment')
 }

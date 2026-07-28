@@ -19,7 +19,6 @@ import { useLandingPageStore } from '../model/landing-page-store'
 import type {
   CreateLandingPageRequest,
   LandingPage,
-  LandingPageAnalytics,
   LandingPageStatus,
   LandingPageType,
 } from '../model/types'
@@ -37,8 +36,6 @@ export function LandingPagesPage() {
   const pages = useLandingPageStore((s) => s.pages)
   const listStatus = useLandingPageStore((s) => s.listStatus)
   const loadPages = useLandingPageStore((s) => s.loadPages)
-  const analytics = useLandingPageStore((s) => s.analytics)
-  const loadAnalytics = useLandingPageStore((s) => s.loadAnalytics)
   const archivePage = useLandingPageStore((s) => s.archivePage)
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -61,15 +58,6 @@ export function LandingPagesPage() {
     if (slug && listStatus === 'idle') void loadPages(slug)
   }, [slug, listStatus, loadPages])
 
-  useEffect(() => {
-    if (!slug || listStatus !== 'success') return
-    pages
-      .filter((p) => p.status === 'Published')
-      .forEach((p) => {
-        if (!analytics[p.publicId]) void loadAnalytics(slug, p.publicId)
-      })
-  }, [slug, listStatus, pages, analytics, loadAnalytics])
-
   if (!slug) return null
 
   return (
@@ -77,15 +65,15 @@ export function LandingPagesPage() {
       <div className="px-8 py-8">
 
         {isLoading ? (
-          <div className="flex h-40 items-center justify-center gap-3 text-sm text-neutral-400">
+          <div className="flex h-40 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
             <Loader2 className="animate-spin" size={18} />
             Loading workspace…
           </div>
         ) : !creator ? (
-          <div className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
-            <p className="font-semibold text-neutral-950">Workspace not found</p>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+            <p className="font-semibold text-white light:text-neutral-950">Workspace not found</p>
             <button
-              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
+              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
               type="button"
               onClick={() => navigate('/')}
             >
@@ -97,10 +85,10 @@ export function LandingPagesPage() {
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">
+                <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">
                   Landing pages
                 </h1>
-                <p className="mt-1 text-sm text-neutral-400">
+                <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
                   {maxPages !== null && maxPages >= 0
                     ? `${pages.length} of ${maxPages} used`
                     : `${pages.length} page${pages.length !== 1 ? 's' : ''}`}
@@ -110,7 +98,7 @@ export function LandingPagesPage() {
                 type="button"
                 disabled={atLimit}
                 title={atLimit ? `Plan limit reached (${maxPages ?? 0})` : undefined}
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => setIsCreateOpen(true)}
               >
                 <Plus size={15} />
@@ -120,8 +108,8 @@ export function LandingPagesPage() {
 
             {/* Plan limit warning */}
             {atLimit ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
-                <AlertTriangle size={16} className="shrink-0 text-amber-600" />
+              <div className="flex items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-200 light:border-amber-200 light:bg-amber-50 light:text-amber-800">
+                <AlertTriangle size={16} className="shrink-0 text-amber-400 light:text-amber-600" />
                 <span>
                   Plan limit reached ({maxPages} pages). Archive existing pages or upgrade your
                   plan to add more.
@@ -131,25 +119,25 @@ export function LandingPagesPage() {
 
             {/* Content */}
             {listStatus === 'loading' ? (
-              <div className="flex h-32 items-center justify-center gap-3 text-sm text-neutral-400">
+              <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
                 <Loader2 className="animate-spin" size={16} />
                 Loading pages…
               </div>
             ) : pages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-neutral-300 bg-white py-20 text-center">
-                <span className="grid size-14 place-items-center rounded-2xl bg-neutral-100 text-neutral-400">
+              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-20 text-center light:border-neutral-300 light:bg-white">
+                <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
                   <FileText size={24} strokeWidth={1.5} />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-neutral-950">No landing pages yet</p>
-                  <p className="mt-1 text-sm text-neutral-400">
+                  <p className="text-sm font-semibold text-white light:text-neutral-950">No landing pages yet</p>
+                  <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
                     Create your first page to start capturing leads.
                   </p>
                 </div>
                 <button
                   type="button"
                   disabled={atLimit}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40"
                   onClick={() => setIsCreateOpen(true)}
                 >
                   <Plus size={15} />
@@ -157,23 +145,22 @@ export function LandingPagesPage() {
                 </button>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_120px_120px_160px_120px] items-center border-b border-neutral-100 px-5 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Page</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Type</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Status</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Views</p>
+                <div className="grid grid-cols-[1fr_120px_120px_160px_120px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Page</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Type</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Views</p>
                   <span />
                 </div>
 
-                <ul className="divide-y divide-neutral-100">
+                <ul className="divide-y divide-white/10 light:divide-neutral-100">
                   {pages.map((page) => (
                     <PageRow
                       key={page.publicId}
                       page={page}
                       slug={slug}
-                      pageAnalytics={analytics[page.publicId] ?? null}
                       onAnalyticsClick={() =>
                         navigate(`/app/${slug}/landing-pages/${page.publicId}`)
                       }
@@ -208,14 +195,12 @@ export function LandingPagesPage() {
 function PageRow({
   page,
   slug,
-  pageAnalytics,
   onAnalyticsClick,
   onEditClick,
   onDeleteClick,
 }: {
   page: LandingPage
   slug: string
-  pageAnalytics: LandingPageAnalytics | null
   onAnalyticsClick: () => void
   onEditClick: () => void
   onDeleteClick: () => void
@@ -234,30 +219,28 @@ function PageRow({
           onClick={onAnalyticsClick}
           className="flex items-center gap-3 min-w-0 text-left"
         >
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-neutral-100 text-neutral-500">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500">
             <FileText size={16} />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-neutral-950">{page.title}</p>
-            <p className="mt-0.5 truncate text-xs text-neutral-400">/{page.slug}</p>
+            <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{page.title}</p>
+            <p className="mt-0.5 truncate text-xs text-white/40 light:text-neutral-400">/{page.slug}</p>
           </div>
         </button>
-        <p className="text-xs font-medium text-neutral-600">{page.type}</p>
+        <p className="text-xs font-medium text-white/60 light:text-neutral-600">{page.type}</p>
         <StatusBadge status={page.status} />
         <div className="flex items-center gap-3">
-          {page.status === 'Published' && pageAnalytics !== null ? (
+          {page.status === 'Published' ? (
             <>
-              <span className="flex items-center gap-1 text-xs text-neutral-500" title="Total views">
-                <Eye size={12} className="text-neutral-400" />
-                {pageAnalytics.allTime.totalViews.toLocaleString()}
+              <span className="flex items-center gap-1 text-xs text-white/50 light:text-neutral-500" title="Total views">
+                <Eye size={12} className="text-white/40 light:text-neutral-400" />
+                {page.totalViews.toLocaleString()}
               </span>
-              <span className="flex items-center gap-1 text-xs text-neutral-500" title="Unique visitors">
-                <Users size={12} className="text-neutral-400" />
-                {pageAnalytics.allTime.uniqueVisitors.toLocaleString()}
+              <span className="flex items-center gap-1 text-xs text-white/50 light:text-neutral-500" title="Unique visitors">
+                <Users size={12} className="text-white/40 light:text-neutral-400" />
+                {page.uniqueVisitors.toLocaleString()}
               </span>
             </>
-          ) : page.status === 'Published' ? (
-            <span className="text-xs text-neutral-300">—</span>
           ) : null}
         </div>
         <div className="flex items-center gap-1">
@@ -265,7 +248,7 @@ function PageRow({
             type="button"
             title="Edit page"
             onClick={(e) => { e.stopPropagation(); onEditClick() }}
-            className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
           >
             <Pencil size={14} />
           </button>
@@ -276,7 +259,7 @@ function PageRow({
               rel="noopener noreferrer"
               title="Open public page"
               onClick={(e) => e.stopPropagation()}
-              className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+              className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
             >
               <Globe size={14} />
             </a>
@@ -287,7 +270,7 @@ function PageRow({
             type="button"
             title="Delete page"
             onClick={(e) => { e.stopPropagation(); handleDelete() }}
-            className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-red-500/10 hover:text-red-300 light:text-neutral-400 light:hover:bg-red-50 light:hover:text-red-600"
           >
             <Trash2 size={14} />
           </button>
@@ -343,14 +326,14 @@ function CreatePageModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:px-5">
-      <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white shadow-2xl sm:rounded-2xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:px-5">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl sm:rounded-2xl light:border-neutral-200 light:bg-white">
         {/* Modal header */}
-        <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
-          <h2 className="text-base font-semibold text-neutral-950">New landing page</h2>
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 light:border-neutral-100">
+          <h2 className="text-base font-semibold text-white light:text-neutral-950">New landing page</h2>
           <button
             type="button"
-            className="grid size-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
             onClick={onClose}
           >
             <X size={16} />
@@ -360,7 +343,7 @@ function CreatePageModal({
         <form onSubmit={(e) => void handleSubmit(e)} className="p-6">
           <div className="grid gap-5">
             <div className="grid gap-1.5">
-              <label className="text-sm font-medium text-neutral-700">
+              <label className="text-sm font-medium text-white/80 light:text-neutral-700">
                 Title <span className="text-red-500">*</span>
               </label>
               <input
@@ -370,12 +353,12 @@ function CreatePageModal({
                 value={title}
                 onChange={(e) => handleTitleChange(e.target.value)}
                 placeholder="e.g. Free Email Course"
-                className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-950 placeholder-neutral-400 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
               />
             </div>
 
             <div className="grid gap-1.5">
-              <label className="text-sm font-medium text-neutral-700">
+              <label className="text-sm font-medium text-white/80 light:text-neutral-700">
                 URL slug <span className="text-red-500">*</span>
               </label>
               <input
@@ -388,16 +371,16 @@ function CreatePageModal({
                   setPageSlug(e.target.value)
                 }}
                 placeholder="free-email-course"
-                className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-950 placeholder-neutral-400 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
               />
             </div>
 
             <div className="grid gap-1.5">
-              <label className="text-sm font-medium text-neutral-700">Type</label>
+              <label className="text-sm font-medium text-white/80 light:text-neutral-700">Type</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as LandingPageType)}
-                className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400 light:focus:ring-neutral-100"
               >
                 <option value="LeadGen">Lead Gen — collect email addresses</option>
                 <option value="Sales">Sales — sell a product or service</option>
@@ -405,16 +388,16 @@ function CreatePageModal({
             </div>
 
             <div className="grid gap-1.5">
-              <label className="text-sm font-medium text-neutral-700">
+              <label className="text-sm font-medium text-white/80 light:text-neutral-700">
                 Product <span className="text-red-500">*</span>
               </label>
               {productsStatus === 'loading' ? (
-                <div className="flex h-[42px] items-center gap-2 px-1 text-sm text-neutral-400">
+                <div className="flex h-[42px] items-center gap-2 px-1 text-sm text-white/40 light:text-neutral-400">
                   <Loader2 className="animate-spin" size={14} />
                   Loading products…
                 </div>
               ) : products.length === 0 ? (
-                <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <p className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-200 light:bg-amber-50 light:text-amber-800">
                   You don't have any products yet. Create a product first.
                 </p>
               ) : (
@@ -422,7 +405,7 @@ function CreatePageModal({
                   required
                   value={productId}
                   onChange={(e) => setProductId(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400 light:focus:ring-neutral-100"
                 >
                   <option value="" disabled>
                     Select a product…
@@ -434,18 +417,18 @@ function CreatePageModal({
                   ))}
                 </select>
               )}
-              <p className="text-xs text-neutral-400">The product cannot be changed after the page is created.</p>
+              <p className="text-xs text-white/40 light:text-neutral-400">The product cannot be changed after the page is created.</p>
             </div>
 
             {mutateError ? (
-              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{mutateError}</p>
+              <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">{mutateError}</p>
             ) : null}
           </div>
 
           <div className="mt-6 flex gap-3">
             <button
               type="button"
-              className="flex h-10 flex-1 items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+              className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
               disabled={isSubmitting}
               onClick={onClose}
             >
@@ -454,7 +437,7 @@ function CreatePageModal({
             <button
               type="submit"
               disabled={isSubmitting || !title || !pageSlug || !productId}
-              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40"
+              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40"
             >
               {isSubmitting ? <Loader2 className="animate-spin" size={15} /> : null}
               Create page
@@ -469,14 +452,14 @@ function CreatePageModal({
 function StatusBadge({ status }: { status: LandingPageStatus }) {
   if (status === 'Published')
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-300 light:bg-emerald-50 light:text-emerald-700">
         <span className="size-1.5 rounded-full bg-emerald-500" />
         Published
       </span>
     )
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-neutral-500">
-      <span className="size-1.5 rounded-full bg-neutral-400" />
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
+      <span className="size-1.5 rounded-full bg-white/40 light:bg-neutral-400" />
       Draft
     </span>
   )

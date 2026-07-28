@@ -1,6 +1,7 @@
 import { ArrowRight, Loader2, TriangleAlert } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { TextField } from '../../../shared/ui/TextField'
 import { useAuthStore } from '../model/auth-store'
 import { validateLoginForm } from '../model/login-validation'
@@ -10,6 +11,7 @@ import type { LoginFormValues } from '../model/types'
 const initialValues: LoginFormValues = { email: '', password: '' }
 
 export function LoginForm() {
+  const navigate = useNavigate()
   const [values, setValues] = useState<LoginFormValues>(initialValues)
   const [touchedFields, setTouchedFields] = useState<Partial<Record<LoginFieldName, boolean>>>({})
 
@@ -57,6 +59,15 @@ export function LoginForm() {
 
       <TextField
         label="Password"
+        labelAction={
+          <button
+            type="button"
+            className="text-xs font-medium text-neutral-500 underline-offset-2 transition hover:text-neutral-950 hover:underline"
+            onClick={() => navigate('/forgot-password')}
+          >
+            Forgot password?
+          </button>
+        }
         name="password"
         type="password"
         autoComplete="current-password"

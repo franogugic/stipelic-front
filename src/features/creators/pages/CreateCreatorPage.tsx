@@ -3,7 +3,9 @@ import {
   ArrowRight,
   Building2,
   Check,
+  CreditCard,
   Crown,
+  Landmark,
   Loader2,
   Rocket,
   Sparkles,
@@ -20,6 +22,7 @@ import {
   type CreatorStep,
 } from '../model/create-creator-validation'
 import { useCreatorStore } from '../model/creator-store'
+import { usePayoutStore } from '../model/payout-store'
 import type { CreateCreatorFormValues, CreatorPlan } from '../model/types'
 
 const initialValues: CreateCreatorFormValues = {
@@ -27,6 +30,7 @@ const initialValues: CreateCreatorFormValues = {
   slug: '',
   planCode: 'free',
   defaultCurrency: 'EUR',
+  countryCode: '',
   configureSettingsOnStart: false,
   supportEmail: '',
   brandName: '',
@@ -35,6 +39,8 @@ const initialValues: CreateCreatorFormValues = {
   timezone: 'Europe/Sarajevo',
   language: 'en',
 }
+
+const regionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' })
 
 export function CreateCreatorPage() {
   const navigate = useNavigate()
@@ -54,6 +60,10 @@ export function CreateCreatorPage() {
   const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
   const resetCreateCreatorFeedback = useCreatorStore((s) => s.resetCreateCreatorFeedback)
 
+  const payoutCountries = usePayoutStore((s) => s.payoutCountries)
+  const payoutCountriesStatus = usePayoutStore((s) => s.payoutCountriesStatus)
+  const loadPayoutCountries = usePayoutStore((s) => s.loadPayoutCountries)
+
   const validation = useMemo(() => validateCreateCreatorForm(values), [values])
   const selectedPlan = useMemo(
     () => creatorPlans.find((p) => p.code === values.planCode),
@@ -62,7 +72,17 @@ export function CreateCreatorPage() {
   const canContinueFromPlan = selectedPlan?.status.toLowerCase() === 'active'
   const isSubmitting = createStatus === 'submitting'
 
+  const countryOptions = useMemo(
+    () =>
+      payoutCountries
+        .map((c) => ({ ...c, name: regionDisplayNames.of(c.code) ?? c.code }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [payoutCountries],
+  )
+  const selectedCountry = countryOptions.find((c) => c.code === values.countryCode)
+
   useEffect(() => { void loadCreatorPlans() }, [loadCreatorPlans])
+  useEffect(() => { void loadPayoutCountries() }, [loadPayoutCountries])
 
   const updateField = <TField extends keyof CreateCreatorFormValues>(
     fieldName: TField,
@@ -92,7 +112,7 @@ export function CreateCreatorPage() {
     if (validation.isPlanValid) setStep('setup')
   }
   const goToReview = () => {
-    setTouchedFields((c) => ({ ...c, defaultCurrency: true }))
+    setTouchedFields((c) => ({ ...c, defaultCurrency: true, countryCode: true }))
     if (validation.isSetupValid) setStep(values.configureSettingsOnStart ? 'settings' : 'review')
   }
   const goFromSettingsToReview = () => {
@@ -344,7 +364,7 @@ export function CreateCreatorPage() {
                       <div>
                         <p className="mb-3 text-sm font-medium text-neutral-700">Default currency</p>
                         <div className="grid grid-cols-3 gap-2">
-                          {(['EUR', 'USD', 'GBP'] as const).map((currency) => (
+                          {(['EUR', 'USD'] as const).map((currency) => (
                             <button
                               key={currency}
                               className={`h-10 rounded-xl border text-sm font-semibold transition ${
@@ -359,6 +379,59 @@ export function CreateCreatorPage() {
                             </button>
                           ))}
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-3 block text-sm font-medium text-neutral-700" htmlFor="countryCode">
+                          Country
+                        </label>
+                        {payoutCountriesStatus === 'loading' ? (
+                          <div className="flex h-[42px] items-center gap-2 px-1 text-sm text-neutral-400">
+                            <Loader2 className="animate-spin" size={14} />
+                            Loading countries…
+                          </div>
+                        ) : (
+                          <select
+                            id="countryCode"
+                            className={[
+                              'h-[42px] w-full rounded-xl border px-3.5 text-sm text-neutral-950 outline-none transition',
+                              'focus:ring-2',
+                              getError('countryCode')
+                                ? 'border-red-300 bg-red-50/50 focus:border-red-400 focus:ring-red-100'
+                                : 'border-neutral-200 bg-white focus:border-neutral-400 focus:ring-neutral-100',
+                            ].join(' ')}
+                            value={values.countryCode}
+                            onBlur={() => touchField('countryCode')}
+                            onChange={(e) => updateField('countryCode', e.target.value)}
+                          >
+                            <option value="" disabled>
+                              Select your country…
+                            </option>
+                            {countryOptions.map((c) => (
+                              <option key={c.code} value={c.code}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        {getError('countryCode') ? (
+                          <p className="mt-1.5 text-xs font-medium text-red-600">{getError('countryCode')}</p>
+                        ) : null}
+
+                        {selectedCountry ? (
+                          <div className="mt-3 flex items-start gap-3 rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-3">
+                            {selectedCountry.payoutMode === 'StripeConnect' ? (
+                              <CreditCard size={16} className="mt-0.5 shrink-0 text-neutral-500" />
+                            ) : (
+                              <Landmark size={16} className="mt-0.5 shrink-0 text-neutral-500" />
+                            )}
+                            <p className="text-sm leading-5 text-neutral-600">
+                              {selectedCountry.payoutMode === 'StripeConnect'
+                                ? "Payouts go directly to your Stripe account — you'll connect it after setup."
+                                : "You'll add your bank details after setup; payouts are sent by bank transfer."}
+                            </p>
+                          </div>
+                        ) : null}
                       </div>
 
                       <div>
@@ -482,6 +555,7 @@ export function CreateCreatorPage() {
                       <ReviewRow label="URL slug" value={`/${values.slug.trim()}`} />
                       <ReviewRow label="Plan" value={selectedPlan?.name ?? values.planCode} />
                       <ReviewRow label="Currency" value={values.defaultCurrency} />
+                      <ReviewRow label="Country" value={selectedCountry?.name ?? values.countryCode} />
                       {values.configureSettingsOnStart ? (
                         <>
                           <ReviewRow label="Brand name" value={values.brandName.trim() || values.name.trim()} />

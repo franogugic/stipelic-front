@@ -32,6 +32,8 @@ export function PublicLandingPage() {
       })
   }, [creatorSlug, pageSlug])
 
+  if (!creatorSlug || !pageSlug) return null
+
   if (status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -228,6 +230,8 @@ function CtaButton({
 }) {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
+  const [checkoutErrorMessage, setCheckoutErrorMessage] = useState<string | null>(null)
+  const [captureErrorMessage, setCaptureErrorMessage] = useState<string | null>(null)
 
   if (pageType === 'LeadGen') {
     if (status === 'success') {
@@ -244,9 +248,19 @@ function CtaButton({
           onSubmit={(e) => {
             e.preventDefault()
             setStatus('submitting')
+            setCaptureErrorMessage(null)
             captureEmail(creatorSlug, pageSlug, email)
               .then(() => setStatus('success'))
-              .catch(() => setStatus('error'))
+              .catch((err) => {
+                // Never surface the creator's actual reason (contact-list plan limit) to the visitor —
+                // same principle as the checkout 409 below.
+                setCaptureErrorMessage(
+                  err instanceof ApiError && err.status === 409
+                    ? 'Sign-ups are temporarily closed.'
+                    : 'Something went wrong. Please try again.',
+                )
+                setStatus('error')
+              })
           }}
         >
           <input
@@ -268,7 +282,9 @@ function CtaButton({
           </button>
         </form>
         {status === 'error' ? (
-          <p className="text-center text-sm text-red-500">Something went wrong. Please try again.</p>
+          <p className="text-center text-sm text-red-500">
+            {captureErrorMessage ?? 'Something went wrong. Please try again.'}
+          </p>
         ) : null}
       </div>
     )
@@ -293,17 +309,27 @@ function CtaButton({
         disabled={!isValidEmail || status === 'submitting'}
         onClick={() => {
           setStatus('submitting')
+          setCheckoutErrorMessage(null)
           createCheckout(creatorSlug, pageSlug, email)
             .then((checkoutUrl) => { window.location.href = checkoutUrl })
-            .catch(() => setStatus('error'))
+            .catch((err) => {
+              // Never surface the creator's payout-setup reason to the buyer — a 409 here always
+              // means the creator isn't payout-ready yet, which is not the buyer's problem to see.
+              setCheckoutErrorMessage(
+                err instanceof ApiError && err.status === 409
+                  ? 'This product is temporarily unavailable.'
+                  : 'Something went wrong. Please try again.',
+              )
+              setStatus('error')
+            })
         }}
         className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-8 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {status === 'submitting' ? <Loader2 className="animate-spin" size={15} /> : null}
         Buy now
       </button>
-      {status === 'error' ? (
-        <p className="text-sm text-red-500">Something went wrong. Please try again.</p>
+      {status === 'error' && checkoutErrorMessage ? (
+        <p className="text-sm text-red-500">{checkoutErrorMessage}</p>
       ) : null}
       <p className="text-xs text-neutral-400">This is the email address that will receive your product.</p>
     </div>

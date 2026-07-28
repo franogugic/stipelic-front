@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/*
+ * Dark is the default aesthetic (see DESIGN_SYSTEM.md). Light mode is an
+ * opt-in override inside the authenticated app shell, not the other way
+ * around — so we flip Tailwind's usual light-default assumption with a
+ * custom `light:` variant instead of `dark:`.
+ */
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
 @theme {
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Cabinet Grotesk", "Instrument Sans", sans-serif;
@@ -19,6 +27,16 @@ html {
   background: #0a0a0b;
 }
 
+html[data-theme="light"] {
+  background: #f0f0ee;
+}
+
+[data-theme="light"] {
+  --color-accent: #3159d0;
+  --color-accent-strong: #1f3fa8;
+  --color-accent-cyan: #0fa894;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -33,6 +51,12 @@ body {
     linear-gradient(#fff 1px, transparent 1px),
     linear-gradient(90deg, #fff 1px, transparent 1px);
   background-size: 48px 48px;
+}
+
+[data-theme="light"] .bg-grid {
+  background-image:
+    linear-gradient(#000 1px, transparent 1px),
+    linear-gradient(90deg, #000 1px, transparent 1px);
 }
 
 @keyframes rise-in {

@@ -10,6 +10,13 @@ export interface Order {
   status: OrderStatus
   createdAt: string
   paidAt: string | null
+  platformFeeCents: number
+  netAmountCents: number
+}
+
+export interface OrdersPage {
+  orders: Order[]
+  hasMore: boolean
 }
 
 export interface OrderSummary {
@@ -25,4 +32,9 @@ export interface HomeSummary {
   productCount: number
   landingPageCount: number
   recentOrders: Order[]
+  thisMonthRevenueCents: number
+  topProduct: { name: string; totalCents: number } | null
+  revenueTrend: number[]
+  emailsSentThisMonth: number
+  emailsMonthlyLimit: number
 }

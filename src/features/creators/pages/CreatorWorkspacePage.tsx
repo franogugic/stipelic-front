@@ -16,15 +16,14 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { listOrders, getHomeSummary } from '../../orders/api/orders-api'
+import { getHomeSummary } from '../../orders/api/orders-api'
 import type { HomeSummary, Order } from '../../orders/model/types'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { DeleteCreatorDialog } from '../components/DeleteCreatorDialog'
 import { useCreatorStore } from '../model/creator-store'
-
-const TREND_DAYS = 14
+import { usePayoutStore } from '../model/payout-store'
 
 export function CreatorWorkspacePage() {
   const navigate = useNavigate()
@@ -44,10 +43,13 @@ export function CreatorWorkspacePage() {
   const resetDeleteCreatorFeedback = useCreatorStore((s) => s.resetDeleteCreatorFeedback)
   const resetCancelSubscriptionFeedback = useCreatorStore((s) => s.resetCancelSubscriptionFeedback)
 
+  const payoutSummary = usePayoutStore((s) => s.payoutSummary)
+  const payoutSummaryStatus = usePayoutStore((s) => s.payoutSummaryStatus)
+  const loadPayoutSummary = usePayoutStore((s) => s.loadPayoutSummary)
+
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
   const [homeSummary, setHomeSummary] = useState<HomeSummary | null>(null)
-  const [paidOrders, setPaidOrders] = useState<Order[]>([])
 
   const isLoading = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
   const creator = currentCreator?.slug === slug ? currentCreator : null
@@ -68,14 +70,17 @@ export function CreatorWorkspacePage() {
   const landingPageCount = homeSummary?.landingPageCount ?? null
   const currency = homeSummary?.currency ?? creator?.defaultCurrency ?? 'EUR'
 
-  const recentOrders = useMemo(() => paidOrders.slice(0, 5), [paidOrders])
-  const revenueTrend = useMemo(() => buildRevenueTrend(paidOrders, TREND_DAYS), [paidOrders])
-  const topProduct = useMemo(() => computeTopProduct(paidOrders), [paidOrders])
-  const thisMonthRevenueCents = useMemo(() => computeThisMonthRevenueCents(paidOrders), [paidOrders])
+  // Recent 5 transactions, 14-day revenue trend, top product and this-month revenue are now computed
+  // server-side and returned in the (cached) home summary — no need to pull the full orders list here.
+  const recentOrders = homeSummary?.recentOrders ?? []
+  const revenueTrend = homeSummary?.revenueTrend ?? []
+  const topProduct = homeSummary?.topProduct ?? null
+  const thisMonthRevenueCents = homeSummary?.thisMonthRevenueCents ?? 0
   const avgOrderValueCents =
     homeSummary && homeSummary.paidOrderCount > 0
       ? Math.round(homeSummary.totalPaidAmountCents / homeSummary.paidOrderCount)
       : null
+  const emailsSentThisMonth = homeSummary?.emailsSentThisMonth ?? 0
 
   // Onboarding done = has product + has landing page + status active
   const onboardingDone =
@@ -94,10 +99,20 @@ export function CreatorWorkspacePage() {
   useEffect(() => {
     if (!slug) return
     void getHomeSummary(slug).then(setHomeSummary).catch(() => {})
-    void listOrders(slug)
-      .then((orders) => setPaidOrders(orders.filter((o) => o.status === 'Paid')))
-      .catch(() => {})
   }, [slug])
+
+  useEffect(() => {
+    if (creator?.payoutMode !== 'BankTransfer') return
+    const creatorSlug = creator.slug
+    void loadPayoutSummary(creatorSlug)
+    // Balance moves server-side (purchases, admin payouts) — refresh it whenever the user
+    // comes back to this tab, e.g. after paying in Stripe Checkout or browsing the dashboard.
+    const refetchOnFocus = () => {
+      void loadPayoutSummary(creatorSlug)
+    }
+    window.addEventListener('focus', refetchOnFocus)
+    return () => window.removeEventListener('focus', refetchOnFocus)
+  }, [creator?.payoutMode, creator?.slug, loadPayoutSummary])
 
   const startCheckout = async () => {
     const checkout = await startCreatorCheckout()
@@ -109,17 +124,17 @@ export function CreatorWorkspacePage() {
   return (
     <AppShell slug={slug} activeSection="overview">
       {isLoading ? (
-        <div className="flex h-screen items-center justify-center gap-3 text-sm text-white/40">
+        <div className="flex h-screen items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-950/40">
           <Loader2 className="animate-spin" size={18} />
           Loading workspace…
         </div>
       ) : !creator ? (
         <div className="flex h-screen items-center justify-center p-8">
           <div className="max-w-sm text-center">
-            <p className="font-display font-semibold text-white">Workspace not found</p>
-            <p className="mt-1 text-sm text-white/40">This slug doesn't match your workspace.</p>
+            <p className="font-display font-semibold text-white light:text-neutral-950">Workspace not found</p>
+            <p className="mt-1 text-sm text-white/40 light:text-neutral-950/40">This slug doesn't match your workspace.</p>
             <button
-              className="mt-5 inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10"
+              className="mt-5 inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 light:border-neutral-950/10 bg-white/5 light:bg-neutral-950/5 px-4 text-sm font-medium text-white/70 light:text-neutral-950/70 transition hover:bg-white/10 light:hover:bg-neutral-950/10"
               type="button"
               onClick={() => navigate('/')}
             >
@@ -136,9 +151,9 @@ export function CreatorWorkspacePage() {
             {(requiresPayment || isSuspended || checkoutError) && (
               <div className="mb-6 grid gap-3">
                 {requiresPayment && (
-                  <div className="flex items-center gap-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-5 py-3.5">
-                    <CreditCard className="shrink-0 text-amber-400" size={16} />
-                    <p className="flex-1 text-sm text-amber-200">
+                  <div className="flex items-center gap-4 rounded-xl border border-amber-500/25 light:border-amber-200 bg-amber-500/10 light:bg-amber-50 px-5 py-3.5">
+                    <CreditCard className="shrink-0 text-amber-400 light:text-amber-600" size={16} />
+                    <p className="flex-1 text-sm text-amber-200 light:text-amber-700">
                       <span className="font-semibold">Payment required</span> — complete checkout to activate this workspace.
                     </p>
                     <button
@@ -153,15 +168,15 @@ export function CreatorWorkspacePage() {
                   </div>
                 )}
                 {isSuspended && (
-                  <div className="flex items-center gap-4 rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-3.5">
-                    <ShieldAlert className="shrink-0 text-red-400" size={16} />
-                    <p className="text-sm text-red-200">
+                  <div className="flex items-center gap-4 rounded-xl border border-red-500/25 light:border-red-200 bg-red-500/10 light:bg-red-50 px-5 py-3.5">
+                    <ShieldAlert className="shrink-0 text-red-400 light:text-red-600" size={16} />
+                    <p className="text-sm text-red-200 light:text-red-700">
                       <span className="font-semibold">Workspace suspended</span> — your subscription may have lapsed.
                     </p>
                   </div>
                 )}
                 {checkoutError && (
-                  <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-3 text-sm text-red-200">
+                  <div className="rounded-xl border border-red-500/25 light:border-red-200 bg-red-500/10 light:bg-red-50 px-5 py-3 text-sm text-red-200 light:text-red-700">
                     {checkoutError}
                   </div>
                 )}
@@ -194,7 +209,12 @@ export function CreatorWorkspacePage() {
               <StatCard
                 icon={Mail}
                 label="Emails this month"
-                value={maxEmailsPerMonth != null ? `0 / ${maxEmailsPerMonth.toLocaleString()}` : '—'}
+                value={
+                  maxEmailsPerMonth != null
+                    ? `${emailsSentThisMonth.toLocaleString()} / ${maxEmailsPerMonth < 0 ? '∞' : maxEmailsPerMonth.toLocaleString()}`
+                    : '—'
+                }
+                onClick={() => navigate(`/app/${creator.slug}/emails`)}
                 delay={160}
               />
             </div>
@@ -231,16 +251,16 @@ export function CreatorWorkspacePage() {
 
                 {/* ── Section 1: Kutak s planom ──────────────────────── */}
                 <div
-                  className="animate-rise rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm"
+                  className="animate-rise rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-5 backdrop-blur-sm"
                   style={{ animationDelay: '320ms' }}
                 >
                   <div className="mb-4 flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
                       Your plan
                     </p>
                     <div className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-accent to-accent-cyan px-3 py-1 shadow-lg shadow-accent/20">
-                      <Zap size={11} className="text-white" />
-                      <span className="text-xs font-bold text-white">{planName}</span>
+                      <Zap size={11} className="text-white light:text-neutral-950" />
+                      <span className="text-xs font-bold text-white light:text-neutral-950">{planName}</span>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -288,7 +308,11 @@ export function CreatorWorkspacePage() {
                           ? maxEmailsPerMonth < 0 ? 'Unlimited' : maxEmailsPerMonth.toLocaleString()
                           : '—'
                       }
-                      progress={maxEmailsPerMonth != null && maxEmailsPerMonth > 0 ? 0 : null}
+                      progress={
+                        maxEmailsPerMonth != null && maxEmailsPerMonth > 0
+                          ? emailsSentThisMonth / maxEmailsPerMonth
+                          : null
+                      }
                       icon={Mail}
                     />
                   </div>
@@ -320,19 +344,19 @@ export function CreatorWorkspacePage() {
               <div className="flex flex-col gap-6">
 
                 {/* Plan + billing actions */}
-                <div className="animate-rise rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm" style={{ animationDelay: '160ms' }}>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
+                <div className="animate-rise rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 backdrop-blur-sm" style={{ animationDelay: '160ms' }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
                     Billing
                   </p>
-                  <p className="font-display mt-1.5 text-2xl font-bold text-white">{planName}</p>
+                  <p className="font-display mt-1.5 text-2xl font-bold text-white light:text-neutral-950">{planName}</p>
                   {isCancelledAtPeriodEnd && (
-                    <p className="mt-1 text-xs text-amber-400">Cancels at period end</p>
+                    <p className="mt-1 text-xs text-amber-400 light:text-amber-600">Cancels at period end</p>
                   )}
 
                   <div className="mt-5 grid gap-2">
                     {creator.planCode === 'free' ? (
                       <button
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white transition hover:bg-accent-strong"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
                         type="button"
                         onClick={() => void openBillingPortal()}
                       >
@@ -343,7 +367,7 @@ export function CreatorWorkspacePage() {
                       <>
                         {isActive && (
                           <button
-                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/5 hover:text-white"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 light:border-neutral-950/10 py-2.5 text-sm font-medium text-white/70 light:text-neutral-950/70 transition hover:bg-white/5 light:hover:bg-neutral-950/5 hover:text-white light:hover:text-neutral-950"
                             type="button"
                             onClick={() => void openBillingPortal()}
                           >
@@ -368,7 +392,7 @@ export function CreatorWorkspacePage() {
                         )}
                         {isActive && !isCancelledAtPeriodEnd && (
                           <button
-                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 py-2.5 text-sm font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-40"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 light:border-red-200 bg-red-500/10 light:bg-red-50 py-2.5 text-sm font-medium text-red-300 light:text-red-700 transition hover:bg-red-500/20 light:hover:bg-red-100 disabled:opacity-40"
                             type="button"
                             disabled={isCancellingSubscription}
                             onClick={() => {
@@ -388,13 +412,13 @@ export function CreatorWorkspacePage() {
                     )}
                   </div>
                   {cancelSubscriptionError && (
-                    <p className="mt-3 text-xs text-red-300">{cancelSubscriptionError}</p>
+                    <p className="mt-3 text-xs text-red-300 light:text-red-700">{cancelSubscriptionError}</p>
                   )}
                 </div>
 
                 {/* Workspace info */}
-                <div className="animate-rise rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm" style={{ animationDelay: '210ms' }}>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
+                <div className="animate-rise rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 backdrop-blur-sm" style={{ animationDelay: '210ms' }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
                     Workspace info
                   </p>
                   <div className="mt-4 grid gap-3">
@@ -405,16 +429,52 @@ export function CreatorWorkspacePage() {
                   </div>
                 </div>
 
+                {/* Payouts — mini card, full detail lives on the Payouts tab */}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/app/${creator.slug}/payouts`)}
+                  className="animate-rise flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 text-left backdrop-blur-sm transition hover:bg-white/[0.06] light:hover:bg-neutral-950/[0.06]"
+                  style={{ animationDelay: '230ms' }}
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
+                      Payouts
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <PayoutStatusBadge
+                        label={payoutStatusLabel(creator)}
+                        tone={payoutStatusTone(creator)}
+                      />
+                    </div>
+                    {creator.payoutMode === 'BankTransfer' && creator.hasPayoutProfile ? (
+                      payoutSummaryStatus === 'loading' ? (
+                        <p className="mt-2 flex items-center gap-1.5 text-sm text-white/40 light:text-neutral-950/40">
+                          <Loader2 className="animate-spin" size={12} />
+                          Loading balance…
+                        </p>
+                      ) : payoutSummary ? (
+                        <p className="font-data mt-2 text-lg font-bold tabular-nums text-white light:text-neutral-950">
+                          {formatCurrency(payoutSummary.balanceCents, payoutSummary.currency)}
+                        </p>
+                      ) : null
+                    ) : null}
+                  </div>
+                  <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-white/40 light:text-neutral-950/40">
+                    View payouts
+                    <ArrowRight size={11} />
+                  </span>
+                </button>
+
                 {/* Danger zone */}
-                <div className="animate-rise rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm" style={{ animationDelay: '260ms' }}>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
+                <div className="animate-rise rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 backdrop-blur-sm" style={{ animationDelay: '260ms' }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
                     Danger zone
                   </p>
-                  <p className="mt-2 text-sm text-white/40">
+                  <p className="mt-2 text-sm text-white/40 light:text-neutral-950/40">
                     Permanently delete this workspace and all its data.
                   </p>
                   <button
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 py-2.5 text-sm font-medium text-red-300 transition hover:bg-red-500/20"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 light:border-red-200 bg-red-500/10 light:bg-red-50 py-2.5 text-sm font-medium text-red-300 light:text-red-700 transition hover:bg-red-500/20 light:hover:bg-red-100"
                     type="button"
                     onClick={() => {
                       resetDeleteCreatorFeedback()
@@ -471,7 +531,7 @@ function HeroRevenueCard({
 
   return (
     <div
-      className="animate-rise group relative mb-4 overflow-hidden rounded-3xl border border-white/10 p-7 backdrop-blur-sm transition-shadow hover:border-white/15"
+      className="animate-rise group relative mb-4 overflow-hidden rounded-3xl border border-white/10 light:border-neutral-950/10 p-7 backdrop-blur-sm transition-shadow hover:border-white/15 light:hover:border-neutral-950/15"
       style={{
         background: 'linear-gradient(135deg, rgba(76,124,240,0.14), transparent 60%)',
         boxShadow: '0 20px 40px -20px rgba(76,124,240,0.25)',
@@ -480,16 +540,17 @@ function HeroRevenueCard({
       <div className="animate-glow-pulse pointer-events-none absolute -right-10 -top-16 size-56 rounded-full bg-accent-cyan/20 blur-3xl" />
       <div className="relative flex items-center justify-between gap-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
+          <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
             Total revenue
           </p>
           <p className="font-data mt-1.5 text-[44px] font-bold leading-none tracking-tight text-accent-strong tabular-nums">
             {formatCurrency(Math.round(animatedCents), currency)}
           </p>
-          <p className="mt-2 text-xs font-medium text-white/40">
-            {hasTrendSignal ? `Zadnjih ${TREND_DAYS} dana` : 'Sav prihod od početka rada'}
+          <p className="mt-2 text-xs font-medium text-white/40 light:text-neutral-950/40">
+            Sav prihod od početka rada
           </p>
         </div>
+        {hasTrendSignal ? (
         <svg width={220} height={64} viewBox="0 0 220 64" className="hidden shrink-0 sm:block">
           <defs>
             <linearGradient id="heroSparkFill" x1="0" y1="0" x2="0" y2="1">
@@ -513,6 +574,7 @@ function HeroRevenueCard({
             style={{ '--draw-length': 340 } as CSSProperties}
           />
         </svg>
+        ) : null}
       </div>
     </div>
   )
@@ -534,7 +596,7 @@ function StatCard({
   delay?: number
 }) {
   const base =
-    'animate-rise group rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-lg hover:shadow-black/30'
+    'animate-rise group rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-5 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 light:hover:border-neutral-950/20 hover:bg-white/[0.06] light:hover:bg-neutral-950/[0.06] hover:shadow-lg hover:shadow-black/30'
   const interactive = onClick ? 'cursor-pointer' : ''
   return (
     <div
@@ -546,8 +608,8 @@ function StatCard({
       <div className="mb-2.5 grid size-6 place-items-center rounded-md bg-accent/15 text-accent-strong transition-transform duration-200 group-hover:scale-110">
         <Icon size={13} />
       </div>
-      <p className="font-data truncate text-xl font-bold tracking-tight text-white tabular-nums">{value}</p>
-      <p className="mt-1 truncate text-xs text-white/40">{label}</p>
+      <p className="font-data truncate text-xl font-bold tracking-tight text-white light:text-neutral-950 tabular-nums">{value}</p>
+      <p className="mt-1 truncate text-xs text-white/40 light:text-neutral-950/40">{label}</p>
     </div>
   )
 }
@@ -564,14 +626,14 @@ function PlanStat({
   progress?: number | null
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-white/[0.03] p-3.5">
-      <Icon size={14} className="text-white/40" />
+    <div className="flex flex-col gap-2 rounded-xl bg-white/[0.03] light:bg-neutral-950/[0.03] p-3.5">
+      <Icon size={14} className="text-white/40 light:text-neutral-950/40" />
       <div>
-        <p className="font-data text-sm font-semibold text-white tabular-nums">{value}</p>
-        <p className="mt-0.5 text-xs text-white/40">{label}</p>
+        <p className="font-data text-sm font-semibold text-white light:text-neutral-950 tabular-nums">{value}</p>
+        <p className="mt-0.5 text-xs text-white/40 light:text-neutral-950/40">{label}</p>
       </div>
       {progress != null && (
-        <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-white/10 light:bg-neutral-950/10">
           <span
             className="animate-bar-fill block h-full rounded-full bg-gradient-to-r from-accent to-accent-cyan"
             style={{ width: `${Math.min(100, Math.max(2, progress * 100))}%` }}
@@ -585,10 +647,43 @@ function PlanStat({
 function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-xs text-white/40">{label}</span>
-      <span className={`truncate text-xs font-medium text-white/80 ${mono ? 'font-mono' : ''}`}>{value}</span>
+      <span className="text-xs text-white/40 light:text-neutral-950/40">{label}</span>
+      <span className={`truncate text-xs font-medium text-white/80 light:text-neutral-950/80 ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
   )
+}
+
+function PayoutStatusBadge({ label, tone }: { label: string; tone: 'success' | 'warning' | 'neutral' }) {
+  const toneClasses =
+    tone === 'success'
+      ? 'bg-emerald-500/15 text-emerald-300 light:bg-emerald-50 light:text-emerald-700'
+      : tone === 'warning'
+        ? 'bg-amber-500/15 text-amber-300 light:bg-amber-50 light:text-amber-700'
+        : 'bg-white/10 text-white/50 light:bg-neutral-950/10 light:text-neutral-950/50'
+  const dotClasses =
+    tone === 'success' ? 'bg-emerald-500' : tone === 'warning' ? 'bg-amber-500' : 'bg-white/40 light:bg-neutral-950/40'
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${toneClasses}`}>
+      <span className={`size-1.5 rounded-full ${dotClasses}`} />
+      {label}
+    </span>
+  )
+}
+
+function payoutStatusLabel(creator: { payoutMode: string; stripeConnectPayoutsEnabled: boolean; stripeConnectDetailsSubmitted: boolean; hasPayoutProfile: boolean }): string {
+  if (creator.payoutMode === 'StripeConnect') {
+    return creator.stripeConnectPayoutsEnabled ? 'Ready' : creator.stripeConnectDetailsSubmitted ? 'In progress' : 'Not connected'
+  }
+  return creator.hasPayoutProfile ? 'Ready' : 'Bank details missing'
+}
+
+function payoutStatusTone(creator: { payoutMode: string; stripeConnectPayoutsEnabled: boolean; stripeConnectDetailsSubmitted: boolean; hasPayoutProfile: boolean }): 'success' | 'warning' | 'neutral' {
+  if (creator.payoutMode === 'StripeConnect') {
+    if (creator.stripeConnectPayoutsEnabled) return 'success'
+    return creator.stripeConnectDetailsSubmitted ? 'warning' : 'neutral'
+  }
+  return creator.hasPayoutProfile ? 'success' : 'warning'
 }
 
 function OnboardingChecklist({
@@ -611,9 +706,9 @@ function OnboardingChecklist({
   onGoToLandingPages: () => void
 }) {
   return (
-    <div className="flex-1 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm">
-      <h3 className="font-display text-sm font-semibold text-white">Getting started</h3>
-      <p className="mt-1 text-sm text-white/40">Complete these steps to launch your workspace.</p>
+    <div className="flex-1 rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 backdrop-blur-sm">
+      <h3 className="font-display text-sm font-semibold text-white light:text-neutral-950">Getting started</h3>
+      <p className="mt-1 text-sm text-white/40 light:text-neutral-950/40">Complete these steps to launch your workspace.</p>
 
       <div className="mt-5 grid gap-2">
         <ChecklistItem
@@ -668,26 +763,26 @@ function ChecklistItem({
   action?: { label: string; onClick: () => void; disabled?: boolean }
 }) {
   return (
-    <div className={`flex items-start gap-3 rounded-xl p-3 ${done ? '' : 'bg-white/[0.03]'}`}>
+    <div className={`flex items-start gap-3 rounded-xl p-3 ${done ? '' : 'bg-white/[0.03] light:bg-neutral-950/[0.03]'}`}>
       <div
         className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-full ${
-          done ? 'bg-emerald-500' : 'border-2 border-white/15'
+          done ? 'bg-emerald-500' : 'border-2 border-white/15 light:border-neutral-950/15'
         }`}
       >
-        {done && <CheckCircle2 size={12} className="text-white" strokeWidth={3} />}
+        {done && <CheckCircle2 size={12} className="text-white light:text-neutral-950" strokeWidth={3} />}
       </div>
       <div className="flex-1">
-        <p className={`text-sm font-medium ${done ? 'text-white/30 line-through' : 'text-white'}`}>
+        <p className={`text-sm font-medium ${done ? 'text-white/30 light:text-neutral-950/30 line-through' : 'text-white light:text-neutral-950'}`}>
           {label}
         </p>
-        <p className="mt-0.5 text-xs text-white/40">{desc}</p>
+        <p className="mt-0.5 text-xs text-white/40 light:text-neutral-950/40">{desc}</p>
       </div>
       {!done && action && (
         <button
           type="button"
           disabled={action.disabled}
           onClick={action.onClick}
-          className="shrink-0 inline-flex h-7 items-center gap-1 rounded-lg bg-accent px-3 text-xs font-semibold text-white transition hover:bg-accent-strong disabled:opacity-50"
+          className="shrink-0 inline-flex h-7 items-center gap-1 rounded-lg bg-accent px-3 text-xs font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-50"
         >
           {action.label}
         </button>
@@ -704,13 +799,13 @@ function RecentTransactions({
   onViewAll: () => void
 }) {
   return (
-    <div className="flex-1 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm">
+    <div className="flex-1 rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-6 backdrop-blur-sm">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-sm font-semibold text-white">Recent transactions</h3>
+        <h3 className="font-display text-sm font-semibold text-white light:text-neutral-950">Recent transactions</h3>
         <button
           type="button"
           onClick={onViewAll}
-          className="flex items-center gap-1 text-xs font-medium text-white/40 transition hover:text-white"
+          className="flex items-center gap-1 text-xs font-medium text-white/40 light:text-neutral-950/40 transition hover:text-white light:hover:text-neutral-950"
         >
           View all
           <ArrowRight size={11} />
@@ -719,30 +814,30 @@ function RecentTransactions({
 
       {orders.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-2 py-6 text-center">
-          <ShoppingBag size={22} className="text-white/15" />
-          <p className="text-sm text-white/40">No paid orders yet.</p>
+          <ShoppingBag size={22} className="text-white/15 light:text-neutral-950/15" />
+          <p className="text-sm text-white/40 light:text-neutral-950/40">No paid orders yet.</p>
         </div>
       ) : (
         <div className="mt-4 grid gap-2">
           {orders.map((order) => (
             <div
               key={order.publicId}
-              className="group flex items-center gap-3 rounded-xl bg-white/[0.02] px-4 py-3 transition-colors hover:bg-white/[0.05]"
+              className="group flex items-center gap-3 rounded-xl bg-white/[0.02] light:bg-neutral-950/[0.02] px-4 py-3 transition-colors hover:bg-white/[0.05] light:hover:bg-neutral-950/[0.05]"
             >
               <div className="grid size-8 shrink-0 place-items-center rounded-full bg-accent/15 text-[10.5px] font-bold text-accent-strong transition-transform duration-200 group-hover:scale-110">
                 {orderInitials(order)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">
+                <p className="truncate text-sm font-medium text-white light:text-neutral-950">
                   {order.name ?? order.email}
                 </p>
-                <p className="truncate text-xs text-white/40">{order.productName}</p>
+                <p className="truncate text-xs text-white/40 light:text-neutral-950/40">{order.productName}</p>
               </div>
               <div className="shrink-0 text-right">
-                <p className="font-data text-sm font-semibold text-white tabular-nums">
+                <p className="font-data text-sm font-semibold text-white light:text-neutral-950 tabular-nums">
                   {formatCurrency(order.amountCents, order.currency)}
                 </p>
-                <p className="text-xs text-white/40">
+                <p className="text-xs text-white/40 light:text-neutral-950/40">
                   {new Date(order.paidAt ?? order.createdAt).toLocaleDateString(undefined, {
                     month: 'short',
                     day: 'numeric',
@@ -768,18 +863,18 @@ function CancelSubscriptionDialog({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl">
-        <div className="grid size-11 place-items-center rounded-xl bg-amber-500/12">
-          <AlertTriangle className="text-amber-400" size={22} />
+      <div className="w-full max-w-md rounded-2xl border border-white/10 light:border-neutral-950/10 bg-neutral-950 light:bg-white p-6 shadow-2xl">
+        <div className="grid size-11 place-items-center rounded-xl bg-amber-500/12 light:bg-amber-50">
+          <AlertTriangle className="text-amber-400 light:text-amber-600" size={22} />
         </div>
-        <h2 className="font-display mt-4 text-lg font-semibold text-white">Cancel subscription?</h2>
-        <p className="mt-2 text-sm leading-6 text-white/50">
+        <h2 className="font-display mt-4 text-lg font-semibold text-white light:text-neutral-950">Cancel subscription?</h2>
+        <p className="mt-2 text-sm leading-6 text-white/50 light:text-neutral-950/50">
           Your plan remains active until the end of the current billing period. After that, the
           workspace will be suspended and landing pages will go offline.
         </p>
         <div className="mt-6 flex gap-3">
           <button
-            className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10"
+            className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 light:border-neutral-950/10 bg-white/5 light:bg-neutral-950/5 text-sm font-medium text-white/70 light:text-neutral-950/70 transition hover:bg-white/10 light:hover:bg-neutral-950/10"
             type="button"
             disabled={isSubmitting}
             onClick={onClose}
@@ -787,7 +882,7 @@ function CancelSubscriptionDialog({
             Keep plan
           </button>
           <button
-            className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-40"
+            className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40"
             type="button"
             disabled={isSubmitting}
             onClick={onConfirm}
@@ -830,44 +925,6 @@ function orderInitials(order: Order): string {
   const parts = source.trim().split(/\s+/)
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
   return source.slice(0, 2).toUpperCase()
-}
-
-function buildRevenueTrend(orders: Order[], days: number): number[] {
-  const buckets = new Array<number>(days).fill(0)
-  const now = new Date()
-  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  for (const order of orders) {
-    if (!order.paidAt) continue
-    const paid = new Date(order.paidAt)
-    const paidMidnight = new Date(paid.getFullYear(), paid.getMonth(), paid.getDate())
-    const diffDays = Math.round((todayMidnight.getTime() - paidMidnight.getTime()) / 86_400_000)
-    const idx = days - 1 - diffDays
-    if (idx >= 0 && idx < days) buckets[idx] += order.amountCents
-  }
-  return buckets
-}
-
-function computeTopProduct(orders: Order[]): { name: string; totalCents: number } | null {
-  const totals = new Map<string, number>()
-  for (const order of orders) {
-    totals.set(order.productName, (totals.get(order.productName) ?? 0) + order.amountCents)
-  }
-  let best: { name: string; totalCents: number } | null = null
-  for (const [name, totalCents] of totals) {
-    if (!best || totalCents > best.totalCents) best = { name, totalCents }
-  }
-  return best
-}
-
-function computeThisMonthRevenueCents(orders: Order[]): number {
-  const now = new Date()
-  return orders
-    .filter((order) => {
-      if (!order.paidAt) return false
-      const paid = new Date(order.paidAt)
-      return paid.getMonth() === now.getMonth() && paid.getFullYear() === now.getFullYear()
-    })
-    .reduce((sum, order) => sum + order.amountCents, 0)
 }
 
 function buildSparklinePath(values: number[], width: number, height: number): { line: string; area: string } {

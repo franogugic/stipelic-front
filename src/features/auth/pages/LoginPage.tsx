@@ -1,5 +1,5 @@
-import { FileText, BarChart3, ShoppingBag } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { CheckCircle2, FileText, BarChart3, ShoppingBag } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { LoginForm } from '../components/LoginForm'
 
 const features = [
@@ -10,6 +10,8 @@ const features = [
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const bannerMessage = (location.state as { message?: string } | null)?.message
 
   return (
     <div className="flex min-h-screen">
@@ -96,6 +98,13 @@ export function LoginPage() {
               Sign in to your creator workspace.
             </p>
           </div>
+
+          {bannerMessage ? (
+            <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              <CheckCircle2 className="mt-0.5 shrink-0" size={15} />
+              <span>{bannerMessage}</span>
+            </div>
+          ) : null}
 
           <div className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
             <LoginForm />

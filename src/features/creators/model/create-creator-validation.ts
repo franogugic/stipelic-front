@@ -57,6 +57,10 @@ export function validateCreateCreatorForm(
     fieldErrors.defaultCurrency = 'Choose EUR or USD.'
   }
 
+  if (!values.countryCode.trim()) {
+    fieldErrors.countryCode = 'Choose your country.'
+  }
+
   if (values.configureSettingsOnStart) {
     if (values.supportEmail.trim() && !emailPattern.test(values.supportEmail.trim())) {
       fieldErrors.supportEmail = 'Enter a valid support email.'
@@ -100,7 +104,7 @@ export function validateCreateCreatorForm(
 
   const isIdentityValid = !fieldErrors.name && !fieldErrors.slug
   const isPlanValid = !fieldErrors.planCode
-  const isSetupValid = !fieldErrors.defaultCurrency
+  const isSetupValid = !fieldErrors.defaultCurrency && !fieldErrors.countryCode
   const isSettingsValid =
     !fieldErrors.supportEmail &&
     !fieldErrors.brandName &&

@@ -21,6 +21,8 @@ export type LandingPage = {
   customDomain: string | null
   createdAt: string
   updatedAt: string
+  totalViews: number
+  uniqueVisitors: number
 }
 
 export type LandingPageWithSections = LandingPage & {
@@ -48,11 +50,42 @@ export type EmailCaptureItem = {
 }
 
 export type LandingPageAnalytics = {
+  title: string
+  slug: string
+  status: LandingPageStatus
   allTime: PeriodStats
   today: PeriodStats
   last7Days: PeriodStats
   last30Days: PeriodStats
   totalEmailCaptures: number
+  purchaseCount: number
+  totalRevenueCents: number
+  currency: string | null
+}
+
+export type TimeSeriesPeriod =
+  | 'Today'
+  | 'Week'
+  | 'Month'
+  | 'ThreeMonths'
+  | 'SixMonths'
+  | 'Year'
+  | 'AllTime'
+
+export type TimeSeriesPoint = {
+  bucketStart: string
+  viewCount: number
+  uniqueVisitors: number
+  captureCount: number
+  purchaseCount: number
+  revenueCents: number
+}
+
+export type TimeSeriesResponse = {
+  period: string
+  bucketUnit: string
+  currency: string | null
+  points: TimeSeriesPoint[]
 }
 
 export type CreateLandingPageRequest = {

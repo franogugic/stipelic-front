@@ -1,11 +1,13 @@
 import { apiRequest } from '../../../shared/api/http-client'
 import type {
+  ConnectOnboardingLinkResult,
   CreateCreatorRequest,
   CreateCreatorResult,
   Creator,
   CreatorPlan,
   CreatorSettings,
   CreatorSubscriptionCheckoutResult,
+  PayoutCountry,
   UpdateCreatorSettingsRequest,
 } from '../model/types'
 
@@ -51,6 +53,19 @@ export function updateCreatorSettings(slug: string, request: UpdateCreatorSettin
   ).then(unwrapApiResponse)
 }
 
+export function getPayoutCountries() {
+  return apiRequest<ApiResponse<PayoutCountry[]>>('/api/creators/payout-countries').then(
+    unwrapApiResponse,
+  )
+}
+
+export function startConnectOnboarding() {
+  return apiRequest<ApiResponse<ConnectOnboardingLinkResult>>(
+    '/api/creators/current/connect/onboarding-link',
+    { method: 'POST' },
+  ).then(unwrapApiResponse)
+}
+
 export function createCreator(request: CreateCreatorRequest) {
   return apiRequest<ApiResponse<CreateCreatorResult>>('/api/creators', {
     method: 'POST',
@@ -59,6 +74,7 @@ export function createCreator(request: CreateCreatorRequest) {
       slug: request.slug.trim(),
       planCode: request.planCode,
       defaultCurrency: request.defaultCurrency,
+      countryCode: request.countryCode,
       supportEmail: request.configureSettingsOnStart ? request.supportEmail.trim() || null : null,
       brandName: request.configureSettingsOnStart ? request.brandName.trim() || null : null,
       logoUrl: request.configureSettingsOnStart ? request.logoUrl.trim() || null : null,

@@ -11,6 +11,8 @@ import {
   startCreatorSubscriptionCheckout,
   updateCreatorSettings,
 } from '../api/creators-api'
+import { getHomeSummary } from '../../orders/api/orders-api'
+import type { HomeSummary } from '../../orders/model/types'
 import type {
   CreateCreatorFormValues,
   CreateCreatorResult,
@@ -54,6 +56,10 @@ type CreatorState = {
   cancelSubscriptionStatus: CreatorCancelSubscriptionStatus
   cancelSubscriptionError: string | null
   pollActivationStatus: PollActivationStatus
+  homeSummary: HomeSummary | null
+  homeSummaryStatus: CreatorLoadStatus
+  homeSummarySlug: string | null
+  loadHomeSummary: (slug: string) => Promise<void>
   loadCurrentCreator: () => Promise<Creator | null>
   loadCreatorPlans: () => Promise<void>
   loadCreatorSettings: (slug: string) => Promise<CreatorSettings | null>
@@ -73,30 +79,53 @@ type CreatorState = {
   resetDeleteCreatorFeedback: () => void
   resetUpdateCreatorSettingsFeedback: () => void
   resetPollActivation: () => void
+  reset: () => void
+}
+
+const initialCreatorState = {
+  createdCreator: null,
+  currentCreator: null,
+  currentCreatorStatus: 'idle' as CreatorLoadStatus,
+  creatorPlans: [] as CreatorPlan[],
+  creatorPlansStatus: 'idle' as CreatorLoadStatus,
+  creatorPlansError: null,
+  creatorSettings: null,
+  creatorSettingsStatus: 'idle' as CreatorLoadStatus,
+  creatorSettingsError: null,
+  updateSettingsStatus: 'idle' as CreatorUpdateStatus,
+  updateSettingsError: null,
+  createStatus: 'idle' as CreatorCreateStatus,
+  createError: null,
+  checkoutResult: null,
+  checkoutStatus: 'idle' as CreatorCheckoutStatus,
+  checkoutError: null,
+  deleteStatus: 'idle' as CreatorDeleteStatus,
+  deleteError: null,
+  cancelSubscriptionStatus: 'idle' as CreatorCancelSubscriptionStatus,
+  cancelSubscriptionError: null,
+  pollActivationStatus: 'idle' as PollActivationStatus,
+  homeSummary: null,
+  homeSummaryStatus: 'idle' as CreatorLoadStatus,
+  homeSummarySlug: null,
 }
 
 export const useCreatorStore = create<CreatorState>((set) => ({
-  createdCreator: null,
-  currentCreator: null,
-  currentCreatorStatus: 'idle',
-  creatorPlans: [],
-  creatorPlansStatus: 'idle',
-  creatorPlansError: null,
-  creatorSettings: null,
-  creatorSettingsStatus: 'idle',
-  creatorSettingsError: null,
-  updateSettingsStatus: 'idle',
-  updateSettingsError: null,
-  createStatus: 'idle',
-  createError: null,
-  checkoutResult: null,
-  checkoutStatus: 'idle',
-  checkoutError: null,
-  deleteStatus: 'idle',
-  deleteError: null,
-  cancelSubscriptionStatus: 'idle',
-  cancelSubscriptionError: null,
-  pollActivationStatus: 'idle',
+  ...initialCreatorState,
+
+  loadHomeSummary: async (slug) => {
+    const { homeSummaryStatus, homeSummarySlug } = useCreatorStore.getState()
+    if (homeSummaryStatus === 'loading') return
+    if (homeSummaryStatus === 'success' && homeSummarySlug === slug) return
+
+    set({ homeSummaryStatus: 'loading', homeSummarySlug: slug })
+
+    try {
+      const summary = await getHomeSummary(slug)
+      set({ homeSummary: summary, homeSummaryStatus: 'success' })
+    } catch {
+      set({ homeSummaryStatus: 'error' })
+    }
+  },
 
   loadCurrentCreator: async () => {
     set({ currentCreatorStatus: 'loading' })
@@ -351,5 +380,8 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
   resetPollActivation: () => {
     set({ pollActivationStatus: 'idle' })
+  },
+  reset: () => {
+    set(initialCreatorState)
   },
 }))

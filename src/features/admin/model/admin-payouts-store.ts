@@ -1,0 +1,162 @@
+import { create } from 'zustand'
+import { ApiError } from '../../../shared/api/http-client'
+import {
+  createPayout,
+  getPayoutBalances,
+  getPayoutQueue,
+  markPayoutFailed,
+  markPayoutPaid,
+} from '../api/admin-payouts-api'
+import type {
+  AdminPayout,
+  AdminPayoutQueueItem,
+  CreatePayoutRequest,
+  CreatorBalanceSummary,
+  MarkPayoutFailedRequest,
+  MarkPayoutPaidRequest,
+  PayoutStatus,
+} from './types'
+
+type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
+type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error'
+
+type AdminPayoutsState = {
+  queue: AdminPayoutQueueItem[]
+  queueStatus: LoadStatus
+  queueError: string | null
+  queueFilter: PayoutStatus | undefined
+
+  balances: CreatorBalanceSummary[]
+  balancesStatus: LoadStatus
+  balancesError: string | null
+
+  // Payouts created/updated this session, keyed by creator public id — shown inline on the
+  // creator's balance row (Pending → Mark Paid / Mark Failed) until the admin navigates away.
+  activePayouts: Record<string, AdminPayout>
+
+  actionStatus: SubmitStatus
+  actionError: string | null
+
+  loadQueue: (status?: PayoutStatus, limit?: number) => Promise<void>
+  loadBalances: (minCents?: number, limit?: number) => Promise<void>
+  createPayoutForCreator: (request: CreatePayoutRequest) => Promise<AdminPayout | null>
+  markPaid: (creatorPublicId: string, payoutPublicId: string, request: MarkPayoutPaidRequest) => Promise<AdminPayout | null>
+  markFailed: (creatorPublicId: string, payoutPublicId: string, request: MarkPayoutFailedRequest) => Promise<AdminPayout | null>
+  resetActionFeedback: () => void
+  reset: () => void
+}
+
+const initialAdminPayoutsState = {
+  queue: [] as AdminPayoutQueueItem[],
+  queueStatus: 'idle' as LoadStatus,
+  queueError: null,
+  queueFilter: 'Pending' as PayoutStatus | undefined,
+
+  balances: [] as CreatorBalanceSummary[],
+  balancesStatus: 'idle' as LoadStatus,
+  balancesError: null,
+
+  activePayouts: {} as Record<string, AdminPayout>,
+
+  actionStatus: 'idle' as SubmitStatus,
+  actionError: null,
+}
+
+export const useAdminPayoutsStore = create<AdminPayoutsState>((set, get) => ({
+  ...initialAdminPayoutsState,
+
+  loadQueue: async (status, limit) => {
+    set({ queueStatus: 'loading', queueError: null, queueFilter: status })
+    try {
+      const queue = await getPayoutQueue(status, limit)
+      set({ queue, queueStatus: 'success' })
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'We could not load the payout queue. Please try again.'
+      set({ queueStatus: 'error', queueError: message })
+    }
+  },
+
+  loadBalances: async (minCents, limit) => {
+    set({ balancesStatus: 'loading', balancesError: null })
+    try {
+      const balances = await getPayoutBalances(minCents, limit)
+      set({ balances, balancesStatus: 'success' })
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'We could not load payout balances. Please try again.'
+      set({ balancesStatus: 'error', balancesError: message })
+    }
+  },
+
+  createPayoutForCreator: async (request) => {
+    set({ actionStatus: 'submitting', actionError: null })
+    try {
+      const payout = await createPayout(request)
+      set((s) => ({
+        actionStatus: 'success',
+        actionError: null,
+        activePayouts: { ...s.activePayouts, [request.creatorPublicId]: payout },
+        balances: s.balances.map((b) =>
+          b.creatorPublicId === request.creatorPublicId
+            ? { ...b, balanceCents: b.balanceCents - request.amountCents }
+            : b,
+        ),
+      }))
+      return payout
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'We could not create this payout. Please try again.'
+      set({ actionStatus: 'error', actionError: message })
+      return null
+    }
+  },
+
+  markPaid: async (creatorPublicId, payoutPublicId, request) => {
+    set({ actionStatus: 'submitting', actionError: null })
+    try {
+      const payout = await markPayoutPaid(payoutPublicId, request)
+      set((s) => ({
+        actionStatus: 'success',
+        actionError: null,
+        activePayouts: { ...s.activePayouts, [creatorPublicId]: payout },
+        queue: s.queue.filter((q) => q.publicId !== payoutPublicId),
+      }))
+      void get().loadQueue(get().queueFilter)
+      return payout
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'We could not mark this payout as paid. Please try again.'
+      set({ actionStatus: 'error', actionError: message })
+      return null
+    }
+  },
+
+  markFailed: async (creatorPublicId, payoutPublicId, request) => {
+    set({ actionStatus: 'submitting', actionError: null })
+    try {
+      const payout = await markPayoutFailed(payoutPublicId, request)
+      set((s) => ({
+        actionStatus: 'success',
+        actionError: null,
+        activePayouts: { ...s.activePayouts, [creatorPublicId]: payout },
+        // A failed payout compensates the creator's balance back — reload to reflect it accurately
+        // (the Adjustment amount mirrors the original payout, so we can restore it optimistically).
+        balances: s.balances.map((b) =>
+          b.creatorPublicId === creatorPublicId ? { ...b, balanceCents: b.balanceCents + payout.amountCents } : b,
+        ),
+        queue: s.queue.filter((q) => q.publicId !== payoutPublicId),
+      }))
+      void get().loadQueue(get().queueFilter)
+      return payout
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'We could not mark this payout as failed. Please try again.'
+      set({ actionStatus: 'error', actionError: message })
+      return null
+    }
+  },
+
+  resetActionFeedback: () => set({ actionStatus: 'idle', actionError: null }),
+  reset: () => set(initialAdminPayoutsState),
+}))

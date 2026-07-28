@@ -1,20 +1,23 @@
 import {
+  ArrowRight,
   AtSign,
+  Banknote,
   CircleDollarSign,
   Clock3,
   Fingerprint,
   Globe2,
   Hash,
-  Image,
   Loader2,
   Palette,
   Save,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { ImageUploadField } from '../../../shared/ui/ImageUploadField'
 import { creatorConstraints } from '../model/creator-constraints'
 import { useCreatorStore } from '../model/creator-store'
+import { usePayoutStore } from '../model/payout-store'
 import type { CreatorSettings, UpdateCreatorSettingsRequest } from '../model/types'
 
 const emptySettingsForm: UpdateCreatorSettingsRequest = {
@@ -36,6 +39,7 @@ type SettingsDraft = {
 
 export function CreatorSettingsPage() {
   const { slug } = useParams<{ slug: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const creatorSettings = useCreatorStore((s) => s.creatorSettings)
   const creatorSettingsStatus = useCreatorStore((s) => s.creatorSettingsStatus)
   const creatorSettingsError = useCreatorStore((s) => s.creatorSettingsError)
@@ -46,12 +50,20 @@ export function CreatorSettingsPage() {
   const resetUpdateCreatorSettingsFeedback = useCreatorStore(
     (s) => s.resetUpdateCreatorSettingsFeedback,
   )
+  const currentCreator = useCreatorStore((s) => s.currentCreator)
+  const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
+  const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
+
+  const startConnectOnboardingLink = usePayoutStore((s) => s.startConnectOnboardingLink)
+
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>({ slug: '', values: {} })
 
   const normalizedSlug = slug ?? ''
+  const navigate = useNavigate()
   const isLoading = creatorSettingsStatus === 'loading' || creatorSettingsStatus === 'idle'
   const isSaving = updateSettingsStatus === 'submitting'
   const saveSuccess = updateSettingsStatus === 'success'
+  const creator = currentCreator?.slug === normalizedSlug ? currentCreator : null
 
   const baseFormValues = useMemo(
     () => (creatorSettings ? toSettingsFormValues(creatorSettings) : emptySettingsForm),
@@ -70,6 +82,37 @@ export function CreatorSettingsPage() {
   useEffect(() => {
     if (normalizedSlug) void loadCreatorSettings(normalizedSlug)
   }, [loadCreatorSettings, normalizedSlug])
+
+  useEffect(() => {
+    if (currentCreatorStatus === 'idle') void loadCurrentCreator()
+  }, [currentCreatorStatus, loadCurrentCreator])
+
+  // Stripe Connect return/refresh flow — see CreatorConnectService.StartConnectOnboardingAsync
+  // for the exact query params this page must handle. Connect status now lives on the Payouts tab,
+  // so a successful return just refreshes the creator record and sends the user there. Runs once
+  // per page load (guarded by the ref below), since re-triggering on every render/searchParams
+  // identity change would loop.
+  const connectFlowHandled = useRef(false)
+  useEffect(() => {
+    if (connectFlowHandled.current) return
+    const connectParam = searchParams.get('connect')
+    if (!connectParam) return
+    connectFlowHandled.current = true
+
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.delete('connect')
+      return next
+    }, { replace: true })
+
+    if (connectParam === 'return') {
+      void loadCurrentCreator().finally(() => navigate(`/app/${normalizedSlug}/payouts`, { replace: true }))
+    } else if (connectParam === 'refresh') {
+      void startConnectOnboardingLink().then((url) => {
+        if (url) window.location.href = url
+      })
+    }
+  }, [searchParams, setSearchParams, loadCurrentCreator, startConnectOnboardingLink, navigate, normalizedSlug])
 
   const updateField = <TField extends keyof UpdateCreatorSettingsRequest>(
     fieldName: TField,
@@ -198,14 +241,11 @@ export function CreatorSettingsPage() {
                       error={validation.fieldErrors.supportEmail}
                       onChange={(v) => updateField('supportEmail', v)}
                     />
-                    <SettingsField
-                      icon={Image}
-                      label="Logo URL"
-                      type="url"
-                      maxLength={creatorConstraints.logoUrl.maxLength}
-                      placeholder="https://example.com/logo.png"
+                    <ImageUploadField
+                      slug={slug}
+                      purpose="CreatorLogo"
+                      label="Logo"
                       value={formValues.logoUrl}
-                      error={validation.fieldErrors.logoUrl}
                       onChange={(v) => updateField('logoUrl', v)}
                     />
 
@@ -310,6 +350,29 @@ export function CreatorSettingsPage() {
                 </p>
               </div>
             </aside>
+          </div>
+        ) : null}
+
+        {creatorSettingsStatus === 'success' && creator ? (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => navigate(`/app/${normalizedSlug}/payouts`)}
+              className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left backdrop-blur-sm transition hover:bg-white/[0.05] light:border-neutral-200 light:bg-white light:shadow-sm light:hover:bg-neutral-50"
+            >
+              <div className="flex items-center gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-strong">
+                  <Banknote size={16} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-white light:text-neutral-950">Payout settings have moved</p>
+                  <p className="mt-0.5 text-xs text-white/40 light:text-neutral-400">
+                    Bank details, Stripe Connect status, and payout history now live on the Payouts tab.
+                  </p>
+                </div>
+              </div>
+              <ArrowRight size={16} className="shrink-0 text-white/40 light:text-neutral-400" />
+            </button>
           </div>
         ) : null}
       </div>

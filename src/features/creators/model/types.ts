@@ -3,6 +3,7 @@ export type CreateCreatorFormValues = {
   slug: string
   planCode: string
   defaultCurrency: 'EUR' | 'USD'
+  countryCode: string
   configureSettingsOnStart: boolean
   supportEmail: string
   brandName: string
@@ -27,6 +28,8 @@ export type CreatorSubscriptionCheckoutResult = {
   checkoutUrl: string | null
 }
 
+export type PayoutMode = 'StripeConnect' | 'BankTransfer'
+
 export type Creator = {
   publicId: string
   name: string
@@ -35,6 +38,21 @@ export type Creator = {
   defaultCurrency: string
   planCode: string
   cancelAtPeriodEnd: boolean
+  countryCode: string
+  payoutMode: PayoutMode
+  stripeConnectDetailsSubmitted: boolean
+  stripeConnectPayoutsEnabled: boolean
+  hasPayoutProfile: boolean
+  payoutReady: boolean
+}
+
+export type PayoutCountry = {
+  code: string
+  payoutMode: PayoutMode
+}
+
+export type ConnectOnboardingLinkResult = {
+  url: string
 }
 
 export type CreatorPlan = {
@@ -69,4 +87,36 @@ export type UpdateCreatorSettingsRequest = {
   primaryColor: string
   timezone: string
   language: string
+}
+
+export type PayoutStatus = 'Pending' | 'Paid' | 'Failed' | 'Cancelled'
+
+export type PayoutSummary = {
+  currency: string
+  balanceCents: number
+  pendingPayoutCents: number
+  minPayoutCents: number
+}
+
+export type Payout = {
+  publicId: string
+  amountCents: number
+  currency: string
+  status: PayoutStatus
+  bankReference: string | null
+  note: string | null
+  createdAt: string
+  paidAt: string | null
+}
+
+export type PayoutProfile = {
+  accountHolderName: string
+  maskedIban: string
+  bankCountryCode: string
+}
+
+export type UpdatePayoutProfileRequest = {
+  accountHolderName: string
+  iban: string
+  bankCountryCode: string
 }

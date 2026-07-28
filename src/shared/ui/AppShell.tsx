@@ -1,18 +1,24 @@
 import {
+  Banknote,
   FileText,
   LayoutDashboard,
   Loader2,
   LogOut,
+  Mail,
+  Moon,
   Package,
   Settings,
+  ShieldCheck,
   ShoppingBag,
+  Sun,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
+import { useThemeStore } from '../model/theme-store'
 
-type NavSection = 'overview' | 'landing-pages' | 'products' | 'orders' | 'settings'
+type NavSection = 'overview' | 'landing-pages' | 'products' | 'orders' | 'emails' | 'payouts' | 'settings'
 
 type AppShellProps = {
   slug: string
@@ -25,6 +31,8 @@ const navItems: { section: NavSection; label: string; icon: typeof LayoutDashboa
   { section: 'landing-pages',  label: 'Landing Pages',  icon: FileText,        href: (s) => `/app/${s}/landing-pages` },
   { section: 'products',       label: 'Products',       icon: Package,         href: (s) => `/app/${s}/products` },
   { section: 'orders',         label: 'Orders',         icon: ShoppingBag,     href: (s) => `/app/${s}/orders` },
+  { section: 'emails',         label: 'Emails',         icon: Mail,            href: (s) => `/app/${s}/emails` },
+  { section: 'payouts',        label: 'Payouts',        icon: Banknote,        href: (s) => `/app/${s}/payouts` },
 ]
 
 export function AppShell({ slug, activeSection, children }: AppShellProps) {
@@ -36,6 +44,8 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
   const isLoggingOut = logoutStatus === 'submitting'
   const currentCreator = useCreatorStore((s) => s.currentCreator)
   const creator = currentCreator?.slug === slug ? currentCreator : null
+  const theme = useThemeStore((s) => s.theme)
+  const toggleTheme = useThemeStore((s) => s.toggleTheme)
 
   const initials = user
     ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || '?'
@@ -48,7 +58,7 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
   void location // used implicitly via activeSection
 
   return (
-    <div className="relative flex min-h-screen bg-neutral-950">
+    <div className="relative flex min-h-screen bg-neutral-950 light:bg-neutral-100">
       {/* Subtle grid texture */}
       <div className="bg-grid pointer-events-none fixed inset-0 opacity-[0.04]" />
 
@@ -129,6 +139,18 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
                 Settings
               </button>
             </li>
+            {user?.roles?.includes('platform_admin') ? (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/payouts')}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/60 transition-all hover:bg-white/5 hover:text-white"
+                >
+                  <ShieldCheck size={16} strokeWidth={1.8} />
+                  Admin payouts
+                </button>
+              </li>
+            ) : null}
           </ul>
         </nav>
 
@@ -143,6 +165,25 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
               <p className="truncate text-[11px] text-white/40">{user?.email ?? ''}</p>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-white"
+          >
+            <span className="flex items-center gap-2">
+              {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
+              {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+            </span>
+            <span className="relative h-4 w-7 shrink-0 rounded-full bg-white/10 transition-colors">
+              <span
+                className={`absolute top-0.5 size-3 rounded-full bg-accent transition-all ${
+                  theme === 'dark' ? 'left-0.5' : 'left-3.5'
+                }`}
+              />
+            </span>
+          </button>
+
           <button
             type="button"
             disabled={isLoggingOut}
