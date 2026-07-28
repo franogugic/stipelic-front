@@ -1,7 +1,16 @@
 import {
-  AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Globe, Loader2, Lock,
+  DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors,
+} from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import {
+  SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import {
+  AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Globe, GripVertical, Loader2, Lock,
   Package, PanelLeftClose, PanelLeftOpen, Trash2, Type, Wrench, Zap,
 } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useLandingPageStore } from '../model/landing-page-store'
@@ -177,6 +186,41 @@ export function LandingPageEditorPage() {
 
   const [isPanelOpen, setIsPanelOpen] = useState(true)
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = draftSections.findIndex((s) => s.publicId === active.id)
+    const newIndex = draftSections.findIndex((s) => s.publicId === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    // Locked sections (Navbar/Footer) must never change position. Rather than hardcoding
+    // "index 0 and last", derive the allowed range from where locked sections actually sit
+    // in the array right now, and reject any drop whose result would move one.
+    const lockedIndexesOf = (sections: DraftSection[]) =>
+      sections
+        .map((s, i) => (LOCKED_TYPES.includes(s.type as SectionType) ? i : -1))
+        .filter((i) => i !== -1)
+
+    const lockedBefore = lockedIndexesOf(draftSections)
+    const reordered = arrayMove(draftSections, oldIndex, newIndex)
+    const lockedAfter = lockedIndexesOf(reordered)
+
+    const preservesLockedPositions =
+      lockedBefore.length === lockedAfter.length &&
+      lockedBefore.every((idx, i) => idx === lockedAfter[i])
+
+    if (!preservesLockedPositions) return
+
+    setDraftSections(reordered.map((s, i) => ({ ...s, sortOrder: i })))
+    markDirty()
+  }
+
   // Templates to show in left panel — exclude locked, show missing required prominently
   const addableTemplates = templates.filter(
     (t) => !LOCKED_TYPES.includes(t.type as SectionType)
@@ -298,41 +342,29 @@ export function LandingPageEditorPage() {
           {/* Center: Preview */}
           <div className="flex flex-1 flex-col overflow-y-auto">
             <div className="mx-auto w-full max-w-3xl py-6 px-4">
-              {draftSections.map((section) => {
-                const isSelected = selectedSectionId === section.publicId
-                const isLocked = LOCKED_TYPES.includes(section.type as SectionType)
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext
+                  items={draftSections.map((s) => s.publicId)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {draftSections.map((section) => {
+                    const isSelected = selectedSectionId === section.publicId
+                    const isLocked = LOCKED_TYPES.includes(section.type as SectionType)
 
-                return (
-                  <div
-                    key={section.publicId}
-                    className={`relative cursor-pointer rounded-xl transition-all mb-1 ${
-                      isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-transparent hover:ring-white/30 light:hover:ring-neutral-300'
-                    }`}
-                    style={{ backgroundColor: section.backgroundColor }}
-                    onClick={() => { setSelectedSectionId(section.publicId); setSidebarMode('section') }}
-                  >
-                    {/* Section label */}
-                    <div className={`absolute left-2 top-2 flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium shadow-sm ${isLocked ? 'bg-neutral-900/80 text-white' : 'bg-white/80 text-neutral-600 backdrop-blur-sm'}`}>
-                      {isLocked ? <Lock size={10} /> : null}
-                      <SectionIcon type={section.type as SectionType} size={11} />
-                      {SECTION_LABELS[section.type as SectionType]}
-                    </div>
-
-                    {/* Delete button — only non-locked sections */}
-                    {!isLocked && isSelected ? (
-                      <button
-                        type="button"
-                        className="absolute right-2 top-2 grid size-7 place-items-center rounded-lg bg-white/80 text-neutral-500 backdrop-blur-sm shadow-sm transition hover:bg-red-50 hover:text-red-600"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteSection(section.publicId) }}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    ) : null}
-
-                    <SectionPreview section={section} pageType={draftType} />
-                  </div>
-                )
-              })}
+                    return (
+                      <SortableSection
+                        key={section.publicId}
+                        section={section}
+                        isSelected={isSelected}
+                        isLocked={isLocked}
+                        pageType={draftType}
+                        onSelect={() => { setSelectedSectionId(section.publicId); setSidebarMode('section') }}
+                        onDelete={() => handleDeleteSection(section.publicId)}
+                      />
+                    )
+                  })}
+                </SortableContext>
+              </DndContext>
             </div>
           </div>
 
@@ -580,6 +612,74 @@ function MiniSectionPreview({ template }: { template: SectionTemplate }) {
       )
     }
   }
+}
+
+/* ─── SortableSection ─────────────────────────────────────────── */
+
+function SortableSection({
+  section, isSelected, isLocked, pageType, onSelect, onDelete,
+}: {
+  section: DraftSection
+  isSelected: boolean
+  isLocked: boolean
+  pageType: LandingPageType
+  onSelect: () => void
+  onDelete: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: section.publicId,
+    disabled: isLocked,
+  })
+
+  const style: CSSProperties = {
+    backgroundColor: section.backgroundColor,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative cursor-pointer rounded-xl mb-1 ${
+        isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-transparent hover:ring-white/30 light:hover:ring-neutral-300'
+      }`}
+      onClick={onSelect}
+    >
+      {/* Section label */}
+      <div className={`absolute left-2 top-2 flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium shadow-sm ${isLocked ? 'bg-neutral-900/80 text-white' : 'bg-white/80 text-neutral-600 backdrop-blur-sm'}`}>
+        {isLocked ? <Lock size={10} /> : null}
+        <SectionIcon type={section.type as SectionType} size={11} />
+        {SECTION_LABELS[section.type as SectionType]}
+      </div>
+
+      {/* Drag handle + delete button — only non-locked, selected sections */}
+      {!isLocked && isSelected ? (
+        <div className="absolute right-2 top-2 flex items-center gap-1.5">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            title="Drag to reorder"
+            className="grid size-7 cursor-grab touch-none place-items-center rounded-lg bg-white/80 text-neutral-500 backdrop-blur-sm shadow-sm transition hover:bg-neutral-100 hover:text-neutral-800 active:cursor-grabbing"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical size={12} />
+          </button>
+          <button
+            type="button"
+            className="grid size-7 place-items-center rounded-lg bg-white/80 text-neutral-500 backdrop-blur-sm shadow-sm transition hover:bg-red-50 hover:text-red-600"
+            onClick={(e) => { e.stopPropagation(); onDelete() }}
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      ) : null}
+
+      <SectionPreview section={section} pageType={pageType} />
+    </div>
+  )
 }
 
 /* ─── SectionPreview ──────────────────────────────────────────── */
