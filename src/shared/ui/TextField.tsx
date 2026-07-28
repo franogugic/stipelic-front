@@ -1,20 +1,24 @@
-import type { InputHTMLAttributes } from 'react'
+import type { InputHTMLAttributes, ReactNode } from 'react'
 
 type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string
   error?: string
   hint?: string
+  labelAction?: ReactNode
 }
 
-export function TextField({ label, error, hint, id, className, ...inputProps }: TextFieldProps) {
+export function TextField({ label, error, hint, labelAction, id, className, ...inputProps }: TextFieldProps) {
   const fieldId = id ?? label.toLowerCase().replace(/\s+/g, '-')
   const hasError = Boolean(error)
 
   return (
     <div className="grid gap-1.5">
-      <label htmlFor={fieldId} className="block text-sm font-medium text-neutral-700">
-        {label}
-      </label>
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={fieldId} className="block text-sm font-medium text-neutral-700">
+          {label}
+        </label>
+        {labelAction}
+      </div>
       <input
         id={fieldId}
         {...inputProps}

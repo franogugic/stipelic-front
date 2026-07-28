@@ -6,7 +6,9 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  requestPasswordReset,
   resendEmailVerification,
+  resetPassword,
   verifyEmail,
 } from '../api/auth-api'
 import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues } from './types'
@@ -36,16 +38,26 @@ type AuthState = {
   verifyEmailStatus: AsyncStatus
   verifyEmailMessage: string | null
   verifyEmailError: string | null
+  requestPasswordResetStatus: AsyncStatus
+  requestPasswordResetMessage: string | null
+  requestPasswordResetError: string | null
+  resetPasswordStatus: AsyncStatus
+  resetPasswordMessage: string | null
+  resetPasswordError: string | null
   login: (values: LoginFormValues) => Promise<AuthUser | null>
   logout: () => Promise<void>
   loadCurrentUser: () => Promise<void>
   register: (values: RegisterFormValues) => Promise<AuthUser | null>
   resendVerificationEmail: () => Promise<void>
   verifyEmailToken: (token: string) => Promise<void>
+  requestPasswordResetForEmail: (email: string) => Promise<void>
+  resetPasswordWithToken: (token: string, newPassword: string) => Promise<boolean>
   resetLoginFeedback: () => void
   resetRegisterFeedback: () => void
   resetResendFeedback: () => void
   resetVerifyEmailFeedback: () => void
+  resetRequestPasswordResetFeedback: () => void
+  resetResetPasswordFeedback: () => void
   resetAuth: () => void
 }
 
@@ -66,6 +78,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   verifyEmailStatus: 'idle',
   verifyEmailMessage: null,
   verifyEmailError: null,
+  requestPasswordResetStatus: 'idle',
+  requestPasswordResetMessage: null,
+  requestPasswordResetError: null,
+  resetPasswordStatus: 'idle',
+  resetPasswordMessage: null,
+  resetPasswordError: null,
   login: async (values) => {
     set({ loginStatus: 'submitting', loginError: null })
 
@@ -218,6 +236,54 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ verifyEmailStatus: 'error', verifyEmailMessage: null, verifyEmailError: message })
     }
   },
+  requestPasswordResetForEmail: async (email) => {
+    set({
+      requestPasswordResetStatus: 'submitting',
+      requestPasswordResetMessage: null,
+      requestPasswordResetError: null,
+    })
+
+    try {
+      const response = await requestPasswordReset(email)
+      set({
+        requestPasswordResetStatus: 'success',
+        requestPasswordResetMessage: response.message,
+        requestPasswordResetError: null,
+      })
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'We could not process your request. Please try again.'
+
+      set({
+        requestPasswordResetStatus: 'error',
+        requestPasswordResetMessage: null,
+        requestPasswordResetError: message,
+      })
+    }
+  },
+  resetPasswordWithToken: async (token, newPassword) => {
+    set({ resetPasswordStatus: 'submitting', resetPasswordMessage: null, resetPasswordError: null })
+
+    try {
+      const response = await resetPassword(token, newPassword)
+      set({
+        resetPasswordStatus: 'success',
+        resetPasswordMessage: response.message,
+        resetPasswordError: null,
+      })
+      return true
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'We could not reset your password. Please try again.'
+
+      set({ resetPasswordStatus: 'error', resetPasswordMessage: null, resetPasswordError: message })
+      return false
+    }
+  },
   resetLoginFeedback: () => {
     set({ loginStatus: 'idle', loginError: null })
   },
@@ -229,6 +295,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   resetVerifyEmailFeedback: () => {
     set({ verifyEmailStatus: 'idle', verifyEmailMessage: null, verifyEmailError: null })
+  },
+  resetRequestPasswordResetFeedback: () => {
+    set({
+      requestPasswordResetStatus: 'idle',
+      requestPasswordResetMessage: null,
+      requestPasswordResetError: null,
+    })
+  },
+  resetResetPasswordFeedback: () => {
+    set({ resetPasswordStatus: 'idle', resetPasswordMessage: null, resetPasswordError: null })
   },
   resetAuth: () => {
     set({
@@ -248,6 +324,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       verifyEmailStatus: 'idle',
       verifyEmailMessage: null,
       verifyEmailError: null,
+      requestPasswordResetStatus: 'idle',
+      requestPasswordResetMessage: null,
+      requestPasswordResetError: null,
+      resetPasswordStatus: 'idle',
+      resetPasswordMessage: null,
+      resetPasswordError: null,
     })
   },
 }))

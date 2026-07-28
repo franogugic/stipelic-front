@@ -49,3 +49,20 @@ export type VerifyEmailResponse = {
 export type LogoutResponse = {
   message: string
 }
+
+export type RequestPasswordResetRequest = {
+  email: string
+}
+
+export type RequestPasswordResetResponse = {
+  message: string
+}
+
+export type ResetPasswordRequest = {
+  token: string
+  newPassword: string
+}
+
+export type ResetPasswordResponse = {
+  message: string
+}

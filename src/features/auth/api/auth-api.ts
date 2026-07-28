@@ -5,7 +5,9 @@ import type {
   LoginUserResponse,
   RegisterUserRequest,
   RegisterUserResponse,
+  RequestPasswordResetResponse,
   ResendEmailVerificationResponse,
+  ResetPasswordResponse,
   VerifyEmailResponse,
 } from '../model/types'
 
@@ -55,6 +57,25 @@ export function verifyEmail(token: string) {
     method: 'POST',
     body: {
       token: token.trim(),
+    },
+  })
+}
+
+export function requestPasswordReset(email: string) {
+  return apiRequest<RequestPasswordResetResponse>('/api/auth/request-password-reset', {
+    method: 'POST',
+    body: {
+      email: email.trim().toLowerCase(),
+    },
+  })
+}
+
+export function resetPassword(token: string, newPassword: string) {
+  return apiRequest<ResetPasswordResponse>('/api/auth/reset-password', {
+    method: 'POST',
+    body: {
+      token: token.trim(),
+      newPassword,
     },
   })
 }

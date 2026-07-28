@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AdminPayoutsPage } from '../../features/admin/pages/AdminPayoutsPage'
+import { ForgotPasswordPage } from '../../features/auth/pages/ForgotPasswordPage'
 import { HomePage } from '../../features/auth/pages/HomePage'
 import { LoginPage } from '../../features/auth/pages/LoginPage'
 import { RegisterPage } from '../../features/auth/pages/RegisterPage'
+import { ResetPasswordPage } from '../../features/auth/pages/ResetPasswordPage'
 import { VerifyEmailPage } from '../../features/auth/pages/VerifyEmailPage'
 import { CreateCreatorPage } from '../../features/creators/pages/CreateCreatorPage'
 import { CreatorPayoutsPage } from '../../features/creators/pages/CreatorPayoutsPage'
@@ -29,6 +31,8 @@ export function AppRouter() {
         <Route path="/p/:creatorSlug/:pageSlug/success" element={<OrderSuccessPage />} />
         <Route path="/p/:creatorSlug/:pageSlug" element={<PublicLandingPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/payment/success" element={<PaymentStatusPage status="success" />} />
         <Route path="/payment/cancel" element={<PaymentStatusPage status="cancel" />} />
 
