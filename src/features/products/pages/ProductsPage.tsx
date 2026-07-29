@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Archive,
+  ArchiveRestore,
   BookOpen,
   ExternalLink,
   Loader2,
@@ -41,6 +42,8 @@ export function ProductsPage() {
   const products = useProductStore((s) => s.products)
   const loadStatus = useProductStore((s) => s.loadStatus)
   const loadProducts = useProductStore((s) => s.loadProducts)
+  const includeArchived = useProductStore((s) => s.includeArchived)
+  const setIncludeArchived = useProductStore((s) => s.setIncludeArchived)
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -50,7 +53,8 @@ export function ProductsPage() {
   const creator = currentCreator?.slug === slug ? currentCreator : null
   const currentPlan = creatorPlans.find((p) => p.code === creator?.planCode)
   const maxProducts = currentPlan?.limits['max_products'] ?? null
-  const atLimit = maxProducts !== null && maxProducts >= 0 && products.length >= maxProducts
+  const activeProductCount = products.filter((p) => p.status !== 'Archived').length
+  const atLimit = maxProducts !== null && maxProducts >= 0 && activeProductCount >= maxProducts
 
   useEffect(() => {
     if (currentCreatorStatus === 'idle') void loadCurrentCreator()
@@ -94,20 +98,31 @@ export function ProductsPage() {
                 <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">Products</h1>
                 <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
                   {maxProducts !== null && maxProducts >= 0
-                    ? `${products.length} of ${maxProducts} used`
-                    : `${products.length} product${products.length !== 1 ? 's' : ''}`}
+                    ? `${activeProductCount} of ${maxProducts} used`
+                    : `${activeProductCount} product${activeProductCount !== 1 ? 's' : ''}`}
                 </p>
               </div>
-              <button
-                type="button"
-                disabled={atLimit}
-                title={atLimit ? `Plan limit reached (${maxProducts ?? 0})` : undefined}
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
-                onClick={() => setIsCreateOpen(true)}
-              >
-                <Plus size={15} />
-                New product
-              </button>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-white/50 light:text-neutral-500">
+                  <input
+                    type="checkbox"
+                    checked={includeArchived}
+                    onChange={(e) => slug && setIncludeArchived(slug, e.target.checked)}
+                    className="size-4 rounded border-white/20 bg-white/5 accent-accent"
+                  />
+                  Show archived
+                </label>
+                <button
+                  type="button"
+                  disabled={atLimit}
+                  title={atLimit ? `Plan limit reached (${maxProducts ?? 0})` : undefined}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => setIsCreateOpen(true)}
+                >
+                  <Plus size={15} />
+                  New product
+                </button>
+              </div>
             </div>
 
             {atLimit ? (
@@ -157,8 +172,9 @@ export function ProductsPage() {
                   {products.map((product) => {
                     const typeInfo = PRODUCT_TYPES.find((t) => t.value === product.type)
                     const TypeIcon = typeInfo?.icon ?? Package
+                    const isArchived = product.status === 'Archived'
                     return (
-                      <li key={product.publicId} className="group">
+                      <li key={product.publicId} className={`group ${isArchived ? 'opacity-50' : ''}`}>
                         <div className="grid grid-cols-[auto_1fr_160px_100px_120px_100px] items-center px-5 py-4">
                           <span className="mr-4 grid size-9 shrink-0 place-items-center rounded-xl bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500">
                             <TypeIcon size={16} />
@@ -183,33 +199,39 @@ export function ProductsPage() {
                         </div>
                         {/* Row actions revealed on hover */}
                         <div className="hidden border-t border-white/10 bg-white/[0.03] px-5 py-2.5 group-hover:flex items-center gap-2 light:border-neutral-50 light:bg-neutral-50">
-                          <button
-                            type="button"
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
-                            onClick={() => setEditingProduct(product)}
-                          >
-                            <Pencil size={12} />
-                            Edit
-                          </button>
-                          {product.accessUrl ? (
-                            <a
-                              href={product.accessUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
-                            >
-                              <ExternalLink size={12} />
-                              Access URL
-                            </a>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/60 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:border-neutral-200 light:bg-white light:text-neutral-500 light:hover:border-red-200 light:hover:bg-red-50 light:hover:text-red-600"
-                            onClick={() => setArchivingProduct(product)}
-                          >
-                            <Archive size={12} />
-                            Archive
-                          </button>
+                          {isArchived ? (
+                            <RestoreProductButton slug={slug!} product={product} atLimit={atLimit} maxProducts={maxProducts} />
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
+                                onClick={() => setEditingProduct(product)}
+                              >
+                                <Pencil size={12} />
+                                Edit
+                              </button>
+                              {product.accessUrl ? (
+                                <a
+                                  href={product.accessUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
+                                >
+                                  <ExternalLink size={12} />
+                                  Access URL
+                                </a>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/60 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:border-neutral-200 light:bg-white light:text-neutral-500 light:hover:border-red-200 light:hover:bg-red-50 light:hover:text-red-600"
+                                onClick={() => setArchivingProduct(product)}
+                              >
+                                <Archive size={12} />
+                                Archive
+                              </button>
+                            </>
+                          )}
                         </div>
                       </li>
                     )
@@ -418,11 +440,47 @@ function StatusBadge({ status }: { status: ProductStatus }) {
         Active
       </span>
     )
+  if (status === 'Archived')
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/40 light:bg-neutral-100 light:text-neutral-400">
+        <span className="size-1.5 rounded-full bg-white/30 light:bg-neutral-300" />
+        Archived
+      </span>
+    )
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
       <span className="size-1.5 rounded-full bg-white/40 light:bg-neutral-400" />
       Draft
     </span>
+  )
+}
+
+function RestoreProductButton({
+  slug,
+  product,
+  atLimit,
+  maxProducts,
+}: {
+  slug: string
+  product: Product
+  atLimit: boolean
+  maxProducts: number | null
+}) {
+  const restoreProductFn = useProductStore((s) => s.restoreProduct)
+  const restoreStatus = useProductStore((s) => s.restoreStatus)
+  const isSubmitting = restoreStatus === 'submitting'
+
+  return (
+    <button
+      type="button"
+      disabled={atLimit || isSubmitting}
+      title={atLimit ? `Plan limit reached (${maxProducts ?? 0}). Archive another product or upgrade your plan to restore this one.` : undefined}
+      className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
+      onClick={() => void restoreProductFn(slug, product.publicId)}
+    >
+      {isSubmitting ? <Loader2 className="animate-spin" size={12} /> : <ArchiveRestore size={12} />}
+      Restore
+    </button>
   )
 }
 

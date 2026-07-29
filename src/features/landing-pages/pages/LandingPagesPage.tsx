@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ArchiveRestore,
   Eye,
   FileText,
   Globe,
@@ -37,6 +38,8 @@ export function LandingPagesPage() {
   const listStatus = useLandingPageStore((s) => s.listStatus)
   const loadPages = useLandingPageStore((s) => s.loadPages)
   const archivePage = useLandingPageStore((s) => s.archivePage)
+  const includeArchived = useLandingPageStore((s) => s.includeArchived)
+  const setIncludeArchived = useLandingPageStore((s) => s.setIncludeArchived)
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
 
@@ -44,7 +47,8 @@ export function LandingPagesPage() {
   const creator = currentCreator?.slug === slug ? currentCreator : null
   const currentPlan = creatorPlans.find((p) => p.code === creator?.planCode)
   const maxPages = currentPlan?.limits['max_landing_pages'] ?? null
-  const atLimit = maxPages !== null && maxPages >= 0 && pages.length >= maxPages
+  const activePageCount = pages.filter((p) => p.status !== 'Archived').length
+  const atLimit = maxPages !== null && maxPages >= 0 && activePageCount >= maxPages
 
   useEffect(() => {
     if (currentCreatorStatus === 'idle') void loadCurrentCreator()
@@ -90,20 +94,31 @@ export function LandingPagesPage() {
                 </h1>
                 <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
                   {maxPages !== null && maxPages >= 0
-                    ? `${pages.length} of ${maxPages} used`
-                    : `${pages.length} page${pages.length !== 1 ? 's' : ''}`}
+                    ? `${activePageCount} of ${maxPages} used`
+                    : `${activePageCount} page${activePageCount !== 1 ? 's' : ''}`}
                 </p>
               </div>
-              <button
-                type="button"
-                disabled={atLimit}
-                title={atLimit ? `Plan limit reached (${maxPages ?? 0})` : undefined}
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
-                onClick={() => setIsCreateOpen(true)}
-              >
-                <Plus size={15} />
-                New page
-              </button>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-white/50 light:text-neutral-500">
+                  <input
+                    type="checkbox"
+                    checked={includeArchived}
+                    onChange={(e) => slug && setIncludeArchived(slug, e.target.checked)}
+                    className="size-4 rounded border-white/20 bg-white/5 accent-accent"
+                  />
+                  Show archived
+                </label>
+                <button
+                  type="button"
+                  disabled={atLimit}
+                  title={atLimit ? `Plan limit reached (${maxPages ?? 0})` : undefined}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => setIsCreateOpen(true)}
+                >
+                  <Plus size={15} />
+                  New page
+                </button>
+              </div>
             </div>
 
             {/* Plan limit warning */}
@@ -161,6 +176,8 @@ export function LandingPagesPage() {
                       key={page.publicId}
                       page={page}
                       slug={slug}
+                      atLimit={atLimit}
+                      maxPages={maxPages}
                       onAnalyticsClick={() =>
                         navigate(`/app/${slug}/landing-pages/${page.publicId}`)
                       }
@@ -195,16 +212,25 @@ export function LandingPagesPage() {
 function PageRow({
   page,
   slug,
+  atLimit,
+  maxPages,
   onAnalyticsClick,
   onEditClick,
   onDeleteClick,
 }: {
   page: LandingPage
   slug: string
+  atLimit: boolean
+  maxPages: number | null
   onAnalyticsClick: () => void
   onEditClick: () => void
   onDeleteClick: () => void
 }) {
+  const restorePage = useLandingPageStore((s) => s.restorePage)
+  const mutateStatus = useLandingPageStore((s) => s.mutateStatus)
+  const isSubmitting = mutateStatus === 'submitting'
+  const isArchived = page.status === 'Archived'
+
   const handleDelete = () => {
     if (window.confirm(`Delete "${page.title}"? This cannot be undone.`)) onDeleteClick()
   }
@@ -212,7 +238,7 @@ function PageRow({
   const publicUrl = `/p/${slug}/${page.slug}`
 
   return (
-    <li>
+    <li className={isArchived ? 'opacity-50' : undefined}>
       <div className="grid w-full grid-cols-[1fr_120px_120px_160px_120px] items-center px-5 py-4">
         <button
           type="button"
@@ -244,36 +270,51 @@ function PageRow({
           ) : null}
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            title="Edit page"
-            onClick={(e) => { e.stopPropagation(); onEditClick() }}
-            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
-          >
-            <Pencil size={14} />
-          </button>
-          {page.status === 'Published' ? (
-            <a
-              href={publicUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open public page"
-              onClick={(e) => e.stopPropagation()}
-              className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
+          {isArchived ? (
+            <button
+              type="button"
+              disabled={atLimit || isSubmitting}
+              title={atLimit ? `Plan limit reached (${maxPages ?? 0}). Archive another page or upgrade your plan to restore this one.` : 'Restore page'}
+              onClick={(e) => { e.stopPropagation(); void restorePage(slug, page.publicId) }}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
             >
-              <Globe size={14} />
-            </a>
+              {isSubmitting ? <Loader2 className="animate-spin" size={12} /> : <ArchiveRestore size={12} />}
+              Restore
+            </button>
           ) : (
-            <span className="size-8" />
+            <>
+              <button
+                type="button"
+                title="Edit page"
+                onClick={(e) => { e.stopPropagation(); onEditClick() }}
+                className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
+              >
+                <Pencil size={14} />
+              </button>
+              {page.status === 'Published' ? (
+                <a
+                  href={publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open public page"
+                  onClick={(e) => e.stopPropagation()}
+                  className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
+                >
+                  <Globe size={14} />
+                </a>
+              ) : (
+                <span className="size-8" />
+              )}
+              <button
+                type="button"
+                title="Delete page"
+                onClick={(e) => { e.stopPropagation(); handleDelete() }}
+                className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-red-500/10 hover:text-red-300 light:text-neutral-400 light:hover:bg-red-50 light:hover:text-red-600"
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            title="Delete page"
-            onClick={(e) => { e.stopPropagation(); handleDelete() }}
-            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-red-500/10 hover:text-red-300 light:text-neutral-400 light:hover:bg-red-50 light:hover:text-red-600"
-          >
-            <Trash2 size={14} />
-          </button>
         </div>
       </div>
     </li>
@@ -455,6 +496,13 @@ function StatusBadge({ status }: { status: LandingPageStatus }) {
       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-300 light:bg-emerald-50 light:text-emerald-700">
         <span className="size-1.5 rounded-full bg-emerald-500" />
         Published
+      </span>
+    )
+  if (status === 'Archived')
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/40 light:bg-neutral-100 light:text-neutral-400">
+        <span className="size-1.5 rounded-full bg-white/30 light:bg-neutral-300" />
+        Archived
       </span>
     )
   return (
