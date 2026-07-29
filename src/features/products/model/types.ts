@@ -12,6 +12,8 @@ export type Product = {
   thumbnailUrl: string | null
   createdAt: string
   updatedAt: string
+  revenueCents: number
+  paidOrderCount: number
 }
 
 export type CreateProductRequest = {

@@ -145,11 +145,12 @@ export function ProductsPage() {
               </div>
             ) : (
               <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-                <div className="grid grid-cols-[auto_1fr_160px_100px_100px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
+                <div className="grid grid-cols-[auto_1fr_160px_100px_120px_100px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
                   <span className="w-10" />
                   <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Product</p>
                   <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Type</p>
                   <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Price</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Revenue</p>
                   <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
                 </div>
                 <ul className="divide-y divide-white/10 light:divide-neutral-100">
@@ -158,7 +159,7 @@ export function ProductsPage() {
                     const TypeIcon = typeInfo?.icon ?? Package
                     return (
                       <li key={product.publicId} className="group">
-                        <div className="grid grid-cols-[auto_1fr_160px_100px_100px] items-center px-5 py-4">
+                        <div className="grid grid-cols-[auto_1fr_160px_100px_120px_100px] items-center px-5 py-4">
                           <span className="mr-4 grid size-9 shrink-0 place-items-center rounded-xl bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500">
                             <TypeIcon size={16} />
                           </span>
@@ -170,6 +171,12 @@ export function ProductsPage() {
                           </div>
                           <p className="text-xs font-medium text-white/60 light:text-neutral-600">{product.type}</p>
                           <p className="text-sm font-semibold text-white light:text-neutral-950">{formatPrice(product.priceCents)}</p>
+                          <p
+                            className="text-sm font-semibold tabular-nums text-white light:text-neutral-950"
+                            title={`${product.paidOrderCount} paid order${product.paidOrderCount === 1 ? '' : 's'}`}
+                          >
+                            {formatPrice(product.revenueCents)}
+                          </p>
                           <div className="flex items-center gap-2">
                             <StatusBadge status={product.status} />
                           </div>
