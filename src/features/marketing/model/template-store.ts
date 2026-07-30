@@ -3,11 +3,12 @@ import { ApiError } from '../../../shared/api/http-client'
 import {
   archiveTemplate,
   createTemplate,
+  getEmailTemplateStarters,
   getTemplate,
   listTemplates,
   updateTemplate,
 } from '../api/templates-api'
-import type { EmailTemplate, SaveTemplateRequest } from './types'
+import type { EmailTemplate, EmailTemplateStarter, SaveTemplateRequest } from './types'
 
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
 type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error'
@@ -27,7 +28,11 @@ type TemplateState = {
   archiveTemplateStatus: SubmitStatus
   archiveTemplateError: string | null
 
+  starters: EmailTemplateStarter[]
+  startersStatus: LoadStatus
+
   loadTemplates: (slug: string) => Promise<void>
+  loadStarters: (slug: string) => Promise<void>
   loadTemplate: (slug: string, templatePublicId: string) => Promise<void>
   clearCurrentTemplate: () => void
   saveTemplate: (
@@ -55,6 +60,9 @@ const initialTemplateState = {
 
   archiveTemplateStatus: 'idle' as SubmitStatus,
   archiveTemplateError: null,
+
+  starters: [] as EmailTemplateStarter[],
+  startersStatus: 'idle' as LoadStatus,
 }
 
 export const useTemplateStore = create<TemplateState>((set, get) => ({
@@ -89,6 +97,17 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
       set({ currentTemplate: template, currentTemplateStatus: 'success' })
     } catch {
       set({ currentTemplateStatus: 'error' })
+    }
+  },
+
+  loadStarters: async (slug) => {
+    if (get().startersStatus === 'loading' || get().startersStatus === 'success') return
+    set({ startersStatus: 'loading' })
+    try {
+      const starters = await getEmailTemplateStarters(slug)
+      set({ starters, startersStatus: 'success' })
+    } catch {
+      set({ startersStatus: 'error' })
     }
   },
 
