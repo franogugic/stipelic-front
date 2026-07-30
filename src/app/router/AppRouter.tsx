@@ -17,6 +17,7 @@ import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPage
 import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSuccessPage'
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
 import { EmailsPage } from '../../features/marketing/pages/EmailsPage'
+import { SubscribersPage } from '../../features/marketing/pages/SubscribersPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { OrdersPage } from '../../features/orders/pages/OrdersPage'
 import { AdminRoute } from './AdminRoute'
@@ -50,6 +51,7 @@ export function AppRouter() {
           <Route path="/app/:slug/landing-pages/:pageId" element={<LandingPageAnalyticsPage />} />
           <Route path="/app/:slug/landing-pages/:pageId/edit" element={<LandingPageEditorPage />} />
           <Route path="/app/:slug/emails" element={<EmailsPage />} />
+          <Route path="/app/:slug/subscribers" element={<SubscribersPage />} />
           <Route path="/app/:slug/payouts" element={<CreatorPayoutsPage />} />
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />
           <Route path="/creators/new" element={<CreateCreatorPage />} />

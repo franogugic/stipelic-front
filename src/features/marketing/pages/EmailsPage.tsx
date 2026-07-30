@@ -1,4 +1,4 @@
-import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, RotateCcw, Search, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, RotateCcw, Send, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -8,13 +8,10 @@ import { useProductStore } from '../../products/model/product-store'
 import { SendWizardModal } from '../components/SendWizardModal'
 import { TemplateEditorModal } from '../components/TemplateEditorModal'
 import { useCampaignStore } from '../model/campaign-store'
-import { useContactsStore } from '../model/contacts-store'
 import { useTemplateStore } from '../model/template-store'
 import type { CampaignListItem, EmailTemplate } from '../model/types'
 
-type EmailsTab = 'send' | 'templates' | 'history' | 'contacts'
-
-const CONTACTS_SEARCH_DEBOUNCE_MS = 350
+type EmailsTab = 'send' | 'templates' | 'history'
 
 export function EmailsPage() {
   const navigate = useNavigate()
@@ -99,7 +96,6 @@ export function EmailsPage() {
               <TabButton icon={Send} label="Send" active={tab === 'send'} onClick={() => setTab('send')} />
               <TabButton icon={FileText} label="Templates" active={tab === 'templates'} onClick={() => setTab('templates')} />
               <TabButton icon={History} label="History" active={tab === 'history'} onClick={() => setTab('history')} />
-              <TabButton icon={Users} label="Contacts" active={tab === 'contacts'} onClick={() => setTab('contacts')} />
             </div>
 
             {tab === 'send' ? (
@@ -134,7 +130,6 @@ export function EmailsPage() {
               />
             ) : null}
 
-            {tab === 'contacts' ? <ContactsTab slug={normalizedSlug} /> : null}
           </div>
         )}
       </div>
@@ -801,103 +796,6 @@ function EmptyState({
           {actionLabel}
         </button>
       ) : null}
-    </div>
-  )
-}
-
-function ContactsTab({ slug }: { slug: string }) {
-  const [searchInput, setSearchInput] = useState('')
-
-  const contacts = useContactsStore((s) => s.contacts)
-  const contactsStatus = useContactsStore((s) => s.contactsStatus)
-  const hasMore = useContactsStore((s) => s.hasMore)
-  const loadMoreStatus = useContactsStore((s) => s.loadMoreStatus)
-  const loadContacts = useContactsStore((s) => s.loadContacts)
-  const loadMoreContacts = useContactsStore((s) => s.loadMoreContacts)
-
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      void loadContacts(slug, searchInput.trim())
-    }, CONTACTS_SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(handle)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, searchInput])
-
-  return (
-    <div className="grid gap-6">
-      <div className="relative max-w-sm">
-        <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 light:text-neutral-400" />
-        <input
-          type="text"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search by email…"
-          className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.03] pl-10 pr-3.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400"
-        />
-      </div>
-
-      {contactsStatus === 'loading' ? (
-        <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-          <Loader2 className="animate-spin" size={16} />
-          Loading contacts…
-        </div>
-      ) : contacts.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title={searchInput.trim() ? 'No contacts match your search' : 'No contacts yet'}
-          description={
-            searchInput.trim()
-              ? 'Try a different email or clear the search.'
-              : 'Contacts appear here once someone signs up on one of your landing pages.'
-          }
-        />
-      ) : (
-        <>
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-            <div className="grid grid-cols-[1fr_1.4fr_160px_140px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Email</p>
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Sources</p>
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">First captured</p>
-              <span />
-            </div>
-            <ul className="divide-y divide-white/10 light:divide-neutral-100">
-              {contacts.map((contact) => (
-                <li key={contact.email}>
-                  <div className="grid grid-cols-[1fr_1.4fr_140px_140px] items-center px-5 py-4">
-                    <p className="truncate text-sm font-medium text-white light:text-neutral-950">{contact.email}</p>
-                    <p className="truncate text-xs text-white/60 light:text-neutral-600">
-                      {contact.sourcesCount} {contact.sourcesCount === 1 ? 'source' : 'sources'}
-                      {contact.sources ? ` · ${contact.sources}` : ''}
-                    </p>
-                    <p className="text-xs text-white/50 light:text-neutral-500">
-                      {new Date(contact.firstCapturedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </p>
-                    {contact.isUnsubscribed ? (
-                      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
-                        Unsubscribed
-                      </span>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {hasMore ? (
-            <div className="flex justify-center">
-              <button
-                type="button"
-                disabled={loadMoreStatus === 'loading'}
-                onClick={() => void loadMoreContacts(slug)}
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
-              >
-                {loadMoreStatus === 'loading' ? <Loader2 className="animate-spin" size={14} /> : null}
-                Load more
-              </button>
-            </div>
-          ) : null}
-        </>
-      )}
     </div>
   )
 }

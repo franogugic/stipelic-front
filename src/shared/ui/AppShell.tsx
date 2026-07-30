@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   Sun,
+  Users,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -18,7 +19,7 @@ import { useAuthStore } from '../../features/auth/model/auth-store'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { useThemeStore } from '../model/theme-store'
 
-type NavSection = 'overview' | 'landing-pages' | 'products' | 'orders' | 'emails' | 'payouts' | 'settings'
+type NavSection = 'overview' | 'landing-pages' | 'products' | 'orders' | 'emails' | 'subscribers' | 'payouts' | 'settings'
 
 type AppShellProps = {
   slug: string
@@ -32,6 +33,7 @@ const navItems: { section: NavSection; label: string; icon: typeof LayoutDashboa
   { section: 'products',       label: 'Products',       icon: Package,         href: (s) => `/app/${s}/products` },
   { section: 'orders',         label: 'Orders',         icon: ShoppingBag,     href: (s) => `/app/${s}/orders` },
   { section: 'emails',         label: 'Emails',         icon: Mail,            href: (s) => `/app/${s}/emails` },
+  { section: 'subscribers',    label: 'Subscribers',    icon: Users,           href: (s) => `/app/${s}/subscribers` },
   { section: 'payouts',        label: 'Payouts',        icon: Banknote,        href: (s) => `/app/${s}/payouts` },
 ]
 
