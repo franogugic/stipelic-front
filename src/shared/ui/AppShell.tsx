@@ -60,37 +60,39 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
   void location // used implicitly via activeSection
 
   return (
-    <div className="relative flex min-h-screen bg-neutral-950 light:bg-neutral-100">
+    <div className="relative flex min-h-screen bg-background">
       {/* Subtle grid texture */}
       <div className="bg-grid pointer-events-none fixed inset-0 opacity-[0.04]" />
 
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-white/10 bg-neutral-950">
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-56 flex-col border-r border-sidebar-border bg-sidebar">
         {/* Logo */}
-        <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-5">
-          <span className="grid size-7 place-items-center rounded-md bg-white text-neutral-950">
-            <span className="text-[11px] font-black tracking-tight">CP</span>
+        <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-5">
+          <span className="grid size-7 place-items-center rounded-lg bg-accent">
+            <span className="font-display text-sm font-bold text-white">CP</span>
           </span>
-          <p className="text-[13px] font-semibold text-white">Creator Platform</p>
+          <span className="font-display text-lg font-bold tracking-widest text-sidebar-foreground">
+            CREATOR
+          </span>
         </div>
 
         {/* Creator identity */}
         {creator && (
-          <div className="relative overflow-hidden border-b border-white/10 px-5 py-4">
+          <div className="relative overflow-hidden border-b border-sidebar-border px-5 py-4">
             <div className="animate-glow-pulse pointer-events-none absolute -left-8 -top-8 size-24 rounded-full bg-accent/25 blur-2xl" />
             <div className="relative flex items-center gap-3">
-              <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white shadow-lg shadow-black/20">
-                <span className="font-display text-sm font-black tracking-tighter text-neutral-950">
+              <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent shadow-lg shadow-black/20">
+                <span className="font-display text-sm font-black tracking-tighter text-white">
                   {creator.name[0]?.toUpperCase() ?? '?'}
                 </span>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-display text-[15px] font-bold leading-tight text-white">
+                <p className="truncate font-display text-[15px] font-bold leading-tight text-sidebar-foreground">
                   {creator.name}
                 </p>
                 <div className="mt-1 flex items-center gap-1.5">
                   <StatusDot status={creator.status} />
-                  <span className="truncate font-mono text-[10.5px] text-white/35">/{slug}</span>
+                  <span className="truncate font-mono text-[10.5px] text-muted-foreground">/{slug}</span>
                 </div>
               </div>
             </div>
@@ -98,11 +100,8 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
         )}
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-white/30">
-            Workspace
-          </p>
-          <ul className="grid gap-0.5">
+        <nav className="flex-1 overflow-y-auto px-3 py-5">
+          <ul className="space-y-0.5">
             {navItems.map(({ section, label, icon: Icon, href }) => {
               const isActive = activeSection === section
               return (
@@ -110,13 +109,16 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
                   <button
                     type="button"
                     onClick={() => navigate(href(slug))}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                    className={`relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-all ${
                       isActive
-                        ? 'bg-accent text-white shadow-lg shadow-accent/25'
-                        : 'text-white/60 hover:bg-white/5 hover:text-white'
+                        ? 'bg-accent/[0.12] font-medium text-accent'
+                        : 'text-muted-foreground hover:text-sidebar-foreground'
                     }`}
                   >
-                    <Icon size={16} strokeWidth={isActive ? 2.2 : 1.8} />
+                    {isActive ? (
+                      <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-accent" />
+                    ) : null}
+                    <Icon size={15} strokeWidth={isActive ? 2.2 : 1.8} />
                     {label}
                   </button>
                 </li>
@@ -124,20 +126,23 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
             })}
           </ul>
 
-          <div className="my-4 border-t border-white/10" />
+          <div className="my-4 border-t border-sidebar-border" />
 
-          <ul className="grid gap-0.5">
+          <ul className="space-y-0.5">
             <li>
               <button
                 type="button"
                 onClick={() => navigate(`/app/${slug}/settings`)}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                className={`relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-all ${
                   activeSection === 'settings'
-                    ? 'bg-accent text-white shadow-lg shadow-accent/25'
-                    : 'text-white/60 hover:bg-white/5 hover:text-white'
+                    ? 'bg-accent/[0.12] font-medium text-accent'
+                    : 'text-muted-foreground hover:text-sidebar-foreground'
                 }`}
               >
-                <Settings size={16} strokeWidth={activeSection === 'settings' ? 2.2 : 1.8} />
+                {activeSection === 'settings' ? (
+                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-accent" />
+                ) : null}
+                <Settings size={15} strokeWidth={activeSection === 'settings' ? 2.2 : 1.8} />
                 Settings
               </button>
             </li>
@@ -146,9 +151,9 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
                 <button
                   type="button"
                   onClick={() => navigate('/admin/payouts')}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/60 transition-all hover:bg-white/5 hover:text-white"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground transition-all hover:text-sidebar-foreground"
                 >
-                  <ShieldCheck size={16} strokeWidth={1.8} />
+                  <ShieldCheck size={15} strokeWidth={1.8} />
                   Admin payouts
                 </button>
               </li>
@@ -157,27 +162,27 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
         </nav>
 
         {/* Footer — user */}
-        <div className="border-t border-white/10 p-3">
-          <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <div className="grid size-8 shrink-0 place-items-center rounded-full bg-accent/15 text-xs font-bold text-accent-strong">
+        <div className="border-t border-sidebar-border p-3">
+          <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent px-3 py-2.5">
+            <div className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-white">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-white">{fullName}</p>
-              <p className="truncate text-[11px] text-white/40">{user?.email ?? ''}</p>
+              <p className="truncate text-xs font-semibold text-sidebar-foreground">{fullName}</p>
+              <p className="truncate text-[10px] text-muted-foreground">{user?.email ?? ''}</p>
             </div>
           </div>
 
           <button
             type="button"
             onClick={toggleTheme}
-            className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-white"
+            className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:text-sidebar-foreground"
           >
             <span className="flex items-center gap-2">
               {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
               {theme === 'dark' ? 'Dark mode' : 'Light mode'}
             </span>
-            <span className="relative h-4 w-7 shrink-0 rounded-full bg-white/10 transition-colors">
+            <span className="relative h-4 w-7 shrink-0 rounded-full bg-sidebar-accent transition-colors">
               <span
                 className={`absolute top-0.5 size-3 rounded-full bg-accent transition-all ${
                   theme === 'dark' ? 'left-0.5' : 'left-3.5'
@@ -190,7 +195,7 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
             type="button"
             disabled={isLoggingOut}
             onClick={() => void logout()}
-            className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-white disabled:opacity-40"
+            className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:text-sidebar-foreground disabled:opacity-40"
           >
             {isLoggingOut ? (
               <Loader2 className="animate-spin" size={15} />
@@ -203,7 +208,7 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
       </aside>
 
       {/* Main content */}
-      <div className="relative z-10 ml-60 flex min-h-screen flex-1 flex-col">
+      <div className="relative z-10 ml-56 flex min-h-screen flex-1 flex-col">
         {children}
       </div>
     </div>
