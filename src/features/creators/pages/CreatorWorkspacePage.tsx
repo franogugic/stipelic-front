@@ -18,12 +18,31 @@ import {
 } from 'lucide-react'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { getHomeSummary } from '../../orders/api/orders-api'
 import type { HomeSummary, Order } from '../../orders/model/types'
+import { listProducts } from '../../products/api/products-api'
+import type { Product } from '../../products/model/types'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { useAuthStore } from '../../auth/model/auth-store'
 import { DeleteCreatorDialog } from '../components/DeleteCreatorDialog'
 import { useCreatorStore } from '../model/creator-store'
 import { usePayoutStore } from '../model/payout-store'
+
+// Multi-color-per-metric stat card palette, cycled across the stat grid — sourced from the
+// Figma Make reference's chart-1..5 tokens (see index.css), not invented separately.
+const STAT_COLORS = ['var(--color-chart-1)', 'var(--color-chart-2)', 'var(--color-chart-3)', 'var(--color-chart-4)', 'var(--color-chart-5)']
 
 export function CreatorWorkspacePage() {
   const navigate = useNavigate()
@@ -47,9 +66,12 @@ export function CreatorWorkspacePage() {
   const payoutSummaryStatus = usePayoutStore((s) => s.payoutSummaryStatus)
   const loadPayoutSummary = usePayoutStore((s) => s.loadPayoutSummary)
 
+  const authUser = useAuthStore((s) => s.currentUser)
+
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
   const [homeSummary, setHomeSummary] = useState<HomeSummary | null>(null)
+  const [products, setProducts] = useState<Product[] | null>(null)
 
   const isLoading = currentCreatorStatus === 'loading' || currentCreatorStatus === 'idle'
   const creator = currentCreator?.slug === slug ? currentCreator : null
@@ -99,6 +121,11 @@ export function CreatorWorkspacePage() {
   useEffect(() => {
     if (!slug) return
     void getHomeSummary(slug).then(setHomeSummary).catch(() => {})
+  }, [slug])
+
+  useEffect(() => {
+    if (!slug) return
+    void listProducts(slug).then(setProducts).catch(() => {})
   }, [slug])
 
   useEffect(() => {
@@ -183,6 +210,19 @@ export function CreatorWorkspacePage() {
               </div>
             )}
 
+            {/* ── Greeting header ──────────────────────────────────── */}
+            <div className="animate-rise mb-5">
+              <p className="font-mono text-[11px] uppercase tracking-widest text-white/30 light:text-neutral-950/30">
+                {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+              <h1 className="font-display mt-1 text-2xl font-bold text-white light:text-neutral-950">
+                {greeting()}, <span className="text-accent-strong">{authUser?.firstName ?? creator.name}</span>
+              </h1>
+              <p className="mt-1 text-sm text-white/40 light:text-neutral-950/40">
+                Here's how {creator.name} is performing.
+              </p>
+            </div>
+
             {/* ── Hero: Total revenue ─────────────────────────────── */}
             <HeroRevenueCard
               totalCents={homeSummary?.totalPaidAmountCents ?? 0}
@@ -198,6 +238,7 @@ export function CreatorWorkspacePage() {
                 value={productCount != null ? String(productCount) : '—'}
                 onClick={() => navigate(`/app/${creator.slug}/products`)}
                 delay={60}
+                color={STAT_COLORS[0]}
               />
               <StatCard
                 icon={FileText}
@@ -205,6 +246,7 @@ export function CreatorWorkspacePage() {
                 value={landingPageCount != null ? String(landingPageCount) : '—'}
                 onClick={() => navigate(`/app/${creator.slug}/landing-pages`)}
                 delay={110}
+                color={STAT_COLORS[1]}
               />
               <StatCard
                 icon={Mail}
@@ -216,6 +258,7 @@ export function CreatorWorkspacePage() {
                 }
                 onClick={() => navigate(`/app/${creator.slug}/emails`)}
                 delay={160}
+                color={STAT_COLORS[2]}
               />
             </div>
 
@@ -227,6 +270,7 @@ export function CreatorWorkspacePage() {
                 value={topProduct ? topProduct.name : '—'}
                 muted
                 delay={200}
+                color={STAT_COLORS[3]}
               />
               <StatCard
                 icon={Zap}
@@ -234,6 +278,7 @@ export function CreatorWorkspacePage() {
                 value={avgOrderValueCents != null ? formatCurrency(avgOrderValueCents, currency) : '—'}
                 muted
                 delay={240}
+                color={STAT_COLORS[4]}
               />
               <StatCard
                 icon={TrendingUp}
@@ -241,7 +286,74 @@ export function CreatorWorkspacePage() {
                 value={formatCurrency(thisMonthRevenueCents, currency)}
                 muted
                 delay={280}
+                color={STAT_COLORS[0]}
               />
+            </div>
+
+            {/* ── Charts row: Revenue trend + Revenue by product ──── */}
+            <div className="mb-6 grid gap-4 lg:grid-cols-5">
+              <div className="animate-rise rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-5 backdrop-blur-sm lg:col-span-3" style={{ animationDelay: '300ms' }}>
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
+                  Revenue trend
+                </p>
+                <p className="mt-0.5 text-[11px] text-white/30 light:text-neutral-950/30">Last 14 days</p>
+                <div className="mt-4 h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={revenueTrend.map((v, i) => ({ day: i, revenueCents: v }))} margin={{ top: 5, right: 8, left: -18, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                      <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.3)' }} axisLine={false} tickLine={false} />
+                      <YAxis width={34} tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.3)' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => String(v / 100)} />
+                      <Tooltip content={<RevenueTooltip currency={currency} />} />
+                      <Bar dataKey="revenueCents" name="Revenue" fill="var(--color-chart-4)" radius={[3, 3, 0, 0]} maxBarSize={22} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="animate-rise rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-5 backdrop-blur-sm lg:col-span-2" style={{ animationDelay: '340ms' }}>
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-950/30">
+                  Revenue by product
+                </p>
+                {products && products.some((p) => p.revenueCents > 0) ? (
+                  <>
+                    <div className="mt-2 h-[140px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={products.filter((p) => p.revenueCents > 0)}
+                            dataKey="revenueCents"
+                            nameKey="name"
+                            innerRadius={38}
+                            outerRadius={58}
+                            paddingAngle={2}
+                          >
+                            {products.filter((p) => p.revenueCents > 0).map((p, i) => (
+                              <Cell key={p.publicId} fill={STAT_COLORS[i % STAT_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<ProductTooltip currency={currency} />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-2 grid gap-1.5">
+                      {products.filter((p) => p.revenueCents > 0).slice(0, 5).map((p, i) => (
+                        <div key={p.publicId} className="flex items-center gap-2 text-xs">
+                          <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: STAT_COLORS[i % STAT_COLORS.length] }} />
+                          <span className="min-w-0 flex-1 truncate text-white/60 light:text-neutral-950/60">{p.name}</span>
+                          <span className="font-data shrink-0 tabular-nums text-white/80 light:text-neutral-950/80">
+                            {formatCurrency(p.revenueCents, currency)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-6 flex flex-col items-center gap-2 py-6 text-center">
+                    <Package size={22} className="text-white/15 light:text-neutral-950/15" />
+                    <p className="text-sm text-white/40 light:text-neutral-950/40">No product revenue yet.</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
@@ -587,6 +699,7 @@ function StatCard({
   onClick,
   muted,
   delay = 0,
+  color = 'var(--color-accent)',
 }: {
   icon: typeof Package
   label: string
@@ -594,6 +707,7 @@ function StatCard({
   onClick?: () => void
   muted?: boolean
   delay?: number
+  color?: string
 }) {
   const base =
     'animate-rise group rounded-2xl border border-white/10 light:border-neutral-950/10 bg-white/[0.03] light:bg-neutral-950/[0.03] p-5 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 light:hover:border-neutral-950/20 hover:bg-white/[0.06] light:hover:bg-neutral-950/[0.06] hover:shadow-lg hover:shadow-black/30'
@@ -605,7 +719,10 @@ function StatCard({
       onClick={onClick}
       role={onClick ? 'button' : undefined}
     >
-      <div className="mb-2.5 grid size-6 place-items-center rounded-md bg-accent/15 text-accent-strong transition-transform duration-200 group-hover:scale-110">
+      <div
+        className="mb-2.5 grid size-6 place-items-center rounded-md transition-transform duration-200 group-hover:scale-110"
+        style={{ backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`, color }}
+      >
         <Icon size={13} />
       </div>
       <p className="font-data truncate text-xl font-bold tracking-tight text-white light:text-neutral-950 tabular-nums">{value}</p>
@@ -956,4 +1073,50 @@ function formatCurrency(cents: number, currency: string): string {
     style: 'currency',
     currency: currency.toUpperCase(),
   })
+}
+
+function greeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function RevenueTooltip({
+  active,
+  payload,
+  currency,
+}: {
+  active?: boolean
+  payload?: { value?: number }[]
+  currency: string
+}) {
+  if (!active || !payload || payload.length === 0) return null
+  return (
+    <div className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-xs shadow-xl">
+      <p className="flex items-center gap-2 text-white/70">
+        <span className="size-2 rounded-full" style={{ backgroundColor: 'var(--color-chart-4)' }} />
+        Revenue: <span className="font-semibold text-white">{formatCurrency(payload[0].value ?? 0, currency)}</span>
+      </p>
+    </div>
+  )
+}
+
+function ProductTooltip({
+  active,
+  payload,
+  currency,
+}: {
+  active?: boolean
+  payload?: { value?: number; payload?: { name?: string } }[]
+  currency: string
+}) {
+  if (!active || !payload || payload.length === 0) return null
+  const entry = payload[0]
+  return (
+    <div className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-xs shadow-xl">
+      <p className="font-medium text-white">{entry.payload?.name}</p>
+      <p className="mt-0.5 text-white/70">{formatCurrency(entry.value ?? 0, currency)}</p>
+    </div>
+  )
 }
