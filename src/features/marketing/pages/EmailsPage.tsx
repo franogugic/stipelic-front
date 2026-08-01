@@ -2,8 +2,11 @@ import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus,
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { CHART_COLORS } from '../../../shared/ui/chart-colors'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
+import { getHomeSummary } from '../../orders/api/orders-api'
+import type { HomeSummary } from '../../orders/model/types'
 import { useProductStore } from '../../products/model/product-store'
 import { SendWizardModal } from '../components/SendWizardModal'
 import { TemplateEditorModal } from '../components/TemplateEditorModal'
@@ -40,12 +43,18 @@ export function EmailsPage() {
   const loadCampaigns = useCampaignStore((s) => s.loadCampaigns)
 
   const [tab, setTab] = useState<EmailsTab>('send')
+  const [homeSummary, setHomeSummary] = useState<HomeSummary | null>(null)
 
   const isLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
   useEffect(() => {
     if (currentCreatorStatus === 'idle') void loadCurrentCreator()
   }, [currentCreatorStatus, loadCurrentCreator])
+
+  useEffect(() => {
+    if (!normalizedSlug) return
+    void getHomeSummary(normalizedSlug).then(setHomeSummary).catch(() => {})
+  }, [normalizedSlug])
 
   useEffect(() => {
     if (!normalizedSlug) return
@@ -86,11 +95,15 @@ export function EmailsPage() {
         ) : (
           <div className="grid gap-8">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">Emails</h1>
-              <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
+              <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">Emails</h1>
+              <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
                 Build reusable templates and send them to your captured contacts.
               </p>
             </div>
+
+            {homeSummary ? (
+              <MonthlyUsageCard sent={homeSummary.emailsSentThisMonth} limit={homeSummary.emailsMonthlyLimit} />
+            ) : null}
 
             <div className="flex gap-1.5 border-b border-white/10 light:border-neutral-200">
               <TabButton icon={Send} label="Send" active={tab === 'send'} onClick={() => setTab('send')} />
@@ -134,6 +147,35 @@ export function EmailsPage() {
         )}
       </div>
     </AppShell>
+  )
+}
+
+function MonthlyUsageCard({ sent, limit }: { sent: number; limit: number }) {
+  const isUnlimited = limit < 0
+  const pct = isUnlimited ? 0 : Math.min(100, limit > 0 ? (sent / limit) * 100 : 100)
+  const color = pct > 85 ? CHART_COLORS[3] : CHART_COLORS[0]
+
+  return (
+    <div className="max-w-sm rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+      <p className="text-sm font-semibold text-white light:text-neutral-950">Monthly usage</p>
+      <p className="mt-0.5 text-xs text-white/40 light:text-neutral-400">Resets on the 1st of each month</p>
+      <p className="font-data mt-3 text-2xl font-bold tabular-nums" style={{ color }}>
+        {sent.toLocaleString()}
+        <span className="text-base font-normal text-white/40 light:text-neutral-400">
+          /{isUnlimited ? '∞' : limit.toLocaleString()}
+        </span>
+      </p>
+      {!isUnlimited ? (
+        <>
+          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10 light:bg-neutral-100">
+            <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+          </div>
+          <p className="mt-2 text-xs text-white/40 light:text-neutral-400">
+            {Math.max(0, limit - sent).toLocaleString()} emails remaining
+          </p>
+        </>
+      ) : null}
+    </div>
   )
 }
 
@@ -328,7 +370,7 @@ function TemplatesTab({
           </div>
           <ul className="divide-y divide-white/10 light:divide-neutral-100">
             {templates.map((template) => (
-              <li key={template.publicId} className="group">
+              <li key={template.publicId} className="group transition-colors hover:bg-white/[0.02] light:hover:bg-neutral-50">
                 <div className="grid grid-cols-[1fr_1fr_120px_160px_60px] items-center px-5 py-4">
                   <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{template.name}</p>
                   <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{template.subject}</p>
@@ -435,7 +477,7 @@ function HistoryTab({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-      <div className="grid grid-cols-[1fr_160px_260px_160px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
+      <div className="grid grid-cols-[1fr_140px_320px_140px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Subject</p>
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Audience</p>
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
@@ -449,7 +491,7 @@ function HistoryTab({
               tabIndex={0}
               onClick={() => setSelectedCampaign(campaign)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedCampaign(campaign) }}
-              className="grid w-full cursor-pointer grid-cols-[1fr_160px_260px_160px] items-center px-5 py-4 text-left transition hover:bg-white/[0.03] light:hover:bg-neutral-50"
+              className="grid w-full cursor-pointer grid-cols-[1fr_140px_320px_140px] items-center px-5 py-4 text-left transition hover:bg-white/[0.03] light:hover:bg-neutral-50"
             >
               <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{campaign.subject}</p>
               <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{targetName(campaign)}</p>
@@ -644,7 +686,7 @@ function StatusCell({ campaign, slug }: { campaign: CampaignListItem; slug: stri
 
   if (campaign.status === 'Scheduled') {
     return (
-      <div className="flex items-center gap-2.5" onClick={(e) => e.stopPropagation()}>
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1" onClick={(e) => e.stopPropagation()}>
         <span className="inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-semibold text-cyan-300 light:bg-cyan-50 light:text-cyan-700">
           <span className="size-1.5 shrink-0 rounded-full bg-cyan-400" />
           Scheduled for {campaign.scheduledAt ? formatDateTime(campaign.scheduledAt) : '—'}
@@ -652,7 +694,7 @@ function StatusCell({ campaign, slug }: { campaign: CampaignListItem; slug: stri
         <button
           type="button"
           onClick={() => { resetCancelScheduleFeedback(); setIsConfirmingCancel(true) }}
-          className="text-xs font-medium text-white/40 underline decoration-white/20 underline-offset-2 transition hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-700"
+          className="shrink-0 text-xs font-medium text-white/40 underline decoration-white/20 underline-offset-2 transition hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-700"
         >
           Cancel
         </button>

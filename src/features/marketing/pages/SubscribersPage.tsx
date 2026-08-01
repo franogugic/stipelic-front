@@ -47,8 +47,8 @@ export function SubscribersPage() {
         ) : (
           <div className="grid gap-8">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">Subscribers</h1>
-              <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
+              <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">Subscribers</h1>
+              <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
                 Everyone who has signed up on one of your landing pages.
               </p>
             </div>
@@ -124,7 +124,7 @@ function ContactsList({ slug }: { slug: string }) {
             </div>
             <ul className="divide-y divide-white/10 light:divide-neutral-100">
               {contacts.map((contact) => (
-                <li key={contact.email}>
+                <li key={contact.email} className="transition-colors hover:bg-white/[0.02] light:hover:bg-neutral-50">
                   <div className="grid grid-cols-[1fr_1.4fr_140px_140px] items-center px-5 py-4">
                     <p className="truncate text-sm font-medium text-white light:text-neutral-950">{contact.email}</p>
                     <p className="truncate text-xs text-white/60 light:text-neutral-600">

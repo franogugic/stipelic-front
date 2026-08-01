@@ -1,9 +1,10 @@
-import { Loader2, ShoppingBag } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Loader2, Search, ShoppingBag, TrendingUp } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
-import { listOrders } from '../api/orders-api'
-import type { Order } from '../model/types'
+import { CHART_COLORS } from '../../../shared/ui/chart-colors'
+import { getOrderSummary, listOrders } from '../api/orders-api'
+import type { Order, OrderSummary } from '../model/types'
 
 const STATUS_STYLES: Record<string, string> = {
   Paid: 'bg-emerald-500/15 text-emerald-300 light:bg-emerald-50 light:text-emerald-700',
@@ -20,12 +21,19 @@ export function OrdersPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [hasMore, setHasMore] = useState(false)
   const [loadMoreStatus, setLoadMoreStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [summary, setSummary] = useState<OrderSummary | null>(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     if (!slug) return
     listOrders(slug, { limit: PAGE_SIZE })
       .then((page) => { setOrders(page.orders); setHasMore(page.hasMore); setStatus('success') })
       .catch(() => setStatus('error'))
+  }, [slug])
+
+  useEffect(() => {
+    if (!slug) return
+    void getOrderSummary(slug).then(setSummary).catch(() => {})
   }, [slug])
 
   const loadMore = () => {
@@ -41,13 +49,65 @@ export function OrdersPage() {
       .catch(() => setLoadMoreStatus('error'))
   }
 
+  const filteredOrders = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return orders
+    return orders.filter((o) =>
+      (o.name?.toLowerCase().includes(q) ?? false) ||
+      o.email.toLowerCase().includes(q) ||
+      o.productName.toLowerCase().includes(q),
+    )
+  }, [orders, search])
+
   return (
     <AppShell slug={slug!} activeSection="orders">
       <div className="p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <ShoppingBag size={22} className="text-white light:text-neutral-950" />
-          <h1 className="text-xl font-semibold text-white light:text-neutral-950">Orders</h1>
+        <div className="mb-6">
+          <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">Orders</h1>
+          <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
+            Your customer orders and transaction history.
+          </p>
         </div>
+
+        {summary ? (
+          <div className="mb-6 grid grid-cols-2 gap-4 sm:max-w-md">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+              <div
+                className="mb-2.5 grid size-6 place-items-center rounded-md"
+                style={{ backgroundColor: `color-mix(in srgb, ${CHART_COLORS[0]} 15%, transparent)`, color: CHART_COLORS[0] }}
+              >
+                <ShoppingBag size={13} />
+              </div>
+              <p className="font-data text-xl font-bold tabular-nums text-white light:text-neutral-950">{summary.paidOrderCount}</p>
+              <p className="mt-1 text-xs text-white/40 light:text-neutral-400">Paid orders</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+              <div
+                className="mb-2.5 grid size-6 place-items-center rounded-md"
+                style={{ backgroundColor: `color-mix(in srgb, ${CHART_COLORS[3]} 15%, transparent)`, color: CHART_COLORS[3] }}
+              >
+                <TrendingUp size={13} />
+              </div>
+              <p className="font-data text-xl font-bold tabular-nums text-white light:text-neutral-950">
+                {formatMoney(summary.totalPaidAmountCents, summary.currency ?? 'EUR')}
+              </p>
+              <p className="mt-1 text-xs text-white/40 light:text-neutral-400">Revenue</p>
+            </div>
+          </div>
+        ) : null}
+
+        {status === 'success' && orders.length > 0 && (
+          <div className="relative mb-5 max-w-sm">
+            <Search size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 light:text-neutral-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search customer or product…"
+              className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.03] pl-9 pr-3.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400"
+            />
+          </div>
+        )}
 
         {status === 'loading' && (
           <div className="flex items-center justify-center py-20">
@@ -66,11 +126,18 @@ export function OrdersPage() {
           </div>
         )}
 
-        {status === 'success' && orders.length > 0 && (
+        {status === 'success' && filteredOrders.length === 0 && orders.length > 0 && (
+          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+            <Search size={32} className="text-white/15 light:text-neutral-300" />
+            <p className="text-sm text-white/40 light:text-neutral-400">No orders match your search.</p>
+          </div>
+        )}
+
+        {status === 'success' && filteredOrders.length > 0 && (
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-transparent">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-white/[0.03] text-left text-xs font-medium uppercase tracking-wider text-white/40 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-400">
+                <tr className="border-b border-white/10 bg-white/[0.03] text-left text-[11px] font-semibold uppercase tracking-widest text-white/40 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-400">
                   <th className="px-5 py-3">Date</th>
                   <th className="px-5 py-3">Customer</th>
                   <th className="px-5 py-3">Product</th>
@@ -81,7 +148,7 @@ export function OrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10 light:divide-neutral-100">
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr key={order.publicId} className="transition hover:bg-white/[0.04] light:bg-white light:hover:bg-neutral-50">
                     <td className="px-5 py-3.5 text-white/50 light:text-neutral-500">
                       {new Date(order.createdAt).toLocaleDateString(undefined, {
