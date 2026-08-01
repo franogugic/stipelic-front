@@ -35,14 +35,11 @@ import type { HomeSummary, Order } from '../../orders/model/types'
 import { listProducts } from '../../products/api/products-api'
 import type { Product } from '../../products/model/types'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { CHART_COLORS as STAT_COLORS } from '../../../shared/ui/chart-colors'
 import { useAuthStore } from '../../auth/model/auth-store'
 import { DeleteCreatorDialog } from '../components/DeleteCreatorDialog'
 import { useCreatorStore } from '../model/creator-store'
 import { usePayoutStore } from '../model/payout-store'
-
-// Multi-color-per-metric stat card palette, cycled across the stat grid — sourced from the
-// Figma Make reference's chart-1..5 tokens (see index.css), not invented separately.
-const STAT_COLORS = ['var(--color-chart-1)', 'var(--color-chart-2)', 'var(--color-chart-3)', 'var(--color-chart-4)', 'var(--color-chart-5)']
 
 export function CreatorWorkspacePage() {
   const navigate = useNavigate()

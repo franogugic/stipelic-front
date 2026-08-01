@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { CHART_COLORS } from '../../../shared/ui/chart-colors'
 import { ImageUploadField } from '../../../shared/ui/ImageUploadField'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useProductStore } from '../model/product-store'
@@ -95,8 +96,8 @@ export function ProductsPage() {
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">Products</h1>
-                <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
+                <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">Products</h1>
+                <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
                   {maxProducts !== null && maxProducts >= 0
                     ? `${activeProductCount} of ${maxProducts} used`
                     : `${activeProductCount} product${activeProductCount !== 1 ? 's' : ''}`}
@@ -159,84 +160,96 @@ export function ProductsPage() {
                 </button>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-                <div className="grid grid-cols-[auto_1fr_160px_100px_120px_100px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
-                  <span className="w-10" />
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Product</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Type</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Price</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Revenue</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
-                </div>
-                <ul className="divide-y divide-white/10 light:divide-neutral-100">
-                  {products.map((product) => {
-                    const typeInfo = PRODUCT_TYPES.find((t) => t.value === product.type)
-                    const TypeIcon = typeInfo?.icon ?? Package
-                    const isArchived = product.status === 'Archived'
-                    return (
-                      <li key={product.publicId} className={`group ${isArchived ? 'opacity-50' : ''}`}>
-                        <div className="grid grid-cols-[auto_1fr_160px_100px_120px_100px] items-center px-5 py-4">
-                          <span className="mr-4 grid size-9 shrink-0 place-items-center rounded-xl bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {products.map((product, i) => {
+                  const typeInfo = PRODUCT_TYPES.find((t) => t.value === product.type)
+                  const TypeIcon = typeInfo?.icon ?? Package
+                  const isArchived = product.status === 'Archived'
+                  const color = CHART_COLORS[i % CHART_COLORS.length]
+                  const maxRevenue = Math.max(...products.map((p) => p.revenueCents), 1)
+                  return (
+                    <div
+                      key={product.publicId}
+                      className={`group rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm transition-colors hover:border-white/20 light:border-neutral-200 light:bg-white light:shadow-sm light:hover:border-neutral-300 ${isArchived ? 'opacity-50' : ''}`}
+                    >
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <span
+                            className="grid size-9 shrink-0 place-items-center rounded-xl"
+                            style={{ backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`, color }}
+                          >
                             <TypeIcon size={16} />
                           </span>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{product.name}</p>
-                            {product.description ? (
-                              <p className="mt-0.5 truncate text-xs text-white/40 light:text-neutral-400">{product.description}</p>
-                            ) : null}
-                          </div>
-                          <p className="text-xs font-medium text-white/60 light:text-neutral-600">{product.type}</p>
-                          <p className="text-sm font-semibold text-white light:text-neutral-950">{formatPrice(product.priceCents)}</p>
-                          <p
-                            className="text-sm font-semibold tabular-nums text-white light:text-neutral-950"
-                            title={`${product.paidOrderCount} paid order${product.paidOrderCount === 1 ? '' : 's'}`}
-                          >
-                            {formatPrice(product.revenueCents)}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <StatusBadge status={product.status} />
+                            <span className="mt-1 inline-block rounded bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/50 light:bg-neutral-100 light:text-neutral-500">
+                              {product.type}
+                            </span>
                           </div>
                         </div>
-                        {/* Row actions revealed on hover */}
-                        <div className="hidden border-t border-white/10 bg-white/[0.03] px-5 py-2.5 group-hover:flex items-center gap-2 light:border-neutral-50 light:bg-neutral-50">
-                          {isArchived ? (
-                            <RestoreProductButton slug={slug!} product={product} atLimit={atLimit} maxProducts={maxProducts} />
-                          ) : (
-                            <>
-                              <button
-                                type="button"
+                        <StatusBadge status={product.status} />
+                      </div>
+
+                      <div className="mb-4 h-1 overflow-hidden rounded-full bg-white/[0.06] light:bg-neutral-100">
+                        <div
+                          className="h-1 rounded-full"
+                          style={{ width: `${Math.max(2, (product.revenueCents / maxRevenue) * 100)}%`, backgroundColor: color }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3 border-t border-white/[0.06] pt-3 light:border-neutral-100">
+                        <div>
+                          <p className="mb-1 text-[10px] uppercase tracking-wide text-white/40 light:text-neutral-400">Price</p>
+                          <p className="font-data text-sm tabular-nums text-white light:text-neutral-950">{formatPrice(product.priceCents)}</p>
+                        </div>
+                        <div>
+                          <p className="mb-1 text-[10px] uppercase tracking-wide text-white/40 light:text-neutral-400">Sales</p>
+                          <p className="font-data text-sm tabular-nums" style={{ color }}>{product.paidOrderCount}</p>
+                        </div>
+                        <div>
+                          <p className="mb-1 text-[10px] uppercase tracking-wide text-white/40 light:text-neutral-400">Revenue</p>
+                          <p className="font-data text-sm tabular-nums text-accent-strong">{formatPrice(product.revenueCents)}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 hidden items-center gap-2 border-t border-white/[0.06] pt-3 group-hover:flex light:border-neutral-100">
+                        {isArchived ? (
+                          <RestoreProductButton slug={slug!} product={product} atLimit={atLimit} maxProducts={maxProducts} />
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
+                              onClick={() => setEditingProduct(product)}
+                            >
+                              <Pencil size={12} />
+                              Edit
+                            </button>
+                            {product.accessUrl ? (
+                              <a
+                                href={product.accessUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
-                                onClick={() => setEditingProduct(product)}
                               >
-                                <Pencil size={12} />
-                                Edit
-                              </button>
-                              {product.accessUrl ? (
-                                <a
-                                  href={product.accessUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
-                                >
-                                  <ExternalLink size={12} />
-                                  Access URL
-                                </a>
-                              ) : null}
-                              <button
-                                type="button"
-                                className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/60 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:border-neutral-200 light:bg-white light:text-neutral-500 light:hover:border-red-200 light:hover:bg-red-50 light:hover:text-red-600"
-                                onClick={() => setArchivingProduct(product)}
-                              >
-                                <Archive size={12} />
-                                Archive
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
+                                <ExternalLink size={12} />
+                                Access URL
+                              </a>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/60 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:border-neutral-200 light:bg-white light:text-neutral-500 light:hover:border-red-200 light:hover:bg-red-50 light:hover:text-red-600"
+                              onClick={() => setArchivingProduct(product)}
+                            >
+                              <Archive size={12} />
+                              Archive
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

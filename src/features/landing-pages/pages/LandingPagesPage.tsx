@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { CHART_COLORS } from '../../../shared/ui/chart-colors'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useProductStore } from '../../products/model/product-store'
 import { useLandingPageStore } from '../model/landing-page-store'
@@ -89,10 +90,10 @@ export function LandingPagesPage() {
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">
+                <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">
                   Landing pages
                 </h1>
-                <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
+                <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
                   {maxPages !== null && maxPages >= 0
                     ? `${activePageCount} of ${maxPages} used`
                     : `${activePageCount} page${activePageCount !== 1 ? 's' : ''}`}
@@ -162,11 +163,11 @@ export function LandingPagesPage() {
             ) : (
               <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_120px_120px_160px_120px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Page</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Type</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Views</p>
+                <div className="grid grid-cols-[1fr_120px_120px_160px_120px] items-center border-b border-white/10 px-5 py-3.5 light:border-neutral-100">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Page</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Type</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Traffic</p>
                   <span />
                 </div>
 
@@ -238,7 +239,7 @@ function PageRow({
   const publicUrl = `/p/${slug}/${page.slug}`
 
   return (
-    <li className={isArchived ? 'opacity-50' : undefined}>
+    <li className={`transition-colors hover:bg-white/[0.02] light:hover:bg-neutral-50/80 ${isArchived ? 'opacity-50' : ''}`}>
       <div className="grid w-full grid-cols-[1fr_120px_120px_160px_120px] items-center px-5 py-4">
         <button
           type="button"
@@ -250,20 +251,22 @@ function PageRow({
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{page.title}</p>
-            <p className="mt-0.5 truncate text-xs text-white/40 light:text-neutral-400">/{page.slug}</p>
+            <p className="mt-0.5 truncate font-mono text-[11px] text-white/40 light:text-neutral-400">/{page.slug}</p>
           </div>
         </button>
-        <p className="text-xs font-medium text-white/60 light:text-neutral-600">{page.type}</p>
+        <span className="inline-block w-fit rounded bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/50 light:bg-neutral-100 light:text-neutral-500">
+          {page.type}
+        </span>
         <StatusBadge status={page.status} />
         <div className="flex items-center gap-3">
           {page.status === 'Published' ? (
             <>
-              <span className="flex items-center gap-1 text-xs text-white/50 light:text-neutral-500" title="Total views">
-                <Eye size={12} className="text-white/40 light:text-neutral-400" />
+              <span className="font-data flex items-center gap-1 text-sm tabular-nums" style={{ color: CHART_COLORS[0] }} title="Total views">
+                <Eye size={12} />
                 {page.totalViews.toLocaleString()}
               </span>
-              <span className="flex items-center gap-1 text-xs text-white/50 light:text-neutral-500" title="Unique visitors">
-                <Users size={12} className="text-white/40 light:text-neutral-400" />
+              <span className="font-data flex items-center gap-1 text-sm tabular-nums" style={{ color: CHART_COLORS[1] }} title="Unique visitors">
+                <Users size={12} />
                 {page.uniqueVisitors.toLocaleString()}
               </span>
             </>
