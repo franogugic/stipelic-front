@@ -171,7 +171,7 @@ export function LandingPagesPage() {
                   <span />
                 </div>
 
-                <ul className="divide-y divide-white/10 light:divide-neutral-100">
+                <ul className="divide-y divide-border">
                   {pages.map((page) => (
                     <PageRow
                       key={page.publicId}

@@ -122,7 +122,7 @@ function ContactsList({ slug }: { slug: string }) {
               <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">First captured</p>
               <span />
             </div>
-            <ul className="divide-y divide-white/10 light:divide-neutral-100">
+            <ul className="divide-y divide-border">
               {contacts.map((contact) => (
                 <li key={contact.email} className="transition-colors hover:bg-secondary/60">
                   <div className="grid grid-cols-[1fr_1.4fr_140px_140px] items-center px-5 py-4">

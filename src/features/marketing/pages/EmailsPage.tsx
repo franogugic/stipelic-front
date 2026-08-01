@@ -368,7 +368,7 @@ function TemplatesTab({
             <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Last modified</p>
             <span />
           </div>
-          <ul className="divide-y divide-white/10 light:divide-neutral-100">
+          <ul className="divide-y divide-border">
             {templates.map((template) => (
               <li key={template.publicId} className="group transition-colors hover:bg-secondary/60">
                 <div className="grid grid-cols-[1fr_1fr_120px_160px_60px] items-center px-5 py-4">
@@ -483,7 +483,7 @@ function HistoryTab({
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Date</p>
       </div>
-      <ul className="divide-y divide-white/10 light:divide-neutral-100">
+      <ul className="divide-y divide-border">
         {campaigns.map((campaign) => (
           <li key={campaign.publicId}>
             <div
