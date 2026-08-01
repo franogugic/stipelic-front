@@ -75,10 +75,10 @@ export function LandingPagesPage() {
             Loading workspace…
           </div>
         ) : !creator ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-8 backdrop-blur-sm light:shadow-sm">
             <p className="font-semibold text-white light:text-neutral-950">Workspace not found</p>
             <button
-              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
+              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
               type="button"
               onClick={() => navigate('/')}
             >
@@ -105,7 +105,7 @@ export function LandingPagesPage() {
                     type="checkbox"
                     checked={includeArchived}
                     onChange={(e) => slug && setIncludeArchived(slug, e.target.checked)}
-                    className="size-4 rounded border-white/20 bg-white/5 accent-accent"
+                    className="size-4 rounded border-white/20 bg-card accent-accent"
                   />
                   Show archived
                 </label>
@@ -140,7 +140,7 @@ export function LandingPagesPage() {
                 Loading pages…
               </div>
             ) : pages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-20 text-center light:border-neutral-300 light:bg-white">
+              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-card py-20 text-center light:border-neutral-300">
                 <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
                   <FileText size={24} strokeWidth={1.5} />
                 </span>
@@ -161,9 +161,9 @@ export function LandingPagesPage() {
                 </button>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card backdrop-blur-sm light:shadow-sm">
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_120px_120px_160px_120px] items-center border-b border-white/10 px-5 py-3.5 light:border-neutral-100">
+                <div className="grid grid-cols-[1fr_120px_120px_160px_120px] items-center border-b border-border px-5 py-3.5">
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Page</p>
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Type</p>
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
@@ -239,7 +239,7 @@ function PageRow({
   const publicUrl = `/p/${slug}/${page.slug}`
 
   return (
-    <li className={`transition-colors hover:bg-white/[0.02] light:hover:bg-neutral-50/80 ${isArchived ? 'opacity-50' : ''}`}>
+    <li className={`transition-colors hover:bg-secondary/60 ${isArchived ? 'opacity-50' : ''}`}>
       <div className="grid w-full grid-cols-[1fr_120px_120px_160px_120px] items-center px-5 py-4">
         <button
           type="button"
@@ -254,7 +254,7 @@ function PageRow({
             <p className="mt-0.5 truncate font-mono text-[11px] text-white/40 light:text-neutral-400">/{page.slug}</p>
           </div>
         </button>
-        <span className="inline-block w-fit rounded bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/50 light:bg-neutral-100 light:text-neutral-500">
+        <span className="inline-block w-fit rounded bg-muted px-2 py-0.5 text-[11px] text-white/50 light:text-neutral-500">
           {page.type}
         </span>
         <StatusBadge status={page.status} />
@@ -279,7 +279,7 @@ function PageRow({
               disabled={atLimit || isSubmitting}
               title={atLimit ? `Plan limit reached (${maxPages ?? 0}). Archive another page or upgrade your plan to restore this one.` : 'Restore page'}
               onClick={(e) => { e.stopPropagation(); void restorePage(slug, page.publicId) }}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs font-medium text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-white/70 transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40 light:text-neutral-600"
             >
               {isSubmitting ? <Loader2 className="animate-spin" size={12} /> : <ArchiveRestore size={12} />}
               Restore
@@ -371,9 +371,9 @@ function CreatePageModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:px-5">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl sm:rounded-2xl light:border-neutral-200 light:bg-white">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl sm:rounded-2xl">
         {/* Modal header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 light:border-neutral-100">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-base font-semibold text-white light:text-neutral-950">New landing page</h2>
           <button
             type="button"
@@ -397,7 +397,7 @@ function CreatePageModal({
                 value={title}
                 onChange={(e) => handleTitleChange(e.target.value)}
                 placeholder="e.g. Free Email Course"
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
+                className="w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
               />
             </div>
 
@@ -415,7 +415,7 @@ function CreatePageModal({
                   setPageSlug(e.target.value)
                 }}
                 placeholder="free-email-course"
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
+                className="w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
               />
             </div>
 
@@ -424,7 +424,7 @@ function CreatePageModal({
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as LandingPageType)}
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400 light:focus:ring-neutral-100"
+                className="w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950 light:focus:border-neutral-400 light:focus:ring-neutral-100"
               >
                 <option value="LeadGen">Lead Gen — collect email addresses</option>
                 <option value="Sales">Sales — sell a product or service</option>
@@ -449,7 +449,7 @@ function CreatePageModal({
                   required
                   value={productId}
                   onChange={(e) => setProductId(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400 light:focus:ring-neutral-100"
+                  className="w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950 light:focus:border-neutral-400 light:focus:ring-neutral-100"
                 >
                   <option value="" disabled>
                     Select a product…
@@ -472,7 +472,7 @@ function CreatePageModal({
           <div className="mt-6 flex gap-3">
             <button
               type="button"
-              className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+              className="flex h-10 flex-1 items-center justify-center rounded-xl border border-border bg-card text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-700"
               disabled={isSubmitting}
               onClick={onClose}
             >

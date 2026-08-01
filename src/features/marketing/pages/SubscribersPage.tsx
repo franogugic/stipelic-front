@@ -34,10 +34,10 @@ export function SubscribersPage() {
             Loading workspace…
           </div>
         ) : !creator ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-8 backdrop-blur-sm light:shadow-sm">
             <p className="font-semibold text-white light:text-neutral-950">Workspace not found</p>
             <button
-              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
+              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
               type="button"
               onClick={() => navigate('/')}
             >
@@ -88,7 +88,7 @@ function ContactsList({ slug }: { slug: string }) {
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search by email…"
-          className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.03] pl-10 pr-3.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400"
+          className="h-10 w-full rounded-xl border border-border bg-secondary pl-10 pr-3.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950 light:placeholder-neutral-400"
         />
       </div>
 
@@ -98,7 +98,7 @@ function ContactsList({ slug }: { slug: string }) {
           Loading contacts…
         </div>
       ) : contacts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-20 text-center light:border-neutral-300 light:bg-white">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-card py-20 text-center light:border-neutral-300">
           <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
             <Users size={24} strokeWidth={1.5} />
           </span>
@@ -115,8 +115,8 @@ function ContactsList({ slug }: { slug: string }) {
         </div>
       ) : (
         <>
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-            <div className="grid grid-cols-[1fr_1.4fr_160px_140px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card backdrop-blur-sm light:shadow-sm">
+            <div className="grid grid-cols-[1fr_1.4fr_160px_140px] items-center border-b border-border px-5 py-3">
               <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Email</p>
               <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Sources</p>
               <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">First captured</p>
@@ -124,7 +124,7 @@ function ContactsList({ slug }: { slug: string }) {
             </div>
             <ul className="divide-y divide-white/10 light:divide-neutral-100">
               {contacts.map((contact) => (
-                <li key={contact.email} className="transition-colors hover:bg-white/[0.02] light:hover:bg-neutral-50">
+                <li key={contact.email} className="transition-colors hover:bg-secondary/60">
                   <div className="grid grid-cols-[1fr_1.4fr_140px_140px] items-center px-5 py-4">
                     <p className="truncate text-sm font-medium text-white light:text-neutral-950">{contact.email}</p>
                     <p className="truncate text-xs text-white/60 light:text-neutral-600">
@@ -151,7 +151,7 @@ function ContactsList({ slug }: { slug: string }) {
                 type="button"
                 disabled={loadMoreStatus === 'loading'}
                 onClick={() => void loadMoreContacts(slug)}
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50 light:text-neutral-600"
               >
                 {loadMoreStatus === 'loading' ? <Loader2 className="animate-spin" size={14} /> : null}
                 Load more
