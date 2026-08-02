@@ -1,12 +1,8 @@
-import { CheckCircle2, FileText, BarChart3, ShoppingBag } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { AuthLayout } from '../components/AuthLayout'
+import { AuthModeSwitch } from '../components/AuthModeSwitch'
 import { LoginForm } from '../components/LoginForm'
-
-const features = [
-  { icon: FileText,    title: 'Landing pages',  desc: 'Publish in minutes with built-in analytics.' },
-  { icon: BarChart3,   title: 'Real-time stats', desc: 'See visits, scroll depth and sources live.' },
-  { icon: ShoppingBag, title: 'Sell anything',   desc: 'Products and subscriptions, built in.' },
-]
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -14,114 +10,29 @@ export function LoginPage() {
   const bannerMessage = (location.state as { message?: string } | null)?.message
 
   return (
-    <div className="flex min-h-screen">
-      {/* Left — dark brand panel */}
-      <div className="relative hidden w-[480px] shrink-0 flex-col justify-between overflow-hidden bg-neutral-950 p-10 lg:flex">
-        {/* Subtle grid pattern */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.035]"
-          style={{
-            backgroundImage:
-              'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
-
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-xl bg-white">
-            <span className="text-sm font-black text-neutral-950">CP</span>
-          </span>
-          <span className="text-base font-semibold text-white">Creator Platform</span>
-        </div>
-
-        {/* Headline */}
-        <div>
-          <h1 className="text-4xl font-semibold leading-[1.2] tracking-tight text-white">
-            Everything your
-            <br />
-            creator business
-            <br />
-            needs in one place.
-          </h1>
-          <p className="mt-5 max-w-xs text-sm leading-7 text-white/50">
-            Landing pages, analytics, email collection, and payments — managed from a single
-            workspace built for creators.
-          </p>
-
-          <ul className="mt-10 grid gap-5">
-            {features.map(({ icon: Icon, title, desc }) => (
-              <li key={title} className="flex items-start gap-4">
-                <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-white/10 text-white/70">
-                  <Icon size={15} />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-white">{title}</p>
-                  <p className="mt-0.5 text-xs leading-5 text-white/50">{desc}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Social proof quote */}
-        <figure className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <blockquote className="text-sm leading-6 text-white/70">
-            "Went from zero to first sale in under a day. The simplest creator tool I've
-            ever used."
-          </blockquote>
-          <figcaption className="mt-3 flex items-center gap-2.5">
-            <span className="grid size-7 place-items-center rounded-full bg-white/20 text-[11px] font-bold text-white">
-              MK
-            </span>
-            <span className="text-xs text-white/40">Marko K. — indie creator</span>
-          </figcaption>
-        </figure>
+    <AuthLayout>
+      <div className="mb-6 text-center">
+        <p className="text-sm text-muted-foreground">Sign in to your creator workspace.</p>
       </div>
 
-      {/* Right — form */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-neutral-50 px-6 py-12">
-        {/* Mobile logo */}
-        <div className="mb-10 flex items-center gap-2.5 lg:hidden">
-          <span className="grid size-8 place-items-center rounded-lg bg-neutral-950">
-            <span className="text-xs font-black text-white">CP</span>
-          </span>
-          <span className="text-sm font-semibold text-neutral-950">Creator Platform</span>
+      {bannerMessage ? (
+        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
+          <CheckCircle2 className="mt-0.5 shrink-0" size={15} />
+          <span>{bannerMessage}</span>
         </div>
+      ) : null}
 
-        <div className="w-full max-w-sm">
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">
-              Welcome back
-            </h2>
-            <p className="mt-1.5 text-sm text-neutral-500">
-              Sign in to your creator workspace.
-            </p>
-          </div>
-
-          {bannerMessage ? (
-            <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              <CheckCircle2 className="mt-0.5 shrink-0" size={15} />
-              <span>{bannerMessage}</span>
-            </div>
-          ) : null}
-
-          <div className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
-            <LoginForm />
-          </div>
-
-          <p className="mt-6 text-center text-sm text-neutral-500">
-            No account yet?{' '}
-            <button
-              type="button"
-              className="font-semibold text-neutral-950 underline-offset-2 transition hover:underline"
-              onClick={() => navigate('/register')}
-            >
-              Create one free
-            </button>
-          </p>
-        </div>
+      <div className="rounded-xl border border-border bg-card p-7">
+        <AuthModeSwitch mode="login" />
+        <LoginForm />
       </div>
-    </div>
+
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        No account?{' '}
+        <button type="button" className="font-semibold text-accent hover:opacity-85" onClick={() => navigate('/register')}>
+          Register free
+        </button>
+      </p>
+    </AuthLayout>
   )
 }

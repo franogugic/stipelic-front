@@ -2,7 +2,7 @@ import { ArrowRight, Loader2, TriangleAlert } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TextField } from '../../../shared/ui/TextField'
+import { AuthField } from './AuthField'
 import { useAuthStore } from '../model/auth-store'
 import { validateLoginForm } from '../model/login-validation'
 import type { LoginFieldName } from '../model/login-validation'
@@ -43,8 +43,8 @@ export function LoginForm() {
   }
 
   return (
-    <form className="grid gap-5" onSubmit={handleSubmit} noValidate>
-      <TextField
+    <form className="grid gap-4" onSubmit={handleSubmit} noValidate>
+      <AuthField
         label="Email address"
         name="email"
         type="email"
@@ -57,12 +57,12 @@ export function LoginForm() {
         onChange={(e) => updateField('email', e.target.value)}
       />
 
-      <TextField
+      <AuthField
         label="Password"
         labelAction={
           <button
             type="button"
-            className="text-xs font-medium text-neutral-500 underline-offset-2 transition hover:text-neutral-950 hover:underline"
+            className="text-xs font-medium text-muted-foreground transition hover:text-foreground"
             onClick={() => navigate('/forgot-password')}
           >
             Forgot password?
@@ -79,14 +79,14 @@ export function LoginForm() {
       />
 
       {loginError ? (
-        <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           <TriangleAlert className="mt-0.5 shrink-0" size={15} />
           <span>{loginError}</span>
         </div>
       ) : null}
 
       <button
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
         type="submit"
         disabled={!canSubmit}
       >
