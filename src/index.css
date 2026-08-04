@@ -1,11 +1,5 @@
 @import "tailwindcss";
 
-/*
- * Dark is the default aesthetic (see DESIGN_SYSTEM.md). Light mode is an
- * opt-in override inside the authenticated app shell, not the other way
- * around — so we flip Tailwind's usual light-default assumption with a
- * custom `light:` variant instead of `dark:`.
- */
 @custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
 
 @theme {
@@ -13,19 +7,9 @@
   --font-display: "Barlow Condensed", "DM Sans", sans-serif;
   --font-data: "Geist", "DM Sans", sans-serif;
   --font-mono: "DM Mono", ui-monospace, monospace;
-
-  /* Main brand accent — value now sourced from the Figma Make reference's --primary (#BC6FA4);
-     name kept as-is (this project's pre-existing token), not renamed to "primary", to avoid a
-     parallel naming system alongside the rest of the codebase's `bg-accent`/`text-accent` usage. */
   --color-accent: #bc6fa4;
   --color-accent-strong: #d190bd;
   --color-accent-cyan: #5eead4;
-
-  /* Full token set ported from the Figma Make export's theme.css (dark values — that export has
-     no real light variant, see [data-theme="light"] below), extending rather than replacing our
-     existing tokens. `--color-primary` is a straight alias of `--color-accent` so JSX adapted
-     from the Figma reference (which uses shadcn's `bg-primary`/`text-primary` convention) works
-     without a translation pass in later redesign tasks. */
   --color-primary: var(--color-accent);
   --color-primary-foreground: #ffffff;
   --color-background: #06060c;
@@ -76,12 +60,6 @@ html[data-theme="light"] {
   background: #f5f5f4;
 }
 
-/*
- * The Figma Make reference is dark-only (its `:root` and `.dark` blocks carry identical values —
- * no real light variant to port). These light values are our own judgment call, built the same
- * way the existing --color-accent light override was: darker/more saturated versions of the dark
- * brand hue for contrast against a light surface, plus this project's established light neutrals.
- */
 [data-theme="light"] {
   --color-accent: #9c4f86;
   --color-accent-strong: #7d3e6b;
@@ -118,19 +96,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
-}
-
-.bg-grid {
-  background-image:
-    linear-gradient(#fff 1px, transparent 1px),
-    linear-gradient(90deg, #fff 1px, transparent 1px);
-  background-size: 48px 48px;
-}
-
-[data-theme="light"] .bg-grid {
-  background-image:
-    linear-gradient(#000 1px, transparent 1px),
-    linear-gradient(90deg, #000 1px, transparent 1px);
+  color: white
 }
 
 @keyframes rise-in {

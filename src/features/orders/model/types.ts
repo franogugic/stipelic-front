@@ -37,4 +37,7 @@ export interface HomeSummary {
   revenueTrend: number[]
   emailsSentThisMonth: number
   emailsMonthlyLimit: number
+  totalPageViews: number
+  subscriberCount: number
+  viewsTrend: number[]
 }

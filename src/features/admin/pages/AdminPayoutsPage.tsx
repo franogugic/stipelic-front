@@ -23,10 +23,10 @@ export function AdminPayoutsPage() {
   const [tab, setTab] = useState<Tab>('requests')
 
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="relative min-h-screen ">
       <div className="bg-grid pointer-events-none fixed inset-0 opacity-[0.04]" />
 
-      <header className="relative flex h-14 items-center gap-4 border-b border-border bg-background px-6">
+      <header className="relative flex h-14 items-center gap-4 border-b border-border px-6">
         <button
           type="button"
           onClick={() => navigate('/')}
