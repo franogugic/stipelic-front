@@ -40,4 +40,6 @@ export interface HomeSummary {
   totalPageViews: number
   subscriberCount: number
   viewsTrend: number[]
+  monthlyRevenueTrend: number[]
+  totalPlatformFeeCents: number
 }

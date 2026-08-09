@@ -4,14 +4,8 @@ import { useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { CHART_COLORS } from '../../../shared/ui/chart-colors'
 import { getOrderSummary, listOrders } from '../api/orders-api'
+import { OrderStatusBadge } from '../components/OrderStatusBadge'
 import type { Order, OrderStatus, OrderSummary } from '../model/types'
-
-const STATUS_STYLES: Record<string, string> = {
-  Paid: 'bg-emerald-500/15 text-emerald-300 light:bg-emerald-50 light:text-emerald-700',
-  Pending: 'bg-yellow-500/15 text-yellow-300 light:bg-yellow-50 light:text-yellow-700',
-  Failed: 'bg-red-500/15 text-red-300 light:bg-red-50 light:text-red-700',
-  Refunded: 'bg-white/10 text-white/50 light:bg-neutral-100 light:text-neutral-500',
-}
 
 const STATUS_FILTERS: { value: 'all' | OrderStatus; label: string }[] = [
   { value: 'all', label: 'All statuses' },
@@ -272,9 +266,7 @@ export function OrdersPage() {
                       {formatMoney(order.netAmountCents, order.currency)}
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[order.status] ?? 'bg-white/10 text-white/50 light:bg-neutral-100 light:text-neutral-500'}`}>
-                        {order.status}
-                      </span>
+                      <OrderStatusBadge status={order.status} />
                     </td>
                   </tr>
                 ))}
