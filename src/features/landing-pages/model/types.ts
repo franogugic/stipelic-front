@@ -32,6 +32,8 @@ export type LandingPage = {
   updatedAt: string
   totalViews: number
   uniqueVisitors: number
+  purchaseCount: number
+  totalRevenueCents: number
 }
 
 export type LandingPageWithSections = LandingPage & {
