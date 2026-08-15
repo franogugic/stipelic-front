@@ -1,20 +1,20 @@
 import {
   AlertTriangle,
   Archive,
-  ArchiveRestore,
   BookOpen,
   ExternalLink,
   Loader2,
   Package,
   Pencil,
   Plus,
+  RotateCcw,
   Wrench,
   X,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
-import { CHART_COLORS } from '../../../shared/ui/chart-colors'
+import { Dropdown } from '../../../shared/ui/Dropdown'
 import { ImageUploadField } from '../../../shared/ui/ImageUploadField'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useProductStore } from '../model/product-store'
@@ -94,37 +94,34 @@ export function ProductsPage() {
         ) : (
           <div className="grid gap-8">
             {/* Header */}
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">Products</h1>
-                <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
-                  {maxProducts !== null && maxProducts >= 0
-                    ? `${activeProductCount} of ${maxProducts} used`
-                    : `${activeProductCount} product${activeProductCount !== 1 ? 's' : ''}`}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-sm text-white/50 light:text-neutral-500">
-                  <input
-                    type="checkbox"
-                    checked={includeArchived}
-                    onChange={(e) => slug && setIncludeArchived(slug, e.target.checked)}
-                    className="size-4 rounded border-white/20 bg-card accent-accent"
-                  />
-                  Show archived
-                </label>
-                <button
-                  type="button"
-                  disabled={atLimit}
-                  title={atLimit ? `Plan limit reached (${maxProducts ?? 0})` : undefined}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
-                  onClick={() => setIsCreateOpen(true)}
-                >
-                  <Plus size={15} />
-                  New product
-                </button>
-              </div>
-            </div>
+            <PageHeader
+              title="Products"
+              subtitle="Manage your digital products, courses, and services."
+              action={
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Show archived</span>
+                    <button
+                      onClick={() => slug && setIncludeArchived(slug, !includeArchived)}
+                      className="relative rounded-full transition-colors"
+                      style={{
+                        width: 32,
+                        height: 18,
+                        backgroundColor: includeArchived ? 'var(--color-chart-1)' : 'rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      <div
+                        className="absolute w-3.5 h-3.5 rounded-full bg-white shadow transition-all"
+                        style={{ top: 2, left: includeArchived ? 15 : 2, width: 14, height: 14 }}
+                      />
+                    </button>
+                  </div>
+                  <PrimaryBtn onClick={() => setIsCreateOpen(true)}>
+                    <Plus size={14} /> New Product
+                  </PrimaryBtn>
+                </div>
+              }
+            />
 
             {atLimit ? (
               <div className="flex items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-200 light:border-amber-200 light:bg-amber-50 light:text-amber-800">
@@ -160,94 +157,67 @@ export function ProductsPage() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {products.map((product, i) => {
-                  const typeInfo = PRODUCT_TYPES.find((t) => t.value === product.type)
-                  const TypeIcon = typeInfo?.icon ?? Package
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {products.map((product) => {
                   const isArchived = product.status === 'Archived'
-                  const color = CHART_COLORS[i % CHART_COLORS.length]
-                  const maxRevenue = Math.max(...products.map((p) => p.revenueCents), 1)
                   return (
-                    <div
-                      key={product.publicId}
-                      className={`group rounded-2xl border border-border bg-card p-5 backdrop-blur-sm transition-colors hover:border-white/20 light:shadow-sm light:hover:border-neutral-300 ${isArchived ? 'opacity-50' : ''}`}
-                    >
-                      <div className="mb-4 flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-start gap-3">
-                          <span
-                            className="grid size-9 shrink-0 place-items-center rounded-xl"
-                            style={{ backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`, color }}
-                          >
-                            <TypeIcon size={16} />
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{product.name}</p>
-                            <span className="mt-1 inline-block rounded bg-muted px-2 py-0.5 text-[11px] text-white/50 light:text-neutral-500">
-                              {product.type}
-                            </span>
-                          </div>
+                    <Card key={product.publicId} className={`p-5 relative group ${isArchived ? 'opacity-50' : ''}`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: 'color-mix(in srgb, var(--color-chart-1) 15%, transparent)', color: 'var(--color-chart-1)' }}
+                        >
+                          <Package size={16} />
                         </div>
                         <StatusBadge status={product.status} />
                       </div>
-
-                      <div className="mb-4 h-1 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-1 rounded-full"
-                          style={{ width: `${Math.max(2, (product.revenueCents / maxRevenue) * 100)}%`, backgroundColor: color }}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3 border-t border-border pt-3">
+                      <button type="button" onClick={() => setEditingProduct(product)} className="text-left">
+                        <p className="font-semibold text-sm mb-0.5 hover:text-blue-400 transition-colors">{product.name}</p>
+                        <p className="text-xs text-muted-foreground mb-4">{product.type}</p>
+                      </button>
+                      <div className="flex items-center justify-between mb-3">
                         <div>
-                          <p className="mb-1 text-[10px] uppercase tracking-wide text-white/40 light:text-neutral-400">Price</p>
-                          <p className="font-data text-sm tabular-nums text-white light:text-neutral-950">{formatPrice(product.priceCents)}</p>
+                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Price</p>
+                          <p className="text-lg font-black font-mono" style={{ color: 'var(--color-chart-1)' }}>{formatPrice(product.priceCents)}</p>
                         </div>
-                        <div>
-                          <p className="mb-1 text-[10px] uppercase tracking-wide text-white/40 light:text-neutral-400">Sales</p>
-                          <p className="font-data text-sm tabular-nums" style={{ color }}>{product.paidOrderCount}</p>
-                        </div>
-                        <div>
-                          <p className="mb-1 text-[10px] uppercase tracking-wide text-white/40 light:text-neutral-400">Revenue</p>
-                          <p className="font-data text-sm tabular-nums text-accent-strong">{formatPrice(product.revenueCents)}</p>
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Sales</p>
+                          <p className="text-lg font-black font-mono">{product.paidOrderCount}</p>
                         </div>
                       </div>
-
-                      <div className="mt-3 hidden items-center gap-2 border-t border-border pt-3 group-hover:flex">
-                        {isArchived ? (
-                          <RestoreProductButton slug={slug!} product={product} atLimit={atLimit} maxProducts={maxProducts} />
-                        ) : (
+                      <div className="flex gap-1.5">
+                        {!isArchived ? (
                           <>
-                            <button
-                              type="button"
-                              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
-                              onClick={() => setEditingProduct(product)}
-                            >
-                              <Pencil size={12} />
-                              Edit
-                            </button>
+                            <GhostBtn onClick={() => setEditingProduct(product)} className="flex-1 justify-center text-[11px] py-1">
+                              <Pencil size={10} /> Edit
+                            </GhostBtn>
                             {product.accessUrl ? (
                               <a
                                 href={product.accessUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                                style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                                title="Access URL"
                               >
                                 <ExternalLink size={12} />
-                                Access URL
                               </a>
                             ) : null}
                             <button
                               type="button"
-                              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-white/60 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:text-neutral-500 light:hover:border-red-200 light:hover:bg-red-50 light:hover:text-red-600"
                               onClick={() => setArchivingProduct(product)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                              style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                              title="Archive"
                             >
                               <Archive size={12} />
-                              Archive
                             </button>
                           </>
+                        ) : (
+                          <RestoreProductButton slug={slug!} product={product} atLimit={atLimit} maxProducts={maxProducts} />
                         )}
                       </div>
-                    </div>
+                    </Card>
                   )
                 })}
               </div>
@@ -293,6 +263,15 @@ function ProductFormModal({
   const isSubmitting = createStatus === 'submitting' || updateStatus === 'submitting'
   const error = isEditing ? updateError : createError
 
+  // Clear any leftover error/status from a previous failed submit (e.g. the user cancelled out of a
+  // failed create, then opened the modal again) — otherwise a stale error banner from that earlier
+  // attempt would flash immediately, before this form has been touched.
+  useEffect(() => {
+    if (isEditing) resetUpdateFeedback()
+    else resetCreateFeedback()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const [name, setName] = useState(product?.name ?? '')
   const [description, setDescription] = useState(product?.description ?? '')
   const [priceCents, setPriceCents] = useState(product ? String(product.priceCents / 100) : '')
@@ -318,48 +297,45 @@ function ProductFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-base font-semibold text-white light:text-neutral-950">
-            {isEditing ? 'Edit product' : 'New product'}
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-5" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-bold" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '1.3rem' }}>
+            {isEditing ? 'Edit Product' : 'Create New Product'}
           </h2>
-          <button
-            type="button"
-            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
-            onClick={onClose}
-          >
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X size={16} />
           </button>
         </div>
 
-        <form onSubmit={(e) => void handleSubmit(e)} className="p-6">
-          <div className="grid gap-5">
-            <ModalField label="Name" required>
-              <input type="text" required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Notion template pack" className={inputClass} />
+        <form onSubmit={(e) => void handleSubmit(e)}>
+          <div className="space-y-4 mb-5">
+            <ModalField label="Product Name">
+              <input type="text" required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Advanced TypeScript Handbook" className={inputClass} />
             </ModalField>
 
-            <ModalField label="Description">
-              <textarea rows={3} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short description of your product…" className={`${inputClass} resize-none`} />
+            <ModalField label="Type">
+              <Dropdown value={type} onChange={setType} options={PRODUCT_TYPES} />
             </ModalField>
 
-            <div className="grid grid-cols-2 gap-4">
-              <ModalField label="Type">
-                <select value={type} onChange={(e) => setType(e.target.value as ProductType)} className={inputClass}>
-                  {PRODUCT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </ModalField>
-              <ModalField label="Price (EUR)" required>
-                <input type="number" min="0" step="0.01" required value={priceCents} onChange={(e) => setPriceCents(e.target.value)} placeholder="0.00" className={inputClass} />
-              </ModalField>
-            </div>
+            <ModalField label="Price (EUR)">
+              <input type="number" min="0" step="0.01" required value={priceCents} onChange={(e) => setPriceCents(e.target.value)} placeholder="49" className={inputClass} />
+            </ModalField>
+
+            <ModalField label="Short Description">
+              <textarea rows={3} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's included…" className={`${inputClass} resize-none`} />
+            </ModalField>
 
             {isEditing ? (
               <ModalField label="Status">
-                <select value={status} onChange={(e) => setStatus(e.target.value as ProductStatus)} className={inputClass}>
-                  <option value="Draft">Draft</option>
-                  <option value="Active">Active</option>
-                </select>
+                <Dropdown
+                  value={status}
+                  onChange={setStatus}
+                  options={[
+                    { value: 'Draft', label: 'Draft' },
+                    { value: 'Active', label: 'Active' },
+                  ]}
+                />
               </ModalField>
             ) : null}
 
@@ -376,16 +352,16 @@ function ProductFormModal({
             />
 
             {error ? (
-              <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">{error}</p>
+              <p className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">{error}</p>
             ) : null}
           </div>
 
-          <div className="mt-6 flex gap-3">
-            <button type="button" className="flex h-10 flex-1 items-center justify-center rounded-xl border border-border bg-card text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-700" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-            <button type="submit" disabled={isSubmitting} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40">
-              {isSubmitting ? <Loader2 className="animate-spin" size={15} /> : null}
-              {isEditing ? 'Save changes' : 'Create product'}
-            </button>
+          <div className="flex gap-2">
+            <PrimaryBtn className="flex-1 justify-center" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="animate-spin" size={13} /> : <Plus size={13} />}
+              {isEditing ? 'Save Changes' : 'Create Product'}
+            </PrimaryBtn>
+            <GhostBtn onClick={onClose} disabled={isSubmitting}>Cancel</GhostBtn>
           </div>
         </form>
       </div>
@@ -393,18 +369,16 @@ function ProductFormModal({
   )
 }
 
-function ModalField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function ModalField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-1.5">
-      <label className="text-sm font-medium text-white/80 light:text-neutral-700">
-        {label}{required ? <span className="ml-0.5 text-red-400 light:text-red-500">*</span> : null}
-      </label>
+    <div>
+      <label className="block text-xs text-muted-foreground mb-1.5">{label}</label>
       {children}
     </div>
   )
 }
 
-const inputClass = 'w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100'
+const inputClass = 'w-full px-3 py-2 rounded-lg text-sm bg-secondary text-foreground placeholder:text-muted-foreground/40 focus:outline-none border border-border'
 
 /* ─── ArchiveProductDialog ─────────────────────────────────────── */
 
@@ -414,6 +388,13 @@ function ArchiveProductDialog({ slug, product, onClose }: { slug: string; produc
   const archiveError = useProductStore((s) => s.archiveError)
   const resetArchiveFeedback = useProductStore((s) => s.resetArchiveFeedback)
   const isSubmitting = archiveStatus === 'submitting'
+
+  // Same stale-error guard as ProductFormModal — clear a leftover error from a previously cancelled
+  // archive attempt so it doesn't flash for an unrelated product.
+  useEffect(() => {
+    resetArchiveFeedback()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleConfirm = async () => {
     const ok = await archiveProductFn(slug, product.publicId)
@@ -445,25 +426,107 @@ function ArchiveProductDialog({ slug, product, onClose }: { slug: string; produc
 
 /* ─── Helpers ──────────────────────────────────────────────────── */
 
-function StatusBadge({ status }: { status: ProductStatus }) {
-  if (status === 'Active')
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-300 light:bg-emerald-50 light:text-emerald-700">
-        <span className="size-1.5 rounded-full bg-emerald-500" />
-        Active
-      </span>
-    )
-  if (status === 'Archived')
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/40 light:bg-neutral-100 light:text-neutral-400">
-        <span className="size-1.5 rounded-full bg-white/30 light:bg-neutral-300" />
-        Archived
-      </span>
-    )
+function Card({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return <div className={`rounded-xl border border-border bg-card ${className}`}>{children}</div>
+}
+
+function GhostBtn({
+  children,
+  onClick,
+  disabled,
+  className = '',
+}: {
+  children: React.ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  className?: string
+}) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
-      <span className="size-1.5 rounded-full bg-white/40 light:bg-neutral-400" />
-      Draft
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function PageHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string
+  subtitle?: string
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="flex items-start justify-between mb-8">
+      <div>
+        <h1 className="font-bold leading-none" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '2rem' }}>
+          {title}
+        </h1>
+        {subtitle && <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  )
+}
+
+function PrimaryBtn({
+  children,
+  onClick,
+  disabled,
+  className = '',
+}: {
+  children: React.ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  className?: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      style={{ backgroundColor: 'var(--color-chart-1)' }}
+    >
+      {children}
+    </button>
+  )
+}
+
+const PRODUCT_STATUS_STYLES: Record<ProductStatus, { bg: string; color: string }> = {
+  Active: {
+    bg: 'color-mix(in srgb, var(--color-chart-1) 12%, transparent)',
+    color: 'var(--color-chart-1)',
+  },
+  Draft: {
+    bg: 'color-mix(in srgb, var(--color-muted-foreground) 12%, transparent)',
+    color: 'var(--color-muted-foreground)',
+  },
+  Archived: {
+    bg: 'color-mix(in srgb, var(--color-muted-foreground) 12%, transparent)',
+    color: 'var(--color-muted-foreground)',
+  },
+}
+
+function StatusBadge({ status }: { status: ProductStatus }) {
+  const s = PRODUCT_STATUS_STYLES[status]
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-mono"
+      style={{ backgroundColor: s.bg, color: s.color, border: `1px solid color-mix(in srgb, ${s.color} 13%, transparent)` }}
+    >
+      {status}
     </span>
   )
 }
@@ -488,10 +551,11 @@ function RestoreProductButton({
       type="button"
       disabled={atLimit || isSubmitting}
       title={atLimit ? `Plan limit reached (${maxProducts ?? 0}). Archive another product or upgrade your plan to restore this one.` : undefined}
-      className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-white/70 transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40 light:text-neutral-600"
+      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] text-muted-foreground hover:text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+      style={{ border: '1px solid rgba(255,255,255,0.08)' }}
       onClick={() => void restoreProductFn(slug, product.publicId)}
     >
-      {isSubmitting ? <Loader2 className="animate-spin" size={12} /> : <ArchiveRestore size={12} />}
+      {isSubmitting ? <Loader2 className="animate-spin" size={10} /> : <RotateCcw size={10} />}
       Restore
     </button>
   )
