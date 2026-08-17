@@ -1,19 +1,10 @@
-import { Download, Filter, Loader2, Search, ShoppingBag, TrendingUp, XCircle } from 'lucide-react'
+import { Download, Loader2, Search, ShoppingBag } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
-import { CHART_COLORS } from '../../../shared/ui/chart-colors'
-import { getOrderSummary, listOrders } from '../api/orders-api'
+import { listOrders } from '../api/orders-api'
 import { OrderStatusBadge } from '../components/OrderStatusBadge'
-import type { Order, OrderStatus, OrderSummary } from '../model/types'
-
-const STATUS_FILTERS: { value: 'all' | OrderStatus; label: string }[] = [
-  { value: 'all', label: 'All statuses' },
-  { value: 'Paid', label: 'Paid' },
-  { value: 'Pending', label: 'Pending' },
-  { value: 'Failed', label: 'Failed' },
-  { value: 'Refunded', label: 'Refunded' },
-]
+import type { Order } from '../model/types'
 
 const PAGE_SIZE = 10
 
@@ -23,20 +14,13 @@ export function OrdersPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [hasMore, setHasMore] = useState(false)
   const [loadMoreStatus, setLoadMoreStatus] = useState<'idle' | 'loading' | 'error'>('idle')
-  const [summary, setSummary] = useState<OrderSummary | null>(null)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all')
 
   useEffect(() => {
     if (!slug) return
     listOrders(slug, { limit: PAGE_SIZE })
       .then((page) => { setOrders(page.orders); setHasMore(page.hasMore); setStatus('success') })
       .catch(() => setStatus('error'))
-  }, [slug])
-
-  useEffect(() => {
-    if (!slug) return
-    void getOrderSummary(slug).then(setSummary).catch(() => {})
   }, [slug])
 
   const loadMore = () => {
@@ -54,24 +38,13 @@ export function OrdersPage() {
 
   const filteredOrders = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return orders.filter((o) => {
-      const matchesStatus = statusFilter === 'all' || o.status === statusFilter
-      const matchesSearch = !q ||
-        (o.name?.toLowerCase().includes(q) ?? false) ||
-        o.email.toLowerCase().includes(q) ||
-        o.productName.toLowerCase().includes(q)
-      return matchesStatus && matchesSearch
-    })
-  }, [orders, search, statusFilter])
-
-  // Total/Refunded reflect the currently loaded (keyset) page, same rows shown in the table below —
-  // there is no backend aggregate for "all orders" or "all refunds" (only Paid count/revenue are
-  // aggregated server-side in OrderSummary), and this chapter is frontend-only so no endpoint was
-  // added. The trailing "+" is shown whenever more orders exist beyond what's loaded, so the number
-  // never silently underclaims.
-  const loadedTotalLabel = `${orders.length}${hasMore ? '+' : ''}`
-  const loadedRefundedCount = orders.filter((o) => o.status === 'Refunded').length
-  const loadedRefundedLabel = `${loadedRefundedCount}${hasMore ? '+' : ''}`
+    if (!q) return orders
+    return orders.filter((o) =>
+      (o.name?.toLowerCase().includes(q) ?? false) ||
+      o.email.toLowerCase().includes(q) ||
+      o.productName.toLowerCase().includes(q)
+    )
+  }, [orders, search])
 
   const exportCsv = () => {
     const header = ['ID', 'Date', 'Customer', 'Email', 'Product', 'Amount', 'Fee', 'Net', 'Currency', 'Status']
@@ -102,102 +75,23 @@ export function OrdersPage() {
   return (
     <AppShell slug={slug!} activeSection="orders">
       <div className="p-8">
-        <div className="mb-6">
-          <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">Orders</h1>
-          <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
-            Your customer orders and transaction history.
-          </p>
-        </div>
-
-        {summary ? (
-          <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="rounded-2xl border border-border bg-card p-5 backdrop-blur-sm">
-              <div
-                className="mb-2.5 grid size-6 place-items-center rounded-md"
-                style={{ backgroundColor: `color-mix(in srgb, ${CHART_COLORS[0]} 15%, transparent)`, color: CHART_COLORS[0] }}
-              >
-                <ShoppingBag size={13} />
-              </div>
-              <p
-                className="font-data text-xl font-bold tabular-nums text-white light:text-neutral-950"
-                title={hasMore ? 'More orders exist beyond the currently loaded page' : undefined}
-              >
-                {loadedTotalLabel}
-              </p>
-              <p className="mt-1 text-xs text-white/40 light:text-neutral-400">Total orders</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-card p-5 backdrop-blur-sm">
-              <div
-                className="mb-2.5 grid size-6 place-items-center rounded-md"
-                style={{ backgroundColor: `color-mix(in srgb, ${CHART_COLORS[1]} 15%, transparent)`, color: CHART_COLORS[1] }}
-              >
-                <ShoppingBag size={13} />
-              </div>
-              <p className="font-data text-xl font-bold tabular-nums text-white light:text-neutral-950">{summary.paidOrderCount}</p>
-              <p className="mt-1 text-xs text-white/40 light:text-neutral-400">Paid orders</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-card p-5 backdrop-blur-sm">
-              <div
-                className="mb-2.5 grid size-6 place-items-center rounded-md"
-                style={{ backgroundColor: `color-mix(in srgb, ${CHART_COLORS[3]} 15%, transparent)`, color: CHART_COLORS[3] }}
-              >
-                <TrendingUp size={13} />
-              </div>
-              <p className="font-data text-xl font-bold tabular-nums text-white light:text-neutral-950">
-                {formatMoney(summary.totalPaidAmountCents, summary.currency ?? 'EUR')}
-              </p>
-              <p className="mt-1 text-xs text-white/40 light:text-neutral-400">Revenue</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-card p-5 backdrop-blur-sm">
-              <div
-                className="mb-2.5 grid size-6 place-items-center rounded-md"
-                style={{ backgroundColor: `color-mix(in srgb, ${CHART_COLORS[4]} 15%, transparent)`, color: CHART_COLORS[4] }}
-              >
-                <XCircle size={13} />
-              </div>
-              <p
-                className="font-data text-xl font-bold tabular-nums text-white light:text-neutral-950"
-                title={hasMore ? 'More orders exist beyond the currently loaded page' : undefined}
-              >
-                {loadedRefundedLabel}
-              </p>
-              <p className="mt-1 text-xs text-white/40 light:text-neutral-400">Refunded</p>
-            </div>
-          </div>
-        ) : null}
+        <PageHeader title="Orders" subtitle="All purchases across your products and landing pages." />
 
         {status === 'success' && orders.length > 0 && (
-          <div className="mb-5 flex flex-wrap items-center gap-3">
-            <div className="relative max-w-sm flex-1">
-              <Search size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 light:text-neutral-400" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="relative flex-1 max-w-xs">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search customer or product…"
-                className="h-10 w-full rounded-xl border border-border bg-secondary pl-9 pr-3.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950 light:placeholder-neutral-400"
+                className="w-full pl-9 pr-3 py-2 rounded-lg text-sm bg-card text-foreground placeholder:text-muted-foreground/40 focus:outline-none border border-border"
               />
             </div>
-            <div className="relative">
-              <Filter size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/30 light:text-neutral-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'all' | OrderStatus)}
-                className="h-10 rounded-xl border border-border bg-secondary py-0 pl-8 pr-8 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950"
-              >
-                {STATUS_FILTERS.map((f) => (
-                  <option key={f.value} value={f.value}>{f.label}</option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={exportCsv}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
-            >
-              <Download size={14} />
-              Export CSV
-            </button>
+            <GhostBtn onClick={exportCsv}>
+              <Download size={13} /> Export
+            </GhostBtn>
           </div>
         )}
 
@@ -226,44 +120,30 @@ export function OrdersPage() {
         )}
 
         {status === 'success' && filteredOrders.length > 0 && (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card backdrop-blur-sm">
-            <table className="w-full text-sm">
+          <Card>
+            <table className="w-full">
               <thead>
-                <tr className="border-b border-border bg-card text-left text-[11px] font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">
-                  <th className="px-5 py-3">ID</th>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Customer</th>
-                  <th className="px-5 py-3">Product</th>
-                  <th className="px-5 py-3">Amount</th>
-                  <th className="px-5 py-3">Fee</th>
-                  <th className="px-5 py-3">Net</th>
-                  <th className="px-5 py-3">Status</th>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  {['ID', 'Date', 'Customer', 'Product', 'Amount', 'Status'].map((h) => (
+                    <th key={h} className="text-left px-5 py-3 text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {filteredOrders.map((order) => (
-                  <tr key={order.publicId} className="transition hover:bg-secondary">
-                    <td className="px-5 py-3.5 font-mono text-xs text-white/40 light:text-neutral-400" title={order.publicId}>
+                  <tr key={order.publicId} className="hover:bg-white/[0.02] transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td className="px-5 py-3.5 text-[11px] font-mono text-muted-foreground" title={order.publicId}>
                       {order.publicId.slice(0, 8)}
                     </td>
-                    <td className="px-5 py-3.5 text-white/50 light:text-neutral-500">
+                    <td className="px-5 py-3.5 text-xs text-muted-foreground font-mono">
                       {new Date(order.createdAt).toLocaleDateString(undefined, {
                         year: 'numeric', month: 'short', day: 'numeric',
                       })}
                     </td>
-                    <td className="px-5 py-3.5">
-                      <p className="font-medium text-white light:text-neutral-950">{order.name ?? '—'}</p>
-                      <p className="text-xs text-white/40 light:text-neutral-400">{order.email}</p>
-                    </td>
-                    <td className="px-5 py-3.5 text-white/70 light:text-neutral-700">{order.productName}</td>
-                    <td className="font-data px-5 py-3.5 font-medium tabular-nums text-white light:text-neutral-950">
+                    <td className="px-5 py-3.5 text-sm">{order.name ?? order.email}</td>
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground">{order.productName}</td>
+                    <td className="px-5 py-3.5 text-sm font-mono font-semibold" style={{ color: 'var(--color-chart-1)' }}>
                       {formatMoney(order.amountCents, order.currency)}
-                    </td>
-                    <td className="font-data px-5 py-3.5 tabular-nums text-white/50 light:text-neutral-500">
-                      {formatMoney(order.platformFeeCents, order.currency)}
-                    </td>
-                    <td className="font-data px-5 py-3.5 font-medium tabular-nums text-white light:text-neutral-950">
-                      {formatMoney(order.netAmountCents, order.currency)}
                     </td>
                     <td className="px-5 py-3.5">
                       <OrderStatusBadge status={order.status} />
@@ -272,20 +152,15 @@ export function OrdersPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
 
         {status === 'success' && hasMore && (
           <div className="mt-6 flex justify-center">
-            <button
-              type="button"
-              disabled={loadMoreStatus === 'loading'}
-              onClick={loadMore}
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50 light:text-neutral-600"
-            >
+            <GhostBtn onClick={loadMore} disabled={loadMoreStatus === 'loading'} className="px-4 py-2">
               {loadMoreStatus === 'loading' ? <Loader2 className="animate-spin" size={14} /> : null}
               Load more
-            </button>
+            </GhostBtn>
           </div>
         )}
 
@@ -296,6 +171,46 @@ export function OrdersPage() {
         )}
       </div>
     </AppShell>
+  )
+}
+
+/* ─── Helpers ──────────────────────────────────────────────────── */
+
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-xl border border-border bg-card ${className}`}>{children}</div>
+}
+
+function GhostBtn({
+  children,
+  onClick,
+  disabled,
+  className = '',
+}: {
+  children: React.ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="mb-8">
+      <h1 className="font-bold leading-none" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '2rem' }}>
+        {title}
+      </h1>
+      {subtitle && <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>}
+    </div>
   )
 }
 
