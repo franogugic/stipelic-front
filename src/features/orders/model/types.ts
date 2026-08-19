@@ -12,6 +12,7 @@ export interface Order {
   paidAt: string | null
   platformFeeCents: number
   netAmountCents: number
+  landingPageTitle: string | null
 }
 
 export interface OrdersPage {
