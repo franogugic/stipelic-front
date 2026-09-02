@@ -143,13 +143,13 @@ export function CreatorSettingsPage() {
         {/* Page header */}
         <div className="mb-8 flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">Settings</h1>
-            <p className="mt-1 text-sm text-neutral-400">
+            <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">Settings</h1>
+            <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
               {creatorSettings?.creatorName ?? `/${normalizedSlug}`} · workspace configuration
             </p>
           </div>
           {isDirty ? (
-            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400">
               Unsaved changes
             </span>
           ) : null}
@@ -157,7 +157,7 @@ export function CreatorSettingsPage() {
 
         {/* Loading */}
         {isLoading ? (
-          <div className="flex h-40 items-center justify-center gap-3 text-sm text-neutral-400">
+          <div className="flex h-40 items-center justify-center gap-3 text-sm text-muted-foreground">
             <Loader2 className="animate-spin" size={18} />
             Loading settings…
           </div>
@@ -165,9 +165,9 @@ export function CreatorSettingsPage() {
 
         {/* Error */}
         {creatorSettingsStatus === 'error' ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-            <p className="text-sm font-semibold text-red-900">Could not load settings</p>
-            <p className="mt-1 text-sm text-red-700">{creatorSettingsError}</p>
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6">
+            <p className="text-sm font-semibold text-red-400">Could not load settings</p>
+            <p className="mt-1 text-sm text-red-400/80">{creatorSettingsError}</p>
           </div>
         ) : null}
 
@@ -177,7 +177,7 @@ export function CreatorSettingsPage() {
             {/* Left column */}
             <div className="grid gap-5">
               {/* Brand preview */}
-              <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-xl border border-border bg-card">
                 <div
                   className="relative h-36 p-6"
                   style={{ backgroundColor: normalizeColor(formValues.primaryColor) }}
@@ -198,7 +198,7 @@ export function CreatorSettingsPage() {
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 divide-x divide-neutral-100 border-t border-neutral-100">
+                <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
                   <PreviewMeta label="Currency" value={creatorSettings.defaultCurrency} />
                   <PreviewMeta label="Timezone" value={formValues.timezone} />
                   <PreviewMeta label="Language" value={formatLanguage(formValues.language)} />
@@ -206,10 +206,10 @@ export function CreatorSettingsPage() {
               </div>
 
               {/* Edit form */}
-              <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm">
-                <div className="border-b border-neutral-100 px-6 py-5">
-                  <p className="text-sm font-semibold text-neutral-950">Public details</p>
-                  <p className="mt-0.5 text-xs text-neutral-400">
+              <div className="rounded-xl border border-border bg-card">
+                <div className="border-b border-border px-6 py-5">
+                  <p className="text-sm font-semibold text-white light:text-neutral-950">Public details</p>
+                  <p className="mt-0.5 text-xs text-white/40 light:text-neutral-400">
                     Displayed on your public creator profile and landing pages.
                   </p>
                 </div>
@@ -261,10 +261,10 @@ export function CreatorSettingsPage() {
                       />
 
                       <div className="grid gap-1.5">
-                        <label className="text-sm font-medium text-neutral-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-white/80 light:text-neutral-700">
                           Primary colour
                         </label>
-                        <span className="flex h-[42px] items-center gap-2.5 rounded-xl border border-neutral-200 bg-white px-3 transition focus-within:border-neutral-400 focus-within:ring-2 focus-within:ring-neutral-100">
+                        <span className="flex h-[42px] items-center gap-2.5 rounded-lg border border-border bg-secondary px-3 transition focus-within:border-accent/50 focus-within:ring-2 focus-within:ring-accent/10">
                           <input
                             className="size-6 shrink-0 cursor-pointer rounded border-0 bg-transparent p-0"
                             type="color"
@@ -272,45 +272,45 @@ export function CreatorSettingsPage() {
                             onChange={(e) => updateField('primaryColor', e.target.value)}
                           />
                           <input
-                            className="min-w-0 flex-1 text-sm text-neutral-950 outline-none"
+                            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none"
                             maxLength={creatorConstraints.primaryColor.maxLength}
                             value={formValues.primaryColor}
                             onChange={(e) => updateField('primaryColor', e.target.value)}
                           />
                         </span>
                         {validation.fieldErrors.primaryColor ? (
-                          <p className="text-xs text-red-600">
+                          <p className="text-xs text-red-400">
                             {validation.fieldErrors.primaryColor}
                           </p>
                         ) : null}
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-3">
-                      <p className="text-sm font-medium text-neutral-700">Language</p>
-                      <p className="mt-0.5 text-sm text-neutral-400">
+                    <div className="rounded-lg border border-border bg-muted px-4 py-3">
+                      <p className="text-sm font-medium text-white/80 light:text-neutral-700">Language</p>
+                      <p className="mt-0.5 text-sm text-white/40 light:text-neutral-400">
                         English — only available language at this time
                       </p>
                     </div>
                   </div>
 
                   {updateSettingsError ? (
-                    <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+                    <p className="mt-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
                       {updateSettingsError}
                     </p>
                   ) : null}
                   {saveSuccess && !isDirty ? (
-                    <p className="mt-5 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                    <p className="mt-5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-400">
                       Settings saved successfully.
                     </p>
                   ) : null}
 
-                  <div className="mt-6 flex items-center justify-between border-t border-neutral-100 pt-5">
-                    <p className="text-xs text-neutral-400">
+                  <div className="mt-6 flex items-center justify-between border-t border-border pt-5">
+                    <p className="text-xs text-white/40 light:text-neutral-400">
                       {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
                     </p>
                     <button
-                      className="inline-flex h-9 items-center gap-2 rounded-lg bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
                       type="submit"
                       disabled={!validation.isValid || !isDirty || isSaving}
                     >
@@ -327,9 +327,9 @@ export function CreatorSettingsPage() {
             </div>
 
             {/* Right column — workspace info */}
-            <aside className="grid gap-4 h-fit">
-              <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+            <aside className="grid h-fit gap-4">
+              <div className="rounded-xl border border-border bg-card p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">
                   Workspace info
                 </p>
                 <div className="mt-4 grid gap-3">
@@ -340,11 +340,11 @@ export function CreatorSettingsPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+              <div className="rounded-xl border border-border bg-muted p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">
                   Tip
                 </p>
-                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                <p className="mt-2 text-xs leading-5 text-white/50 light:text-neutral-500">
                   Your brand colour is used as the background accent on landing pages and email
                   templates. Make sure it has enough contrast with white text.
                 </p>
@@ -358,7 +358,7 @@ export function CreatorSettingsPage() {
             <button
               type="button"
               onClick={() => navigate(`/app/${normalizedSlug}/payouts`)}
-              className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left backdrop-blur-sm transition hover:bg-white/[0.05] light:border-neutral-200 light:bg-white light:shadow-sm light:hover:bg-neutral-50"
+              className="flex w-full items-center justify-between gap-4 rounded-xl border border-border bg-card p-5 text-left transition hover:bg-secondary"
             >
               <div className="flex items-center gap-3">
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-strong">
@@ -385,8 +385,8 @@ export function CreatorSettingsPage() {
 function PreviewMeta({ label, value }: { label: string; value: string }) {
   return (
     <div className="px-4 py-3">
-      <p className="text-[11px] text-neutral-400">{label}</p>
-      <p className="mt-0.5 truncate text-sm font-semibold text-neutral-950">{value}</p>
+      <p className="text-[11px] text-white/40 light:text-neutral-400">{label}</p>
+      <p className="mt-0.5 truncate text-sm font-semibold text-white light:text-neutral-950">{value}</p>
     </div>
   )
 }
@@ -412,17 +412,17 @@ function SettingsField({
 }) {
   return (
     <div className="grid gap-1.5">
-      <label className="flex items-center gap-1.5 text-sm font-medium text-neutral-700">
-        <Icon size={14} className="text-neutral-400" />
+      <label className="flex items-center gap-1.5 text-sm font-medium text-white/80 light:text-neutral-700">
+        <Icon size={14} className="text-white/40 light:text-neutral-400" />
         {label}
       </label>
       <input
         className={[
-          'h-[42px] w-full rounded-xl border px-3.5 text-sm text-neutral-950 outline-none placeholder:text-neutral-400 transition',
-          'focus:ring-2',
+          'h-[42px] w-full rounded-lg border px-3.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 transition',
+          'bg-secondary focus:ring-2',
           error
-            ? 'border-red-300 bg-red-50/50 focus:border-red-400 focus:ring-red-100'
-            : 'border-neutral-200 bg-white focus:border-neutral-400 focus:ring-neutral-100',
+            ? 'border-red-500/40 focus:border-red-500/60 focus:ring-red-500/10'
+            : 'border-border focus:border-accent/50 focus:ring-accent/10',
         ].join(' ')}
         maxLength={maxLength}
         placeholder={placeholder}
@@ -430,7 +430,7 @@ function SettingsField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="text-xs text-red-400">{error}</p> : null}
     </div>
   )
 }
@@ -446,11 +446,11 @@ function InfoRow({
 }) {
   return (
     <div className="grid gap-0.5">
-      <p className="flex items-center gap-1.5 text-[11px] text-neutral-400">
+      <p className="flex items-center gap-1.5 text-[11px] text-white/40 light:text-neutral-400">
         <Icon size={11} />
         {label}
       </p>
-      <p className="break-all text-xs font-medium text-neutral-950">{value}</p>
+      <p className="break-all text-xs font-medium text-white light:text-neutral-950">{value}</p>
     </div>
   )
 }

@@ -100,7 +100,7 @@ export function CreatorPayoutsPage() {
             Loading…
           </div>
         ) : !creator ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-sm text-white/50 light:border-neutral-200 light:bg-white light:text-neutral-500">
+          <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
             Workspace not found.
           </div>
         ) : creator.payoutMode === 'StripeConnect' ? (
@@ -167,9 +167,9 @@ function ConnectPayoutsSection({
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-6">
         <p className="text-sm font-semibold text-white light:text-neutral-950">Stripe Connect status</p>
-        <div className="mt-4 flex items-start justify-between gap-4 rounded-xl bg-white/[0.02] px-5 py-4 light:bg-neutral-50">
+        <div className="mt-4 flex items-start justify-between gap-4 rounded-xl bg-muted px-5 py-4">
           <div>
             <PayoutStatusPill
               label={isReady ? 'Ready' : inProgress ? 'In progress' : 'Not connected'}
@@ -217,7 +217,7 @@ function ConnectPayoutsSection({
         ) : null}
       </div>
 
-      <aside className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 light:border-neutral-200 light:bg-neutral-50">
+      <aside className="rounded-xl border border-border bg-muted p-5">
         <p className="text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-400">How it works</p>
         <p className="mt-2 text-xs leading-5 text-white/50 light:text-neutral-500">
           Stripe handles payouts for Connect creators directly — sale proceeds (minus the platform fee) are
@@ -291,7 +291,7 @@ function BankTransferPayoutsSection({
         onResetCancelPayoutFeedback={onResetCancelPayoutFeedback}
       />
 
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-6">
         <p className="text-sm font-semibold text-white light:text-neutral-950">Bank details</p>
         <p className="mt-0.5 text-xs text-white/40 light:text-neutral-400">
           The account your payouts are sent to.
@@ -309,7 +309,7 @@ function BankTransferPayoutsSection({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-6">
         <p className="text-sm font-semibold text-white light:text-neutral-950">Payout history</p>
         <div className="mt-4">
           <PayoutHistoryTable payoutHistory={payoutHistory} payoutHistoryStatus={payoutHistoryStatus} />
@@ -352,7 +352,7 @@ function RequestPayoutCard({
 
   if (payoutSummaryStatus === 'loading' || payoutSummaryStatus === 'idle') {
     return (
-      <div className="flex h-32 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] text-sm text-white/40 light:border-neutral-200 light:bg-white light:text-neutral-400">
+      <div className="flex h-32 items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm text-muted-foreground">
         <Loader2 className="animate-spin" size={14} />
         Loading balance…
       </div>
@@ -388,7 +388,7 @@ function RequestPayoutCard({
 
   return (
     <div
-      className="relative overflow-hidden rounded-3xl border border-white/10 p-7 backdrop-blur-sm light:border-neutral-200"
+      className="relative overflow-hidden rounded-2xl border border-border p-7"
       style={{
         background: 'linear-gradient(135deg, rgba(76,124,240,0.14), transparent 60%)',
       }}
@@ -454,7 +454,7 @@ function RequestPayoutCard({
           </div>
         ) : (
           <form
-            className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 light:border-neutral-200 light:bg-neutral-50"
+            className="grid gap-3 rounded-xl border border-border bg-muted p-4"
             onSubmit={(e) => void handleSubmit(e)}
           >
             <label className="flex items-center gap-2 text-sm text-white/70 light:text-neutral-600">
@@ -482,7 +482,7 @@ function RequestPayoutCard({
                 value={amount}
                 onChange={(e) => { onResetRequestPayoutFeedback(); setAmount(e.target.value) }}
                 placeholder={`Amount in ${currency}`}
-                className="h-9 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950"
+                className="h-9 rounded-lg border border-border bg-secondary px-3 text-sm text-foreground outline-none focus:border-accent/50"
               />
             ) : null}
 
@@ -494,7 +494,7 @@ function RequestPayoutCard({
               <button
                 type="button"
                 onClick={() => { setIsRequesting(false); setUseCustomAmount(false); setAmount('') }}
-                className="inline-flex h-9 items-center rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700"
+                className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-sm font-medium text-muted-foreground transition hover:bg-secondary"
               >
                 Cancel
               </button>
@@ -586,7 +586,7 @@ function BankDetailsForm({
 
   if (payoutProfile && !isEditing) {
     return (
-      <div className="grid gap-4 rounded-xl border border-white/10 p-5 light:border-neutral-200">
+      <div className="grid gap-4 rounded-xl border border-border p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <ReadOnlyField icon={User} label="Account holder name" value={payoutProfile.accountHolderName} />
           <ReadOnlyField icon={Landmark} label="Bank country" value={payoutProfile.bankCountryCode} />
@@ -597,7 +597,7 @@ function BankDetailsForm({
           <button
             type="button"
             onClick={() => { onResetFeedback(); setIsEditing(true) }}
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/80 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-muted-foreground transition hover:bg-secondary"
           >
             <Pencil size={14} />
             Edit bank details
@@ -609,7 +609,7 @@ function BankDetailsForm({
 
   return (
     <form
-      className="grid gap-4 rounded-xl border border-white/10 p-5 light:border-neutral-200"
+      className="grid gap-4 rounded-xl border border-border p-5"
       onSubmit={(e) => void handleSubmit(e)}
     >
       <div className="grid gap-4 sm:grid-cols-2">
@@ -619,7 +619,7 @@ function BankDetailsForm({
             Account holder name
           </label>
           <input
-            className="h-[42px] w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
+            className="h-[42px] w-full rounded-lg border border-border bg-secondary px-3.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/40 focus:border-accent/50 focus:ring-2 focus:ring-accent/10"
             placeholder="Jane Doe"
             maxLength={100}
             value={accountHolderName}
@@ -632,7 +632,7 @@ function BankDetailsForm({
             Bank country
           </label>
           <input
-            className="h-[42px] w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 text-sm uppercase text-white outline-none transition placeholder:text-white/30 focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100"
+            className="h-[42px] w-full rounded-lg border border-border bg-secondary px-3.5 text-sm uppercase text-foreground outline-none transition placeholder:text-muted-foreground/40 focus:border-accent/50 focus:ring-2 focus:ring-accent/10"
             placeholder={creator.countryCode}
             maxLength={2}
             value={bankCountryCode}
@@ -649,7 +649,7 @@ function BankDetailsForm({
             'focus:ring-2',
             ibanError
               ? 'border-red-400/50 bg-red-500/5 focus:border-red-400 focus:ring-red-500/20'
-              : 'border-white/10 bg-white/[0.03] focus:border-white/25 focus:ring-white/10',
+              : 'border-border bg-secondary focus:border-accent/50 focus:ring-accent/10',
             'light:text-neutral-950 light:placeholder-neutral-400',
             ibanError ? 'light:border-red-300 light:bg-red-50/50' : 'light:border-neutral-200 light:bg-white light:focus:border-neutral-400 light:focus:ring-neutral-100',
           ].join(' ')}
@@ -684,7 +684,7 @@ function BankDetailsForm({
           <button
             type="button"
             onClick={cancelEdit}
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-muted-foreground transition hover:bg-secondary"
           >
             <X size={14} />
             Cancel
@@ -722,7 +722,7 @@ function ReadOnlyField({
         <Icon size={14} className="text-white/40 light:text-neutral-400" />
         {label}
       </label>
-      <p className={`flex h-[42px] items-center rounded-xl border border-white/10 bg-white/[0.02] px-3.5 text-sm text-white/70 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-600 ${mono ? 'font-mono uppercase tracking-wide' : ''}`}>
+      <p className={`flex h-[42px] items-center rounded-lg border border-border bg-muted px-3.5 text-sm text-muted-foreground ${mono ? 'font-mono uppercase tracking-wide' : ''}`}>
         {value}
       </p>
     </div>
@@ -755,17 +755,17 @@ function PayoutHistoryTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 light:border-neutral-200">
+    <div className="overflow-hidden rounded-xl border border-border">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-white/10 bg-white/[0.03] text-left text-xs font-medium uppercase tracking-wider text-white/40 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-400">
+          <tr className="border-b border-border bg-muted text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
             <th className="px-4 py-2.5">Date</th>
             <th className="px-4 py-2.5">Amount</th>
             <th className="px-4 py-2.5">Status</th>
             <th className="px-4 py-2.5">Reference</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/10 light:divide-neutral-100">
+        <tbody className="divide-y divide-border">
           {payoutHistory.map((payout) => (
             <tr key={payout.publicId}>
               <td className="px-4 py-3 text-white/50 light:text-neutral-500">

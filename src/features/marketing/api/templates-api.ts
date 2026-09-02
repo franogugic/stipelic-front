@@ -1,5 +1,5 @@
 import { apiRequest } from '../../../shared/api/http-client'
-import type { EmailTemplate, SaveTemplateRequest } from '../model/types'
+import type { EmailTemplate, EmailTemplateStarter, SaveTemplateRequest } from '../model/types'
 
 type ApiResponse<TData> = {
   statusCode: number
@@ -15,6 +15,12 @@ function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
 export function listTemplates(slug: string) {
   return apiRequest<ApiResponse<EmailTemplate[]>>(
     `/api/creators/${encodeURIComponent(slug)}/email-templates`,
+  ).then(unwrapApiResponse)
+}
+
+export function getEmailTemplateStarters(slug: string) {
+  return apiRequest<ApiResponse<EmailTemplateStarter[]>>(
+    `/api/creators/${encodeURIComponent(slug)}/email-templates/starters`,
   ).then(unwrapApiResponse)
 }
 

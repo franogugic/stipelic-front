@@ -1,6 +1,15 @@
 export type LandingPageType = 'LeadGen' | 'Sales'
 export type LandingPageStatus = 'Draft' | 'Published' | 'Archived'
-export type SectionType = 'Navbar' | 'Hero' | 'Features' | 'ProductDetails' | 'Cta' | 'Footer'
+export type SectionType =
+  | 'Navbar'
+  | 'Hero'
+  | 'Features'
+  | 'ProductDetails'
+  | 'Cta'
+  | 'Footer'
+  | 'Testimonials'
+  | 'Faq'
+  | 'Gallery'
 
 export type LandingPageSection = {
   publicId: string
@@ -23,6 +32,8 @@ export type LandingPage = {
   updatedAt: string
   totalViews: number
   uniqueVisitors: number
+  purchaseCount: number
+  totalRevenueCents: number
 }
 
 export type LandingPageWithSections = LandingPage & {
@@ -115,6 +126,7 @@ export type HeroContent = {
   heading: string
   subheading: string
   ctaText: string
+  imageUrl: string | null
 }
 
 export type FeaturesContent = {
@@ -127,6 +139,7 @@ export type ProductDetailsContent = {
   description: string
   showPrice: boolean
   bullets: string[]
+  imageUrl: string | null
 }
 
 export type CtaContent = {
@@ -142,4 +155,19 @@ export type NavbarContent = {
 
 export type FooterContent = {
   copyright: string
+}
+
+export type TestimonialsContent = {
+  heading: string
+  items: { quote: string; author: string; role: string }[]
+}
+
+export type FaqContent = {
+  heading: string
+  items: { question: string; answer: string }[]
+}
+
+export type GalleryContent = {
+  heading: string
+  imageUrls: string[]
 }

@@ -5,9 +5,17 @@ type ApiResponse<T> = { statusCode: number; message: string; code: string; data:
 
 export async function listOrders(
   slug: string,
-  options: { afterCreatedAt?: string; afterId?: string; limit?: number } = {},
+  options: {
+    productId?: string
+    status?: string
+    afterCreatedAt?: string
+    afterId?: string
+    limit?: number
+  } = {},
 ): Promise<OrdersPage> {
   const params = new URLSearchParams()
+  if (options.productId) params.set('productId', options.productId)
+  if (options.status) params.set('status', options.status)
   if (options.afterCreatedAt) params.set('afterCreatedAt', options.afterCreatedAt)
   if (options.afterId) params.set('afterId', options.afterId)
   if (options.limit) params.set('limit', String(options.limit))

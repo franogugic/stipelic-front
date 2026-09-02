@@ -12,6 +12,7 @@ export interface Order {
   paidAt: string | null
   platformFeeCents: number
   netAmountCents: number
+  landingPageTitle: string | null
 }
 
 export interface OrdersPage {
@@ -37,4 +38,9 @@ export interface HomeSummary {
   revenueTrend: number[]
   emailsSentThisMonth: number
   emailsMonthlyLimit: number
+  totalPageViews: number
+  subscriberCount: number
+  viewsTrend: number[]
+  monthlyRevenueTrend: number[]
+  totalPlatformFeeCents: number
 }

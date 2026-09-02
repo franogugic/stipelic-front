@@ -5,8 +5,10 @@ import { ApiError } from '../../../shared/api/http-client'
 import { captureEmail, createCheckout, getPublishedLandingPage } from '../api/public-landing-page-api'
 import type {
   CtaContent,
+  FaqContent,
   FeaturesContent,
   FooterContent,
+  GalleryContent,
   HeroContent,
   LandingPageSection,
   LandingPageType,
@@ -14,6 +16,7 @@ import type {
   NavbarContent,
   ProductDetailsContent,
   SectionType,
+  TestimonialsContent,
 } from '../model/types'
 
 export function PublicLandingPage() {
@@ -124,6 +127,9 @@ function PublicSection({
       return (
         <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-24 text-center">
           <div className="mx-auto max-w-3xl">
+            {c.imageUrl ? (
+              <img src={c.imageUrl} alt="" className="mx-auto mb-8 max-h-96 w-full rounded-2xl object-cover" />
+            ) : null}
             <h1 className="text-4xl font-bold leading-tight tracking-tight text-neutral-950 sm:text-5xl">
               {c.heading}
             </h1>
@@ -165,6 +171,9 @@ function PublicSection({
       return (
         <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-20">
           <div className="mx-auto max-w-3xl">
+            {c.imageUrl ? (
+              <img src={c.imageUrl} alt="" className="mb-8 max-h-96 w-full rounded-2xl object-cover" />
+            ) : null}
             {productName ? (
               <p className="text-sm font-semibold uppercase tracking-widest text-neutral-400">{productName}</p>
             ) : null}
@@ -190,6 +199,72 @@ function PublicSection({
                   </li>
                 ))}
               </ul>
+            ) : null}
+          </div>
+        </section>
+      )
+    }
+
+    case 'Testimonials': {
+      const c = content as Partial<TestimonialsContent>
+      const items = c.items ?? []
+      return (
+        <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-20">
+          <div className="mx-auto max-w-5xl">
+            {c.heading ? (
+              <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
+            ) : null}
+            <div className={`grid gap-8 ${items.length <= 1 ? 'sm:grid-cols-1' : items.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+              {items.map((item, i) => (
+                <div key={i} className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  <p className="text-neutral-700 italic">"{item.quote}"</p>
+                  <p className="mt-4 font-semibold text-neutral-950">{item.author}</p>
+                  {item.role ? <p className="text-sm text-neutral-500">{item.role}</p> : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    case 'Faq': {
+      const c = content as Partial<FaqContent>
+      const items = c.items ?? []
+      return (
+        <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-20">
+          <div className="mx-auto max-w-3xl">
+            {c.heading ? (
+              <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
+            ) : null}
+            <div className="space-y-4">
+              {items.map((item, i) => (
+                <div key={i} className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+                  <p className="font-semibold text-neutral-950">{item.question}</p>
+                  <p className="mt-2 text-neutral-600">{item.answer}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    case 'Gallery': {
+      const c = content as Partial<GalleryContent>
+      const imageUrls = c.imageUrls ?? []
+      return (
+        <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-20">
+          <div className="mx-auto max-w-5xl">
+            {c.heading ? (
+              <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
+            ) : null}
+            {imageUrls.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {imageUrls.map((url, i) => (
+                  <img key={i} src={url} alt="" className="aspect-square w-full rounded-2xl object-cover" />
+                ))}
+              </div>
             ) : null}
           </div>
         </section>

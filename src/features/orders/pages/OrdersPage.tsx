@@ -1,38 +1,77 @@
-import { Loader2, ShoppingBag } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Download, Loader2, Search, ShoppingBag } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { Dropdown } from '../../../shared/ui/Dropdown'
+import { useProductStore } from '../../products/model/product-store'
 import { listOrders } from '../api/orders-api'
-import type { Order } from '../model/types'
-
-const STATUS_STYLES: Record<string, string> = {
-  Paid: 'bg-emerald-500/15 text-emerald-300 light:bg-emerald-50 light:text-emerald-700',
-  Pending: 'bg-yellow-500/15 text-yellow-300 light:bg-yellow-50 light:text-yellow-700',
-  Failed: 'bg-red-500/15 text-red-300 light:bg-red-50 light:text-red-700',
-  Refunded: 'bg-white/10 text-white/50 light:bg-neutral-100 light:text-neutral-500',
-}
+import { OrderStatusBadge } from '../components/OrderStatusBadge'
+import type { Order, OrderStatus } from '../model/types'
 
 const PAGE_SIZE = 10
 
+const STATUS_OPTIONS: { value: 'all' | OrderStatus; label: string }[] = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'Paid', label: 'Paid' },
+  { value: 'Pending', label: 'Pending' },
+  { value: 'Failed', label: 'Failed' },
+  { value: 'Refunded', label: 'Refunded' },
+]
+
 export function OrdersPage() {
   const { slug } = useParams<{ slug: string }>()
+  const products = useProductStore((s) => s.products)
+  const loadProducts = useProductStore((s) => s.loadProducts)
   const [orders, setOrders] = useState<Order[]>([])
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [hasMore, setHasMore] = useState(false)
   const [loadMoreStatus, setLoadMoreStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [search, setSearch] = useState('')
+  const [productFilter, setProductFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all')
 
   useEffect(() => {
+    if (slug) void loadProducts(slug)
+  }, [slug, loadProducts])
+
+  // Product/status are real server-side filters (narrow the full order set, not just the loaded
+  // page), so changing either re-runs the query from the start — same as a fresh mount.
+  useEffect(() => {
     if (!slug) return
-    listOrders(slug, { limit: PAGE_SIZE })
-      .then((page) => { setOrders(page.orders); setHasMore(page.hasMore); setStatus('success') })
-      .catch(() => setStatus('error'))
-  }, [slug])
+    let isCurrent = true
+
+    async function run() {
+      setStatus('loading')
+      try {
+        const page = await listOrders(slug!, {
+          productId: productFilter === 'all' ? undefined : productFilter,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          limit: PAGE_SIZE,
+        })
+        if (!isCurrent) return
+        setOrders(page.orders)
+        setHasMore(page.hasMore)
+        setStatus('success')
+      } catch {
+        if (isCurrent) setStatus('error')
+      }
+    }
+
+    void run()
+    return () => { isCurrent = false }
+  }, [slug, productFilter, statusFilter])
 
   const loadMore = () => {
     if (!slug || orders.length === 0) return
     const last = orders[orders.length - 1]
     setLoadMoreStatus('loading')
-    listOrders(slug, { afterCreatedAt: last.createdAt, afterId: last.publicId, limit: PAGE_SIZE })
+    listOrders(slug, {
+      productId: productFilter === 'all' ? undefined : productFilter,
+      status: statusFilter === 'all' ? undefined : statusFilter,
+      afterCreatedAt: last.createdAt,
+      afterId: last.publicId,
+      limit: PAGE_SIZE,
+    })
       .then((page) => {
         setOrders((prev) => [...prev, ...page.orders])
         setHasMore(page.hasMore)
@@ -41,12 +80,69 @@ export function OrdersPage() {
       .catch(() => setLoadMoreStatus('error'))
   }
 
+  const filteredOrders = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return orders
+    return orders.filter((o) =>
+      (o.name?.toLowerCase().includes(q) ?? false) ||
+      o.email.toLowerCase().includes(q) ||
+      o.productName.toLowerCase().includes(q)
+    )
+  }, [orders, search])
+
+  const productOptions = useMemo(
+    () => [{ value: 'all', label: 'All products' }, ...products.map((p) => ({ value: p.publicId, label: p.name }))],
+    [products],
+  )
+
+  const exportCsv = () => {
+    const header = ['ID', 'Date', 'Customer', 'Email', 'Product', 'Landing Page', 'Amount', 'Fee', 'Net', 'Currency', 'Status']
+    const rows = filteredOrders.map((o) => [
+      o.publicId,
+      o.createdAt,
+      o.name ?? '',
+      o.email,
+      o.productName,
+      o.landingPageTitle ?? '',
+      String(o.amountCents / 100),
+      String(o.platformFeeCents / 100),
+      String(o.netAmountCents / 100),
+      o.currency,
+      o.status,
+    ])
+    const csv = [header, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <AppShell slug={slug!} activeSection="orders">
       <div className="p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <ShoppingBag size={22} className="text-white light:text-neutral-950" />
-          <h1 className="text-xl font-semibold text-white light:text-neutral-950">Orders</h1>
+        <PageHeader title="Orders" subtitle="All purchases across your products and landing pages." />
+
+        <div className="flex flex-wrap items-center gap-3 mb-5">
+          <div className="relative flex-1 max-w-xs">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search customer or product…"
+              className="w-full pl-9 pr-3 py-2 rounded-lg text-sm bg-card text-foreground placeholder:text-muted-foreground/40 focus:outline-none border border-border"
+            />
+          </div>
+          <Dropdown value={productFilter} onChange={setProductFilter} options={productOptions} className="w-44" />
+          <Dropdown value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} className="w-40" />
+          <GhostBtn onClick={exportCsv}>
+            <Download size={13} /> Export
+          </GhostBtn>
         </div>
 
         {status === 'loading' && (
@@ -62,69 +158,64 @@ export function OrdersPage() {
         {status === 'success' && orders.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
             <ShoppingBag size={32} className="text-white/15 light:text-neutral-300" />
-            <p className="text-sm text-white/40 light:text-neutral-400">No orders yet.</p>
+            <p className="text-sm text-white/40 light:text-neutral-400">No orders match these filters.</p>
           </div>
         )}
 
-        {status === 'success' && orders.length > 0 && (
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-transparent">
-            <table className="w-full text-sm">
+        {status === 'success' && filteredOrders.length === 0 && orders.length > 0 && (
+          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+            <Search size={32} className="text-white/15 light:text-neutral-300" />
+            <p className="text-sm text-white/40 light:text-neutral-400">No orders match your search.</p>
+          </div>
+        )}
+
+        {status === 'success' && filteredOrders.length > 0 && (
+          <Card>
+            <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10 bg-white/[0.03] text-left text-xs font-medium uppercase tracking-wider text-white/40 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-400">
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Customer</th>
-                  <th className="px-5 py-3">Product</th>
-                  <th className="px-5 py-3">Amount</th>
-                  <th className="px-5 py-3">Fee</th>
-                  <th className="px-5 py-3">Net</th>
-                  <th className="px-5 py-3">Status</th>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  {['ID', 'Date', 'Customer', 'Product', 'Amount', 'Status'].map((h) => (
+                    <th key={h} className="text-left px-5 py-3 text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10 light:divide-neutral-100">
-                {orders.map((order) => (
-                  <tr key={order.publicId} className="transition hover:bg-white/[0.04] light:bg-white light:hover:bg-neutral-50">
-                    <td className="px-5 py-3.5 text-white/50 light:text-neutral-500">
+              <tbody>
+                {filteredOrders.map((order) => (
+                  <tr key={order.publicId} className="hover:bg-white/[0.02] transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td className="px-5 py-3.5 text-[11px] font-mono text-muted-foreground" title={order.publicId}>
+                      {order.publicId.slice(0, 8)}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-muted-foreground font-mono">
                       {new Date(order.createdAt).toLocaleDateString(undefined, {
                         year: 'numeric', month: 'short', day: 'numeric',
                       })}
                     </td>
-                    <td className="px-5 py-3.5">
-                      <p className="font-medium text-white light:text-neutral-950">{order.name ?? '—'}</p>
-                      <p className="text-xs text-white/40 light:text-neutral-400">{order.email}</p>
+                    <td className="px-5 py-3.5 text-sm">{order.name ?? order.email}</td>
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground">
+                      {order.productName}
+                      {order.landingPageTitle ? (
+                        <p className="text-[10px] text-muted-foreground/70">via {order.landingPageTitle}</p>
+                      ) : null}
                     </td>
-                    <td className="px-5 py-3.5 text-white/70 light:text-neutral-700">{order.productName}</td>
-                    <td className="font-data px-5 py-3.5 font-medium tabular-nums text-white light:text-neutral-950">
+                    <td className="px-5 py-3.5 text-sm font-mono font-semibold" style={{ color: 'var(--color-chart-1)' }}>
                       {formatMoney(order.amountCents, order.currency)}
                     </td>
-                    <td className="font-data px-5 py-3.5 tabular-nums text-white/50 light:text-neutral-500">
-                      {formatMoney(order.platformFeeCents, order.currency)}
-                    </td>
-                    <td className="font-data px-5 py-3.5 font-medium tabular-nums text-white light:text-neutral-950">
-                      {formatMoney(order.netAmountCents, order.currency)}
-                    </td>
                     <td className="px-5 py-3.5">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[order.status] ?? 'bg-white/10 text-white/50 light:bg-neutral-100 light:text-neutral-500'}`}>
-                        {order.status}
-                      </span>
+                      <OrderStatusBadge status={order.status} />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
 
         {status === 'success' && hasMore && (
           <div className="mt-6 flex justify-center">
-            <button
-              type="button"
-              disabled={loadMoreStatus === 'loading'}
-              onClick={loadMore}
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
-            >
+            <GhostBtn onClick={loadMore} disabled={loadMoreStatus === 'loading'} className="px-4 py-2">
               {loadMoreStatus === 'loading' ? <Loader2 className="animate-spin" size={14} /> : null}
               Load more
-            </button>
+            </GhostBtn>
           </div>
         )}
 
@@ -135,6 +226,46 @@ export function OrdersPage() {
         )}
       </div>
     </AppShell>
+  )
+}
+
+/* ─── Helpers ──────────────────────────────────────────────────── */
+
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-xl border border-border bg-card ${className}`}>{children}</div>
+}
+
+function GhostBtn({
+  children,
+  onClick,
+  disabled,
+  className = '',
+}: {
+  children: React.ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="mb-8">
+      <h1 className="font-bold leading-none" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '2rem' }}>
+        {title}
+      </h1>
+      {subtitle && <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>}
+    </div>
   )
 }
 

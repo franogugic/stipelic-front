@@ -12,18 +12,18 @@ export function PasswordChecklist({ checks }: PasswordChecklistProps) {
         <div
           key={check.id}
           className={`flex items-center gap-2 text-xs ${
-            check.isMet ? 'text-emerald-700' : 'text-neutral-400'
+            check.isMet ? 'text-emerald-400' : 'text-muted-foreground'
           }`}
         >
           <span
             className={`grid size-4 shrink-0 place-items-center rounded-full transition ${
-              check.isMet ? 'bg-emerald-100' : 'bg-neutral-100'
+              check.isMet ? 'bg-emerald-500/15 text-emerald-400' : 'bg-muted'
             }`}
           >
             {check.isMet ? (
               <Check size={9} strokeWidth={3} />
             ) : (
-              <span className="size-1.5 rounded-full bg-neutral-300" />
+              <span className="size-1.5 rounded-full bg-muted-foreground/40" />
             )}
           </span>
           {check.label}

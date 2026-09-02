@@ -1,8 +1,8 @@
-import { Archive, Loader2, Mail, X } from 'lucide-react'
-import { useState } from 'react'
+import { Archive, FileText, Loader2, Mail, Sparkles, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import type { CreatorSettings } from '../../creators/model/types'
 import { useTemplateStore } from '../model/template-store'
-import type { EmailTemplate } from '../model/types'
+import type { EmailTemplate, EmailTemplateStarter } from '../model/types'
 
 const BODY_MAX_LENGTH = 10_000
 const SUBJECT_MAX_LENGTH = 200
@@ -26,6 +26,8 @@ export function TemplateEditorModal({
   const [ctaLabel, setCtaLabel] = useState(template?.ctaLabel ?? '')
   const [ctaUrl, setCtaUrl] = useState(template?.ctaUrl ?? '')
   const [isConfirmingArchive, setIsConfirmingArchive] = useState(false)
+  // Only reachable for brand-new templates — editing an existing one always skips straight to the form.
+  const [pickerStep, setPickerStep] = useState<'choose' | 'form'>(template ? 'form' : 'choose')
 
   const saveTemplate = useTemplateStore((s) => s.saveTemplate)
   const saveTemplateStatus = useTemplateStore((s) => s.saveTemplateStatus)
@@ -36,6 +38,25 @@ export function TemplateEditorModal({
   const archiveTemplateStatus = useTemplateStore((s) => s.archiveTemplateStatus)
   const archiveTemplateError = useTemplateStore((s) => s.archiveTemplateError)
   const resetArchiveTemplateFeedback = useTemplateStore((s) => s.resetArchiveTemplateFeedback)
+
+  const starters = useTemplateStore((s) => s.starters)
+  const startersStatus = useTemplateStore((s) => s.startersStatus)
+  const loadStarters = useTemplateStore((s) => s.loadStarters)
+
+  useEffect(() => {
+    if (pickerStep === 'choose') void loadStarters(slug)
+  }, [pickerStep, slug, loadStarters])
+
+  const handlePickStarter = (starter: EmailTemplateStarter | null) => {
+    if (starter) {
+      setName(starter.name)
+      setSubject(starter.subject)
+      setBodyText(starter.bodyText)
+      setCtaLabel(starter.ctaLabel ?? '')
+      setCtaUrl(starter.ctaUrl ?? '')
+    }
+    setPickerStep('form')
+  }
 
   const isActive = !savedTemplate || savedTemplate.status === 'Active'
   const isSaving = saveTemplateStatus === 'submitting'
@@ -78,7 +99,7 @@ export function TemplateEditorModal({
       <div className="grid max-h-[90vh] w-full max-w-4xl grid-rows-[auto_1fr] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl light:border-neutral-200 light:bg-white">
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 light:border-neutral-100">
           <h2 className="text-base font-semibold text-white light:text-neutral-950">
-            {savedTemplate ? 'Edit template' : 'New template'}
+            {pickerStep === 'choose' ? 'New template' : savedTemplate ? 'Edit template' : 'New template'}
           </h2>
           <button
             type="button"
@@ -89,6 +110,49 @@ export function TemplateEditorModal({
           </button>
         </div>
 
+        {pickerStep === 'choose' ? (
+          <div className="overflow-y-auto p-6">
+            <p className="mb-4 text-sm text-white/50 light:text-neutral-500">
+              Start from scratch, or pick a starter to pre-fill the subject and body — nothing is saved until you
+              confirm.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => handlePickStarter(null)}
+                className="flex flex-col items-start gap-2 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-5 text-left transition hover:border-white/25 hover:bg-white/[0.05] light:border-neutral-300 light:bg-white light:hover:border-neutral-400"
+              >
+                <span className="grid size-9 place-items-center rounded-xl bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500">
+                  <FileText size={16} />
+                </span>
+                <span className="text-sm font-semibold text-white light:text-neutral-950">Start from scratch</span>
+                <span className="text-xs text-white/40 light:text-neutral-400">Blank subject and body.</span>
+              </button>
+
+              {startersStatus === 'loading' ? (
+                <div className="col-span-full flex h-32 items-center justify-center gap-2 text-sm text-white/40 light:text-neutral-400">
+                  <Loader2 className="animate-spin" size={16} />
+                  Loading starters…
+                </div>
+              ) : (
+                starters.map((starter) => (
+                  <button
+                    key={starter.key}
+                    type="button"
+                    onClick={() => handlePickStarter(starter)}
+                    className="flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.06] light:border-neutral-200 light:bg-white light:hover:border-neutral-300"
+                  >
+                    <span className="grid size-9 place-items-center rounded-xl bg-accent/15 text-accent light:bg-accent/10">
+                      <Sparkles size={16} />
+                    </span>
+                    <span className="text-sm font-semibold text-white light:text-neutral-950">{starter.name}</span>
+                    <span className="line-clamp-1 text-xs text-white/40 light:text-neutral-400">{starter.subject}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 overflow-y-auto lg:grid-cols-[1.2fr_1fr]">
           {/* Form */}
           <div className="grid gap-5 border-b border-white/10 p-6 lg:border-b-0 lg:border-r light:border-neutral-100">
@@ -221,6 +285,7 @@ export function TemplateEditorModal({
             />
           </div>
         </div>
+        )}
       </div>
 
       {isConfirmingArchive ? (

@@ -13,8 +13,9 @@ import type {
 
 type ApiResponse<T> = { statusCode: number; message: string; code: string; data: T }
 
-export async function listLandingPages(slug: string): Promise<LandingPage[]> {
-  const res = await apiRequest<ApiResponse<LandingPage[]>>(`/api/creators/${slug}/landing-pages`)
+export async function listLandingPages(slug: string, includeArchived = false): Promise<LandingPage[]> {
+  const query = includeArchived ? '?includeArchived=true' : ''
+  const res = await apiRequest<ApiResponse<LandingPage[]>>(`/api/creators/${slug}/landing-pages${query}`)
   return res.data
 }
 
@@ -38,6 +39,14 @@ export async function unpublishLandingPage(slug: string, pageId: string): Promis
 
 export async function archiveLandingPage(slug: string, pageId: string): Promise<void> {
   await apiRequest<unknown>(`/api/creators/${slug}/landing-pages/${pageId}`, { method: 'DELETE' })
+}
+
+export async function restoreLandingPage(slug: string, pageId: string): Promise<LandingPage> {
+  const res = await apiRequest<ApiResponse<LandingPage>>(
+    `/api/creators/${slug}/landing-pages/${pageId}/restore`,
+    { method: 'POST' },
+  )
+  return res.data
 }
 
 export async function saveEditor(slug: string, pageId: string, request: SaveEditorRequest): Promise<LandingPageWithSections> {

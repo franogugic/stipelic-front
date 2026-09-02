@@ -1,22 +1,51 @@
 @import "tailwindcss";
 
-/*
- * Dark is the default aesthetic (see DESIGN_SYSTEM.md). Light mode is an
- * opt-in override inside the authenticated app shell, not the other way
- * around — so we flip Tailwind's usual light-default assumption with a
- * custom `light:` variant instead of `dark:`.
- */
 @custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
 
 @theme {
-  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Cabinet Grotesk", "Instrument Sans", sans-serif;
-  --font-data: "Geist", "Instrument Sans", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
-
-  --color-accent: #4c7cf0;
-  --color-accent-strong: #7ca2ff;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "DM Sans", sans-serif;
+  --font-data: "Geist", "DM Sans", sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+  --color-accent: #bc6fa4;
+  --color-accent-strong: #d190bd;
   --color-accent-cyan: #5eead4;
+  --color-primary: var(--color-accent);
+  --color-primary-foreground: #ffffff;
+  --color-background: #06060c;
+  --color-foreground: #eee9f0;
+  --color-card: #0c0c15;
+  --color-card-foreground: #eee9f0;
+  --color-popover: #12121e;
+  --color-popover-foreground: #eee9f0;
+  --color-secondary: #13131e;
+  --color-secondary-foreground: #eee9f0;
+  --color-muted: #13131e;
+  --color-muted-foreground: #6b6880;
+  --color-destructive: #ff3b30;
+  --color-destructive-foreground: #ffffff;
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-input: #13131e;
+  --color-ring: #bc6fa4;
+  --color-chart-1: #5b87b9;
+  --color-chart-2: #a069a3;
+  --color-chart-3: #bc6fa4;
+  --color-chart-4: #db838b;
+  --color-chart-5: #ebad65;
+  --color-sidebar: #08080f;
+  --color-sidebar-foreground: #eee9f0;
+  --color-sidebar-primary: #bc6fa4;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #13131e;
+  --color-sidebar-accent-foreground: #eee9f0;
+  --color-sidebar-border: rgba(255, 255, 255, 0.05);
+  --color-sidebar-ring: #bc6fa4;
+
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 * {
@@ -24,17 +53,40 @@
 }
 
 html {
-  background: #0a0a0b;
+  background: #06060c;
 }
 
 html[data-theme="light"] {
-  background: #f0f0ee;
+  background: #f5f5f4;
 }
 
 [data-theme="light"] {
-  --color-accent: #3159d0;
-  --color-accent-strong: #1f3fa8;
+  --color-accent: #9c4f86;
+  --color-accent-strong: #7d3e6b;
   --color-accent-cyan: #0fa894;
+
+  --color-primary: var(--color-accent);
+  --color-background: #f5f5f4;
+  --color-foreground: #0a0a0b;
+  --color-card: #ffffff;
+  --color-card-foreground: #0a0a0b;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0a0a0b;
+  --color-secondary: #ececea;
+  --color-secondary-foreground: #0a0a0b;
+  --color-muted: #ececea;
+  --color-muted-foreground: rgba(10, 10, 11, 0.55);
+  --color-destructive: #d92c1f;
+  --color-border: rgba(10, 10, 11, 0.08);
+  --color-input: #ececea;
+  --color-ring: #9c4f86;
+  --color-sidebar: #ffffff;
+  --color-sidebar-foreground: #0a0a0b;
+  --color-sidebar-primary: #9c4f86;
+  --color-sidebar-accent: #ececea;
+  --color-sidebar-accent-foreground: #0a0a0b;
+  --color-sidebar-border: rgba(10, 10, 11, 0.08);
+  --color-sidebar-ring: #9c4f86;
 }
 
 body {
@@ -44,19 +96,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
-}
-
-.bg-grid {
-  background-image:
-    linear-gradient(#fff 1px, transparent 1px),
-    linear-gradient(90deg, #fff 1px, transparent 1px);
-  background-size: 48px 48px;
-}
-
-[data-theme="light"] .bg-grid {
-  background-image:
-    linear-gradient(#000 1px, transparent 1px),
-    linear-gradient(90deg, #000 1px, transparent 1px);
+  color: white
 }
 
 @keyframes rise-in {
@@ -115,4 +155,11 @@ body {
 .animate-bar-fill {
   transform-origin: left;
   animation: bar-fill 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+/* Recharts makes chart shapes (bars, sectors, etc.) focusable for keyboard accessibility, which
+   means the browser's default blue focus outline shows on hover/click across every chart in the
+   app — this suppresses just that outline, not real focus-visible styling elsewhere. */
+.recharts-wrapper *:focus {
+  outline: none;
 }

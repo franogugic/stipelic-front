@@ -1,20 +1,20 @@
-import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, RotateCcw, Search, Send, Users, X } from 'lucide-react'
+import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, RotateCcw, Send, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { CHART_COLORS } from '../../../shared/ui/chart-colors'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
+import { getHomeSummary } from '../../orders/api/orders-api'
+import type { HomeSummary } from '../../orders/model/types'
 import { useProductStore } from '../../products/model/product-store'
 import { SendWizardModal } from '../components/SendWizardModal'
 import { TemplateEditorModal } from '../components/TemplateEditorModal'
 import { useCampaignStore } from '../model/campaign-store'
-import { useContactsStore } from '../model/contacts-store'
 import { useTemplateStore } from '../model/template-store'
 import type { CampaignListItem, EmailTemplate } from '../model/types'
 
-type EmailsTab = 'send' | 'templates' | 'history' | 'contacts'
-
-const CONTACTS_SEARCH_DEBOUNCE_MS = 350
+type EmailsTab = 'send' | 'templates' | 'history'
 
 export function EmailsPage() {
   const navigate = useNavigate()
@@ -43,12 +43,18 @@ export function EmailsPage() {
   const loadCampaigns = useCampaignStore((s) => s.loadCampaigns)
 
   const [tab, setTab] = useState<EmailsTab>('send')
+  const [homeSummary, setHomeSummary] = useState<HomeSummary | null>(null)
 
   const isLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
   useEffect(() => {
     if (currentCreatorStatus === 'idle') void loadCurrentCreator()
   }, [currentCreatorStatus, loadCurrentCreator])
+
+  useEffect(() => {
+    if (!normalizedSlug) return
+    void getHomeSummary(normalizedSlug).then(setHomeSummary).catch(() => {})
+  }, [normalizedSlug])
 
   useEffect(() => {
     if (!normalizedSlug) return
@@ -76,10 +82,10 @@ export function EmailsPage() {
             Loading workspace…
           </div>
         ) : !creator ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-8 backdrop-blur-sm light:shadow-sm">
             <p className="font-semibold text-white light:text-neutral-950">Workspace not found</p>
             <button
-              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
+              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
               type="button"
               onClick={() => navigate('/')}
             >
@@ -89,17 +95,20 @@ export function EmailsPage() {
         ) : (
           <div className="grid gap-8">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white light:text-neutral-950">Emails</h1>
-              <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
+              <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">Emails</h1>
+              <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
                 Build reusable templates and send them to your captured contacts.
               </p>
             </div>
 
-            <div className="flex gap-1.5 border-b border-white/10 light:border-neutral-200">
+            {homeSummary ? (
+              <MonthlyUsageCard sent={homeSummary.emailsSentThisMonth} limit={homeSummary.emailsMonthlyLimit} />
+            ) : null}
+
+            <div className="flex w-fit gap-1 rounded-lg bg-white/5 p-1">
               <TabButton icon={Send} label="Send" active={tab === 'send'} onClick={() => setTab('send')} />
               <TabButton icon={FileText} label="Templates" active={tab === 'templates'} onClick={() => setTab('templates')} />
               <TabButton icon={History} label="History" active={tab === 'history'} onClick={() => setTab('history')} />
-              <TabButton icon={Users} label="Contacts" active={tab === 'contacts'} onClick={() => setTab('contacts')} />
             </div>
 
             {tab === 'send' ? (
@@ -134,11 +143,39 @@ export function EmailsPage() {
               />
             ) : null}
 
-            {tab === 'contacts' ? <ContactsTab slug={normalizedSlug} /> : null}
           </div>
         )}
       </div>
     </AppShell>
+  )
+}
+
+function MonthlyUsageCard({ sent, limit }: { sent: number; limit: number }) {
+  const isUnlimited = limit < 0
+  const pct = isUnlimited ? 0 : Math.min(100, limit > 0 ? (sent / limit) * 100 : 100)
+  const color = pct > 85 ? CHART_COLORS[3] : CHART_COLORS[0]
+
+  return (
+    <div className="max-w-sm rounded-2xl border border-border bg-card p-5 backdrop-blur-sm light:shadow-sm">
+      <p className="text-sm font-semibold text-white light:text-neutral-950">Monthly usage</p>
+      <p className="mt-0.5 text-xs text-white/40 light:text-neutral-400">Resets on the 1st of each month</p>
+      <p className="font-data mt-3 text-2xl font-bold tabular-nums" style={{ color }}>
+        {sent.toLocaleString()}
+        <span className="text-base font-normal text-white/40 light:text-neutral-400">
+          /{isUnlimited ? '∞' : limit.toLocaleString()}
+        </span>
+      </p>
+      {!isUnlimited ? (
+        <>
+          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+          </div>
+          <p className="mt-2 text-xs text-white/40 light:text-neutral-400">
+            {Math.max(0, limit - sent).toLocaleString()} emails remaining
+          </p>
+        </>
+      ) : null}
+    </div>
   )
 }
 
@@ -157,10 +194,10 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-semibold transition ${
+      className={`flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-all ${
         active
-          ? 'border-accent text-white light:text-neutral-950'
-          : 'border-transparent text-white/40 hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-700'
+          ? 'bg-secondary text-foreground'
+          : 'text-muted-foreground hover:text-foreground'
       }`}
     >
       <Icon size={14} />
@@ -226,7 +263,7 @@ function SendTab({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-20 text-center light:border-neutral-300 light:bg-white">
+    <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-card py-20 text-center light:border-neutral-300">
       <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
         <Send size={24} strokeWidth={1.5} />
       </span>
@@ -323,17 +360,17 @@ function TemplatesTab({
           onAction={openCreate}
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-          <div className="grid grid-cols-[1fr_1fr_120px_160px_60px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card backdrop-blur-sm light:shadow-sm">
+          <div className="grid grid-cols-[1fr_1fr_120px_160px_60px] items-center border-b border-border px-5 py-3">
             <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Name</p>
             <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Subject</p>
             <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
             <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Last modified</p>
             <span />
           </div>
-          <ul className="divide-y divide-white/10 light:divide-neutral-100">
+          <ul className="divide-y divide-border">
             {templates.map((template) => (
-              <li key={template.publicId} className="group">
+              <li key={template.publicId} className="group transition-colors hover:bg-secondary/60">
                 <div className="grid grid-cols-[1fr_1fr_120px_160px_60px] items-center px-5 py-4">
                   <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{template.name}</p>
                   <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{template.subject}</p>
@@ -345,7 +382,7 @@ function TemplatesTab({
                     <button
                       type="button"
                       title="Edit"
-                      className="inline-flex size-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-100"
+                      className="inline-flex size-7 items-center justify-center rounded-lg border border-border bg-card text-white/70 transition hover:bg-secondary light:text-neutral-600"
                       onClick={() => openEdit(template.publicId)}
                     >
                       <Pencil size={12} />
@@ -439,14 +476,14 @@ function HistoryTab({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-      <div className="grid grid-cols-[1fr_160px_260px_160px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card backdrop-blur-sm light:shadow-sm">
+      <div className="grid grid-cols-[1fr_140px_320px_140px] items-center border-b border-border px-5 py-3">
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Subject</p>
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Audience</p>
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Date</p>
       </div>
-      <ul className="divide-y divide-white/10 light:divide-neutral-100">
+      <ul className="divide-y divide-border">
         {campaigns.map((campaign) => (
           <li key={campaign.publicId}>
             <div
@@ -454,7 +491,7 @@ function HistoryTab({
               tabIndex={0}
               onClick={() => setSelectedCampaign(campaign)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedCampaign(campaign) }}
-              className="grid w-full cursor-pointer grid-cols-[1fr_160px_260px_160px] items-center px-5 py-4 text-left transition hover:bg-white/[0.03] light:hover:bg-neutral-50"
+              className="grid w-full cursor-pointer grid-cols-[1fr_140px_320px_140px] items-center px-5 py-4 text-left transition hover:bg-secondary/60"
             >
               <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{campaign.subject}</p>
               <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{targetName(campaign)}</p>
@@ -508,8 +545,8 @@ function CampaignDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 py-8 backdrop-blur-sm">
-      <div className="grid max-h-[85vh] w-full max-w-2xl grid-rows-[auto_1fr] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl light:border-neutral-200 light:bg-white">
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 light:border-neutral-100">
+      <div className="grid max-h-[85vh] w-full max-w-2xl grid-rows-[auto_1fr] overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h2 className="text-base font-semibold text-white light:text-neutral-950">{campaign.subject}</h2>
             <p className="mt-0.5 text-xs text-white/40 light:text-neutral-400">
@@ -543,7 +580,7 @@ function CampaignDetailModal({
                 <button
                   type="button"
                   onClick={() => { resetResendFailedFeedback(); setIsConfirmingResend(true) }}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
                 >
                   <RotateCcw size={13} />
                   Resend failed
@@ -562,7 +599,7 @@ function CampaignDetailModal({
                   Loading failed recipients…
                 </div>
               ) : (
-                <ul className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10 light:divide-neutral-100 light:border-neutral-200">
+                <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
                   {failedRecipients.map((recipient) => (
                     <li key={recipient.email} className="px-4 py-3">
                       <p className="text-sm font-medium text-white light:text-neutral-950">{recipient.email}</p>
@@ -609,7 +646,7 @@ function ResendFailedConfirmDialog({
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl light:border-neutral-200 light:bg-white">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <h2 className="text-base font-semibold text-white light:text-neutral-950">
           Resend to {failedCount} failed recipient{failedCount === 1 ? '' : 's'}?
         </h2>
@@ -622,7 +659,7 @@ function ResendFailedConfirmDialog({
             type="button"
             disabled={isSubmitting}
             onClick={onCancel}
-            className="flex h-9 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+            className="flex h-9 flex-1 items-center justify-center rounded-xl border border-border bg-card text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-700"
           >
             Cancel
           </button>
@@ -649,7 +686,7 @@ function StatusCell({ campaign, slug }: { campaign: CampaignListItem; slug: stri
 
   if (campaign.status === 'Scheduled') {
     return (
-      <div className="flex items-center gap-2.5" onClick={(e) => e.stopPropagation()}>
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1" onClick={(e) => e.stopPropagation()}>
         <span className="inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-semibold text-cyan-300 light:bg-cyan-50 light:text-cyan-700">
           <span className="size-1.5 shrink-0 rounded-full bg-cyan-400" />
           Scheduled for {campaign.scheduledAt ? formatDateTime(campaign.scheduledAt) : '—'}
@@ -657,7 +694,7 @@ function StatusCell({ campaign, slug }: { campaign: CampaignListItem; slug: stri
         <button
           type="button"
           onClick={() => { resetCancelScheduleFeedback(); setIsConfirmingCancel(true) }}
-          className="text-xs font-medium text-white/40 underline decoration-white/20 underline-offset-2 transition hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-700"
+          className="shrink-0 text-xs font-medium text-white/40 underline decoration-white/20 underline-offset-2 transition hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-700"
         >
           Cancel
         </button>
@@ -712,7 +749,7 @@ function CancelScheduleConfirmDialog({
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl light:border-neutral-200 light:bg-white">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <h2 className="text-base font-semibold text-white light:text-neutral-950">Cancel this scheduled send?</h2>
         <p className="mt-2 text-sm leading-6 text-white/50 light:text-neutral-500">
           It will never be dispatched. This cannot be undone.
@@ -722,7 +759,7 @@ function CancelScheduleConfirmDialog({
             type="button"
             disabled={isSubmitting}
             onClick={onCancel}
-            className="flex h-9 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+            className="flex h-9 flex-1 items-center justify-center rounded-xl border border-border bg-card text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-700"
           >
             Keep it
           </button>
@@ -783,7 +820,7 @@ function EmptyState({
   onAction?: () => void
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] py-20 text-center light:border-neutral-300 light:bg-white">
+    <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-card py-20 text-center light:border-neutral-300">
       <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
         <Icon size={24} strokeWidth={1.5} />
       </span>
@@ -801,103 +838,6 @@ function EmptyState({
           {actionLabel}
         </button>
       ) : null}
-    </div>
-  )
-}
-
-function ContactsTab({ slug }: { slug: string }) {
-  const [searchInput, setSearchInput] = useState('')
-
-  const contacts = useContactsStore((s) => s.contacts)
-  const contactsStatus = useContactsStore((s) => s.contactsStatus)
-  const hasMore = useContactsStore((s) => s.hasMore)
-  const loadMoreStatus = useContactsStore((s) => s.loadMoreStatus)
-  const loadContacts = useContactsStore((s) => s.loadContacts)
-  const loadMoreContacts = useContactsStore((s) => s.loadMoreContacts)
-
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      void loadContacts(slug, searchInput.trim())
-    }, CONTACTS_SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(handle)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, searchInput])
-
-  return (
-    <div className="grid gap-6">
-      <div className="relative max-w-sm">
-        <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 light:text-neutral-400" />
-        <input
-          type="text"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search by email…"
-          className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.03] pl-10 pr-3.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400"
-        />
-      </div>
-
-      {contactsStatus === 'loading' ? (
-        <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-          <Loader2 className="animate-spin" size={16} />
-          Loading contacts…
-        </div>
-      ) : contacts.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title={searchInput.trim() ? 'No contacts match your search' : 'No contacts yet'}
-          description={
-            searchInput.trim()
-              ? 'Try a different email or clear the search.'
-              : 'Contacts appear here once someone signs up on one of your landing pages.'
-          }
-        />
-      ) : (
-        <>
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
-            <div className="grid grid-cols-[1fr_1.4fr_160px_140px] items-center border-b border-white/10 px-5 py-3 light:border-neutral-100">
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Email</p>
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Sources</p>
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">First captured</p>
-              <span />
-            </div>
-            <ul className="divide-y divide-white/10 light:divide-neutral-100">
-              {contacts.map((contact) => (
-                <li key={contact.email}>
-                  <div className="grid grid-cols-[1fr_1.4fr_140px_140px] items-center px-5 py-4">
-                    <p className="truncate text-sm font-medium text-white light:text-neutral-950">{contact.email}</p>
-                    <p className="truncate text-xs text-white/60 light:text-neutral-600">
-                      {contact.sourcesCount} {contact.sourcesCount === 1 ? 'source' : 'sources'}
-                      {contact.sources ? ` · ${contact.sources}` : ''}
-                    </p>
-                    <p className="text-xs text-white/50 light:text-neutral-500">
-                      {new Date(contact.firstCapturedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </p>
-                    {contact.isUnsubscribed ? (
-                      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
-                        Unsubscribed
-                      </span>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {hasMore ? (
-            <div className="flex justify-center">
-              <button
-                type="button"
-                disabled={loadMoreStatus === 'loading'}
-                onClick={() => void loadMoreContacts(slug)}
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:bg-neutral-50"
-              >
-                {loadMoreStatus === 'loading' ? <Loader2 className="animate-spin" size={14} /> : null}
-                Load more
-              </button>
-            </div>
-          ) : null}
-        </>
-      )}
     </div>
   )
 }

@@ -23,10 +23,10 @@ export function AdminPayoutsPage() {
   const [tab, setTab] = useState<Tab>('requests')
 
   return (
-    <div className="relative min-h-screen bg-neutral-950 light:bg-neutral-100">
+    <div className="relative min-h-screen ">
       <div className="bg-grid pointer-events-none fixed inset-0 opacity-[0.04]" />
 
-      <header className="relative flex h-14 items-center gap-4 border-b border-white/10 bg-neutral-950 px-6 light:border-neutral-200 light:bg-white">
+      <header className="relative flex h-14 items-center gap-4 border-b border-border px-6">
         <button
           type="button"
           onClick={() => navigate('/')}
@@ -43,7 +43,7 @@ export function AdminPayoutsPage() {
       </header>
 
       <main className="relative mx-auto max-w-5xl px-6 py-8">
-        <div className="mb-6 flex items-center gap-2 border-b border-white/10 light:border-neutral-200">
+        <div className="mb-6 flex items-center gap-2 border-b border-border">
           <TabButton label="Requests" active={tab === 'requests'} onClick={() => setTab('requests')} />
           <TabButton label="History" active={tab === 'history'} onClick={() => setTab('history')} />
         </div>
@@ -144,7 +144,7 @@ function RequestRow({ item }: { item: AdminPayoutQueueItem }) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-white light:text-neutral-950">{item.creatorName}</p>
@@ -160,7 +160,7 @@ function RequestRow({ item }: { item: AdminPayoutQueueItem }) {
         </p>
       </div>
 
-      <div className="mt-4 grid gap-3 rounded-xl bg-white/[0.02] p-4 light:bg-neutral-50 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3 rounded-xl bg-muted p-4 sm:grid-cols-2">
         <div>
           <p className="text-[11px] uppercase tracking-wide text-white/30 light:text-neutral-400">Account holder</p>
           <p className="mt-0.5 text-sm text-white/80 light:text-neutral-700">{item.accountHolderName}</p>
@@ -219,7 +219,7 @@ function RequestRow({ item }: { item: AdminPayoutQueueItem }) {
             value={bankReference}
             onChange={(e) => { resetActionFeedback(); setBankReference(e.target.value) }}
             placeholder="Bank transaction reference"
-            className="h-9 flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400"
+            className="h-9 flex-1 rounded-lg border border-border bg-secondary px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-accent/50"
           />
           <button
             type="submit"
@@ -232,7 +232,7 @@ function RequestRow({ item }: { item: AdminPayoutQueueItem }) {
           <button
             type="button"
             onClick={() => setMode('none')}
-            className="inline-flex h-9 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700"
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition hover:bg-secondary"
           >
             Cancel
           </button>
@@ -253,7 +253,7 @@ function RequestRow({ item }: { item: AdminPayoutQueueItem }) {
             value={failNote}
             onChange={(e) => { resetActionFeedback(); setFailNote(e.target.value) }}
             placeholder="Reason (optional)"
-            className="h-9 flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400"
+            className="h-9 flex-1 rounded-lg border border-border bg-secondary px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-accent/50"
           />
           <button
             type="submit"
@@ -266,7 +266,7 @@ function RequestRow({ item }: { item: AdminPayoutQueueItem }) {
           <button
             type="button"
             onClick={() => setMode('none')}
-            className="inline-flex h-9 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700"
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition hover:bg-secondary"
           >
             Cancel
           </button>
@@ -309,7 +309,7 @@ function HistoryTab() {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as PayoutStatus)}
-            className="h-9 appearance-none rounded-xl border border-white/10 bg-white/[0.03] py-0 pl-3 pr-8 text-sm text-white outline-none light:border-neutral-200 light:bg-white light:text-neutral-950"
+            className="h-9 appearance-none rounded-lg border border-border bg-secondary py-0 pl-3 pr-8 text-sm text-foreground outline-none"
           >
             {HISTORY_STATUSES.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -334,10 +334,10 @@ function HistoryTab() {
           <p className="text-sm text-white/40 light:text-neutral-400">No {status.toLowerCase()} payouts yet.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-white/10 light:border-neutral-200">
+        <div className="overflow-hidden rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10 bg-white/[0.03] text-left text-xs font-medium uppercase tracking-wider text-white/40 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-400">
+              <tr className="border-b border-border bg-muted text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 <th className="px-4 py-2.5">Creator</th>
                 <th className="px-4 py-2.5">Amount</th>
                 <th className="px-4 py-2.5">Status</th>
@@ -345,7 +345,7 @@ function HistoryTab() {
                 <th className="px-4 py-2.5">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/10 light:divide-neutral-100">
+            <tbody className="divide-y divide-border">
               {queue.map((item) => (
                 <tr key={item.publicId}>
                   <td className="px-4 py-3">
@@ -410,7 +410,7 @@ function ManualPayoutSection() {
   const isLoading = balancesStatus === 'loading' || balancesStatus === 'idle'
 
   return (
-    <div className="mt-10 border-t border-white/10 pt-6 light:border-neutral-200">
+    <div className="mt-10 border-t border-border pt-6">
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
@@ -434,7 +434,7 @@ function ManualPayoutSection() {
               className="flex items-center gap-2"
               onSubmit={(e) => { e.preventDefault(); void loadBalances(minCents) }}
             >
-              <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/70 light:border-neutral-200 light:bg-white light:text-neutral-600">
+              <label className="flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-muted-foreground">
                 Min. balance (cents)
                 <input
                   type="number"
@@ -490,7 +490,7 @@ function BalanceRow({ balance }: { balance: CreatorBalanceSummary }) {
   const [isCreating, setIsCreating] = useState(false)
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm light:border-neutral-200 light:bg-white light:shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-white light:text-neutral-950">{balance.name}</p>
@@ -567,7 +567,7 @@ function CreatePayoutForm({
 
   return (
     <form
-      className="mt-4 grid gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 light:border-neutral-200 light:bg-neutral-50"
+      className="mt-4 grid gap-3 rounded-xl border border-border bg-muted p-4"
       onSubmit={(e) => void handleSubmit(e)}
     >
       <div className="grid gap-3 sm:grid-cols-2">
@@ -579,7 +579,7 @@ function CreatePayoutForm({
             step="0.01"
             value={amount}
             onChange={(e) => { resetActionFeedback(); setAmount(e.target.value) }}
-            className="h-9 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950"
+            className="h-9 rounded-lg border border-border bg-secondary px-3 text-sm text-foreground outline-none focus:border-accent/50"
           />
         </div>
         <div className="grid gap-1.5">
@@ -590,7 +590,7 @@ function CreatePayoutForm({
             maxLength={500}
             onChange={(e) => { resetActionFeedback(); setNote(e.target.value) }}
             placeholder="e.g. July payout"
-            className="h-9 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400"
+            className="h-9 rounded-lg border border-border bg-secondary px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-accent/50"
           />
         </div>
       </div>
@@ -601,7 +601,7 @@ function CreatePayoutForm({
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-8 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700"
+          className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition hover:bg-secondary"
         >
           Cancel
         </button>
@@ -640,7 +640,7 @@ function ActivePayoutPanel({
 
   if (payout.status !== 'Pending') {
     return (
-      <div className="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 light:border-neutral-200 light:bg-neutral-50">
+      <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-muted p-4">
         {payout.status === 'Paid' ? (
           <CheckCircle2 size={16} className="text-emerald-400 light:text-emerald-600" />
         ) : (
@@ -698,7 +698,7 @@ function ActivePayoutPanel({
             value={bankReference}
             onChange={(e) => { resetActionFeedback(); setBankReference(e.target.value) }}
             placeholder="Bank transaction reference"
-            className="h-9 flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400"
+            className="h-9 flex-1 rounded-lg border border-border bg-secondary px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-accent/50"
           />
           <button
             type="submit"
@@ -711,7 +711,7 @@ function ActivePayoutPanel({
           <button
             type="button"
             onClick={() => setMode('none')}
-            className="inline-flex h-9 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700"
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition hover:bg-secondary"
           >
             Cancel
           </button>
@@ -732,7 +732,7 @@ function ActivePayoutPanel({
             value={failNote}
             onChange={(e) => { resetActionFeedback(); setFailNote(e.target.value) }}
             placeholder="Reason (optional)"
-            className="h-9 flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400"
+            className="h-9 flex-1 rounded-lg border border-border bg-secondary px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-accent/50"
           />
           <button
             type="submit"
@@ -745,7 +745,7 @@ function ActivePayoutPanel({
           <button
             type="button"
             onClick={() => setMode('none')}
-            className="inline-flex h-9 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700"
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition hover:bg-secondary"
           >
             Cancel
           </button>

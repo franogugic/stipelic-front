@@ -22,6 +22,15 @@ export type SaveTemplateRequest = {
   ctaUrl: string | null
 }
 
+export type EmailTemplateStarter = {
+  key: string
+  name: string
+  subject: string
+  bodyText: string
+  ctaLabel: string | null
+  ctaUrl: string | null
+}
+
 export type CampaignListItem = {
   publicId: string
   subject: string

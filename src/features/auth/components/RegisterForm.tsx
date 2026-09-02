@@ -1,7 +1,7 @@
 import { ArrowRight, Loader2, TriangleAlert } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
-import { TextField } from '../../../shared/ui/TextField'
+import { AuthField } from './AuthField'
 import { useAuthStore } from '../model/auth-store'
 import { validateRegisterForm } from '../model/register-validation'
 import type { RegisterFieldName } from '../model/register-validation'
@@ -50,9 +50,9 @@ export function RegisterForm({ onRegistered }: RegisterFormProps) {
   }
 
   return (
-    <form className="grid gap-5" onSubmit={handleSubmit} noValidate>
+    <form className="grid gap-4" onSubmit={handleSubmit} noValidate>
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
+        <AuthField
           label="First name"
           name="firstName"
           autoComplete="given-name"
@@ -62,7 +62,7 @@ export function RegisterForm({ onRegistered }: RegisterFormProps) {
           onBlur={() => touchField('firstName')}
           onChange={(e) => updateField('firstName', e.target.value)}
         />
-        <TextField
+        <AuthField
           label="Last name"
           name="lastName"
           autoComplete="family-name"
@@ -74,7 +74,7 @@ export function RegisterForm({ onRegistered }: RegisterFormProps) {
         />
       </div>
 
-      <TextField
+      <AuthField
         label="Email address"
         name="email"
         type="email"
@@ -88,7 +88,7 @@ export function RegisterForm({ onRegistered }: RegisterFormProps) {
       />
 
       <div className="grid gap-2.5">
-        <TextField
+        <AuthField
           label="Password"
           name="password"
           type="password"
@@ -105,14 +105,14 @@ export function RegisterForm({ onRegistered }: RegisterFormProps) {
       </div>
 
       {registerError ? (
-        <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           <TriangleAlert className="mt-0.5 shrink-0" size={15} />
           <span>{registerError}</span>
         </div>
       ) : null}
 
       <button
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
         type="submit"
         disabled={!canSubmit}
       >
