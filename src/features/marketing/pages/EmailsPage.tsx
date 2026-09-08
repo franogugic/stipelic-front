@@ -105,7 +105,7 @@ export function EmailsPage() {
               <MonthlyUsageCard sent={homeSummary.emailsSentThisMonth} limit={homeSummary.emailsMonthlyLimit} />
             ) : null}
 
-            <div className="flex w-fit gap-1 rounded-lg bg-white/5 p-1">
+            <div className="flex w-fit gap-1 rounded-lg bg-secondary p-1">
               <TabButton icon={Send} label="Send" active={tab === 'send'} onClick={() => setTab('send')} />
               <TabButton icon={FileText} label="Templates" active={tab === 'templates'} onClick={() => setTab('templates')} />
               <TabButton icon={History} label="History" active={tab === 'history'} onClick={() => setTab('history')} />
@@ -194,11 +194,10 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-all ${
-        active
-          ? 'bg-secondary text-foreground'
-          : 'text-muted-foreground hover:text-foreground'
+      className={`flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-semibold transition-all ${
+        active ? 'text-white' : 'text-muted-foreground hover:text-foreground'
       }`}
+      style={{ backgroundColor: active ? 'var(--color-chart-1)' : 'transparent' }}
     >
       <Icon size={14} />
       {label}
