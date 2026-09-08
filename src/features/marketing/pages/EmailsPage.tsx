@@ -1,4 +1,4 @@
-import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, RotateCcw, Send } from 'lucide-react'
+import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Plus, RotateCcw, Send } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -9,7 +9,7 @@ import { getHomeSummary } from '../../orders/api/orders-api'
 import type { HomeSummary } from '../../orders/model/types'
 import { useProductStore } from '../../products/model/product-store'
 import { SendWizardModal } from '../components/SendWizardModal'
-import { TemplateEditorModal } from '../components/TemplateEditorModal'
+import { TemplateEditorPanel } from '../components/TemplateEditorPanel'
 import { useCampaignStore } from '../model/campaign-store'
 import { useTemplateStore } from '../model/template-store'
 import type { CampaignListItem, EmailTemplate } from '../model/types'
@@ -332,83 +332,88 @@ function TemplatesTab({
     clearCurrentTemplate()
   }
 
+  if (templatesStatus === 'loading') {
+    return (
+      <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
+        <Loader2 className="animate-spin" size={16} />
+        Loading templates…
+      </div>
+    )
+  }
+
+  if (templates.length === 0) {
+    return (
+      <EmptyState
+        icon={FileText}
+        title="No templates yet"
+        description="Templates are reusable — write the content once, then send it to any audience whenever you like."
+        actionLabel="Create your first template"
+        onAction={openCreate}
+      />
+    )
+  }
+
   return (
-    <div className="grid gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
-          onClick={openCreate}
-        >
-          <Plus size={15} />
-          New template
-        </button>
+    <div className="flex gap-4" style={{ height: 'calc(100vh - 280px)' }}>
+      {/* Left list */}
+      <div className="flex w-[38%] flex-col">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold">Email Templates</p>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-1 text-xs"
+            style={{ color: 'var(--color-chart-1)' }}
+          >
+            <Plus size={12} /> New Template
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto rounded-xl border border-border bg-card">
+          {templates.map((template) => {
+            const isSelected = isEditorOpen && editingTemplateId === template.publicId
+            return (
+              <button
+                key={template.publicId}
+                type="button"
+                onClick={() => openEdit(template.publicId)}
+                className="w-full text-left px-4 py-3 transition-all"
+                style={{
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  backgroundColor: isSelected ? 'color-mix(in srgb, var(--color-chart-1) 10%, transparent)' : 'transparent',
+                  borderLeft: isSelected ? '2px solid var(--color-chart-1)' : '2px solid transparent',
+                }}
+              >
+                <div className="mb-0.5 flex items-center justify-between">
+                  <p className="truncate text-sm font-medium">{template.name}</p>
+                  <TemplateStatusBadge status={template.status} />
+                </div>
+                <p className="truncate text-[11px] text-muted-foreground">{template.subject}</p>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      {templatesStatus === 'loading' ? (
-        <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-          <Loader2 className="animate-spin" size={16} />
-          Loading templates…
-        </div>
-      ) : templates.length === 0 ? (
-        <EmptyState
-          icon={FileText}
-          title="No templates yet"
-          description="Templates are reusable — write the content once, then send it to any audience whenever you like."
-          actionLabel="Create your first template"
-          onAction={openCreate}
-        />
-      ) : (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card backdrop-blur-sm light:shadow-sm">
-          <div className="grid grid-cols-[1fr_1fr_120px_160px_60px] items-center border-b border-border px-5 py-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Name</p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Subject</p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Status</p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Last modified</p>
-            <span />
+      {/* Right edit panel */}
+      <div className="flex-1">
+        {!isEditorOpen ? (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-muted-foreground">Select a template or create a new one</p>
           </div>
-          <ul className="divide-y divide-border">
-            {templates.map((template) => (
-              <li key={template.publicId} className="group transition-colors hover:bg-secondary/60">
-                <div className="grid grid-cols-[1fr_1fr_120px_160px_60px] items-center px-5 py-4">
-                  <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{template.name}</p>
-                  <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{template.subject}</p>
-                  <TemplateStatusBadge status={template.status} />
-                  <p className="text-xs text-white/50 light:text-neutral-500">
-                    {new Date(template.updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                  </p>
-                  <div className="flex items-center justify-end opacity-0 transition group-hover:opacity-100">
-                    <button
-                      type="button"
-                      title="Edit"
-                      className="inline-flex size-7 items-center justify-center rounded-lg border border-border bg-card text-white/70 transition hover:bg-secondary light:text-neutral-600"
-                      onClick={() => openEdit(template.publicId)}
-                    >
-                      <Pencil size={12} />
-                    </button>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {isEditorOpen ? (
-        editingTemplateId && currentTemplate?.publicId !== editingTemplateId ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        ) : editingTemplateId && currentTemplate?.publicId !== editingTemplateId ? (
+          <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card">
             <Loader2 className="animate-spin text-white" size={24} />
           </div>
         ) : (
-          <TemplateEditorModal
+          <TemplateEditorPanel
             key={editingTemplateId ?? 'new'}
             slug={slug}
             template={editingTemplateId ? currentTemplate ?? undefined : undefined}
             creatorSettings={creatorSettings}
             onClose={closeEditor}
           />
-        )
-      ) : null}
+        )}
+      </div>
     </div>
   )
 }

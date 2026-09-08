@@ -1,4 +1,4 @@
-import { Archive, FileText, Loader2, Mail, Sparkles, X } from 'lucide-react'
+import { Archive, FileText, Loader2, Mail, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { CreatorSettings } from '../../creators/model/types'
 import { useTemplateStore } from '../model/template-store'
@@ -8,7 +8,7 @@ const BODY_MAX_LENGTH = 10_000
 const SUBJECT_MAX_LENGTH = 200
 const NAME_MAX_LENGTH = 100
 
-export function TemplateEditorModal({
+export function TemplateEditorPanel({
   slug,
   template,
   creatorSettings,
@@ -95,67 +95,69 @@ export function TemplateEditorModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 py-8 backdrop-blur-sm">
-      <div className="grid max-h-[90vh] w-full max-w-4xl grid-rows-[auto_1fr] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl light:border-neutral-200 light:bg-white">
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 light:border-neutral-100">
-          <h2 className="text-base font-semibold text-white light:text-neutral-950">
-            {pickerStep === 'choose' ? 'New template' : savedTemplate ? 'Edit template' : 'New template'}
-          </h2>
-          <button
-            type="button"
-            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
-            onClick={onClose}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {pickerStep === 'choose' ? (
-          <div className="overflow-y-auto p-6">
-            <p className="mb-4 text-sm text-white/50 light:text-neutral-500">
-              Start from scratch, or pick a starter to pre-fill the subject and body — nothing is saved until you
-              confirm.
-            </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => handlePickStarter(null)}
-                className="flex flex-col items-start gap-2 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-5 text-left transition hover:border-white/25 hover:bg-white/[0.05] light:border-neutral-300 light:bg-white light:hover:border-neutral-400"
-              >
-                <span className="grid size-9 place-items-center rounded-xl bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500">
-                  <FileText size={16} />
-                </span>
-                <span className="text-sm font-semibold text-white light:text-neutral-950">Start from scratch</span>
-                <span className="text-xs text-white/40 light:text-neutral-400">Blank subject and body.</span>
-              </button>
-
-              {startersStatus === 'loading' ? (
-                <div className="col-span-full flex h-32 items-center justify-center gap-2 text-sm text-white/40 light:text-neutral-400">
-                  <Loader2 className="animate-spin" size={16} />
-                  Loading starters…
-                </div>
-              ) : (
-                starters.map((starter) => (
-                  <button
-                    key={starter.key}
-                    type="button"
-                    onClick={() => handlePickStarter(starter)}
-                    className="flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.06] light:border-neutral-200 light:bg-white light:hover:border-neutral-300"
-                  >
-                    <span className="grid size-9 place-items-center rounded-xl bg-accent/15 text-accent light:bg-accent/10">
-                      <Sparkles size={16} />
-                    </span>
-                    <span className="text-sm font-semibold text-white light:text-neutral-950">{starter.name}</span>
-                    <span className="line-clamp-1 text-xs text-white/40 light:text-neutral-400">{starter.subject}</span>
-                  </button>
-                ))
-              )}
-            </div>
+    <div className="h-full rounded-xl border border-border bg-card p-5">
+      {pickerStep === 'choose' ? (
+        <div className="h-full overflow-y-auto">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-bold" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '1.2rem' }}>
+              New Template
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xs font-medium text-muted-foreground transition hover:text-foreground"
+            >
+              Cancel
+            </button>
           </div>
-        ) : (
-        <div className="grid grid-cols-1 overflow-y-auto lg:grid-cols-[1.2fr_1fr]">
+          <p className="mb-4 text-sm text-white/50 light:text-neutral-500">
+            Start from scratch, or pick a starter to pre-fill the subject and body — nothing is saved until you
+            confirm.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => handlePickStarter(null)}
+              className="flex flex-col items-start gap-2 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-5 text-left transition hover:border-white/25 hover:bg-white/[0.05] light:border-neutral-300 light:bg-white light:hover:border-neutral-400"
+            >
+              <span className="grid size-9 place-items-center rounded-xl bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500">
+                <FileText size={16} />
+              </span>
+              <span className="text-sm font-semibold text-white light:text-neutral-950">Start from scratch</span>
+              <span className="text-xs text-white/40 light:text-neutral-400">Blank subject and body.</span>
+            </button>
+
+            {startersStatus === 'loading' ? (
+              <div className="col-span-full flex h-32 items-center justify-center gap-2 text-sm text-white/40 light:text-neutral-400">
+                <Loader2 className="animate-spin" size={16} />
+                Loading starters…
+              </div>
+            ) : (
+              starters.map((starter) => (
+                <button
+                  key={starter.key}
+                  type="button"
+                  onClick={() => handlePickStarter(starter)}
+                  className="flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.06] light:border-neutral-200 light:bg-white light:hover:border-neutral-300"
+                >
+                  <span className="grid size-9 place-items-center rounded-xl bg-accent/15 text-accent light:bg-accent/10">
+                    <Sparkles size={16} />
+                  </span>
+                  <span className="text-sm font-semibold text-white light:text-neutral-950">{starter.name}</span>
+                  <span className="line-clamp-1 text-xs text-white/40 light:text-neutral-400">{starter.subject}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="grid h-full grid-cols-1 gap-6 overflow-y-auto lg:grid-cols-[1.2fr_1fr]">
           {/* Form */}
-          <div className="grid gap-5 border-b border-white/10 p-6 lg:border-b-0 lg:border-r light:border-neutral-100">
+          <div className="grid gap-5">
+            <h2 className="font-bold" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '1.2rem' }}>
+              {savedTemplate ? 'Edit Template' : 'New Template'}
+            </h2>
+
             {!isActive ? (
               <p className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-200 light:bg-amber-50 light:text-amber-800">
                 This template is archived and can no longer be edited or sent.
@@ -244,33 +246,50 @@ export function TemplateEditorModal({
             ) : null}
 
             {isActive ? (
-              <div className="flex gap-3">
+              <div className="flex gap-2 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <button
+                  type="button"
+                  disabled={!canSave}
+                  onClick={() => void handleSave()}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 light:text-neutral-950"
+                >
+                  {isSaving ? <Loader2 className="animate-spin" size={15} /> : null}
+                  {savedTemplate ? 'Save changes' : 'Create template'}
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm text-muted-foreground transition hover:text-foreground"
+                >
+                  Discard
+                </button>
                 {savedTemplate ? (
                   <button
                     type="button"
                     disabled={isArchiving}
                     onClick={() => { resetArchiveTemplateFeedback(); setIsConfirmingArchive(true) }}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white/70 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:border-red-200 light:hover:bg-red-50 light:hover:text-red-600"
+                    className="ml-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white/70 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:border-red-200 light:hover:bg-red-50 light:hover:text-red-600"
                   >
                     <Archive size={14} />
                     Archive
                   </button>
                 ) : null}
+              </div>
+            ) : (
+              <div className="pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <button
                   type="button"
-                  disabled={!canSave}
-                  onClick={() => void handleSave()}
-                  className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 light:text-neutral-950"
+                  onClick={onClose}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm text-muted-foreground transition hover:text-foreground"
                 >
-                  {isSaving ? <Loader2 className="animate-spin" size={15} /> : null}
-                  {savedTemplate ? 'Save changes' : 'Create template'}
+                  Close
                 </button>
               </div>
-            ) : null}
+            )}
           </div>
 
           {/* Mail preview */}
-          <div className="bg-white/[0.02] p-6 light:bg-neutral-50">
+          <div className="rounded-xl bg-white/[0.02] p-5 light:bg-neutral-50">
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-400">
               Preview
             </p>
@@ -285,8 +304,7 @@ export function TemplateEditorModal({
             />
           </div>
         </div>
-        )}
-      </div>
+      )}
 
       {isConfirmingArchive ? (
         <ArchiveConfirmDialog

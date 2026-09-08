@@ -5,7 +5,7 @@ import type { Product } from '../../products/model/types'
 import type { CreatorSettings } from '../../creators/model/types'
 import { useCampaignStore } from '../model/campaign-store'
 import type { CampaignAudienceType, EmailTemplate } from '../model/types'
-import { MailPreview } from './TemplateEditorModal'
+import { MailPreview } from './TemplateEditorPanel'
 
 const AUDIENCE_PREVIEW_DEBOUNCE_MS = 400
 const MIN_SCHEDULE_BUFFER_MINUTES = 2
