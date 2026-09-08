@@ -1,4 +1,4 @@
-import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, RotateCcw, Send, X } from 'lucide-react'
+import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Pencil, Plus, RotateCcw, Send } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -444,7 +444,7 @@ function HistoryTab({
   pages: ReturnType<typeof useLandingPageStore.getState>['pages']
   products: ReturnType<typeof useProductStore.getState>['products']
 }) {
-  const [selectedCampaign, setSelectedCampaign] = useState<CampaignListItem | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const targetName = useMemo(() => {
     const lpByPublicId = new Map(pages.map((p) => [p.publicId, p.title]))
@@ -483,49 +483,37 @@ function HistoryTab({
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Date</p>
       </div>
       <ul className="divide-y divide-border">
-        {campaigns.map((campaign) => (
-          <li key={campaign.publicId}>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => setSelectedCampaign(campaign)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedCampaign(campaign) }}
-              className="grid w-full cursor-pointer grid-cols-[1fr_140px_320px_140px] items-center px-5 py-4 text-left transition hover:bg-secondary/60"
-            >
-              <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{campaign.subject}</p>
-              <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{targetName(campaign)}</p>
-              <StatusCell campaign={campaign} slug={slug} />
-              <p className="text-xs text-white/50 light:text-neutral-500">
-                {new Date(campaign.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
+        {campaigns.map((campaign) => {
+          const isExpanded = expandedId === campaign.publicId
+          return (
+            <li key={campaign.publicId}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setExpandedId(isExpanded ? null : campaign.publicId)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') setExpandedId(isExpanded ? null : campaign.publicId)
+                }}
+                className="grid w-full cursor-pointer grid-cols-[1fr_140px_320px_140px] items-center px-5 py-4 text-left transition hover:bg-secondary/60"
+              >
+                <p className="truncate text-sm font-semibold text-white light:text-neutral-950">{campaign.subject}</p>
+                <p className="truncate text-xs font-medium text-white/60 light:text-neutral-600">{targetName(campaign)}</p>
+                <StatusCell campaign={campaign} slug={slug} />
+                <p className="text-xs text-white/50 light:text-neutral-500">
+                  {new Date(campaign.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                </p>
+              </div>
 
-      {selectedCampaign ? (
-        <CampaignDetailModal
-          slug={slug}
-          campaign={selectedCampaign}
-          audienceName={targetName(selectedCampaign)}
-          onClose={() => setSelectedCampaign(null)}
-        />
-      ) : null}
+              {isExpanded ? <CampaignDetailPanel slug={slug} campaign={campaign} /> : null}
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }
 
-function CampaignDetailModal({
-  slug,
-  campaign,
-  audienceName,
-  onClose,
-}: {
-  slug: string
-  campaign: CampaignListItem
-  audienceName: string
-  onClose: () => void
-}) {
+function CampaignDetailPanel({ slug, campaign }: { slug: string; campaign: CampaignListItem }) {
   const failedRecipients = useCampaignStore((s) => s.failedRecipients)
   const failedRecipientsStatus = useCampaignStore((s) => s.failedRecipientsStatus)
   const loadFailedRecipients = useCampaignStore((s) => s.loadFailedRecipients)
@@ -536,83 +524,77 @@ function CampaignDetailModal({
   const resetResendFailedFeedback = useCampaignStore((s) => s.resetResendFailedFeedback)
   const [isConfirmingResend, setIsConfirmingResend] = useState(false)
 
+  const showFailedRecipients = campaign.status === 'Queued' && campaign.failedCount > 0
+
   useEffect(() => {
-    if (campaign.failedCount > 0) void loadFailedRecipients(slug, campaign.publicId)
+    if (showFailedRecipients) void loadFailedRecipients(slug, campaign.publicId)
     return () => clearFailedRecipients()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, campaign.publicId, campaign.failedCount])
+  }, [slug, campaign.publicId, showFailedRecipients])
+
+  const deliveryRate = campaign.recipientCount > 0
+    ? `${Math.round((campaign.sentCount / campaign.recipientCount) * 100)}%`
+    : '—'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 py-8 backdrop-blur-sm">
-      <div className="grid max-h-[85vh] w-full max-w-2xl grid-rows-[auto_1fr] overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <div>
-            <h2 className="text-base font-semibold text-white light:text-neutral-950">{campaign.subject}</h2>
-            <p className="mt-0.5 text-xs text-white/40 light:text-neutral-400">
-              {audienceName} · {new Date(campaign.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="grid size-8 place-items-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white light:text-neutral-400 light:hover:bg-neutral-100 light:hover:text-neutral-700"
-            onClick={onClose}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="grid gap-5 overflow-y-auto p-6">
-          <StatusCell campaign={campaign} slug={slug} />
-
-          {campaign.status === 'Failed' && campaign.note ? (
-            <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-700">
-              {campaign.note}
-            </p>
-          ) : null}
-
-          {campaign.status === 'Queued' && campaign.failedCount > 0 ? (
-            <div className="grid gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-white light:text-neutral-950">
-                  Failed ({campaign.failedCount})
-                </p>
-                <button
-                  type="button"
-                  onClick={() => { resetResendFailedFeedback(); setIsConfirmingResend(true) }}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
-                >
-                  <RotateCcw size={13} />
-                  Resend failed
-                </button>
-              </div>
-              <p className="text-xs text-white/40 light:text-neutral-400">
-                Monthly limit was refunded for failed recipients — resending does not charge it again.
-              </p>
-              {resendFailedStatus === 'error' && resendFailedError ? (
-                <p className="text-xs text-red-400 light:text-red-500">{resendFailedError}</p>
-              ) : null}
-
-              {failedRecipientsStatus === 'loading' ? (
-                <div className="flex items-center gap-2 text-sm text-white/40 light:text-neutral-400">
-                  <Loader2 className="animate-spin" size={14} />
-                  Loading failed recipients…
-                </div>
-              ) : (
-                <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-                  {failedRecipients.map((recipient) => (
-                    <li key={recipient.email} className="px-4 py-3">
-                      <p className="text-sm font-medium text-white light:text-neutral-950">{recipient.email}</p>
-                      {recipient.lastError ? (
-                        <p className="mt-0.5 truncate text-xs text-white/40 light:text-neutral-400">{recipient.lastError}</p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : null}
-        </div>
+    <div className="px-5 pb-5" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="flex gap-6 p-4 rounded-lg"
+        style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <CampaignStat label="Recipients" value={String(campaign.recipientCount)} color="var(--color-chart-1)" />
+        <CampaignStat label="Delivered" value={String(campaign.sentCount)} color="rgb(52 211 153)" />
+        <CampaignStat label="Failed" value={String(campaign.failedCount)} color="var(--color-chart-4)" />
+        <CampaignStat label="Delivery Rate" value={deliveryRate} color="var(--color-chart-5)" />
       </div>
+
+      {campaign.status === 'Failed' && campaign.note ? (
+        <p className="mt-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-700">
+          {campaign.note}
+        </p>
+      ) : null}
+
+      {showFailedRecipients ? (
+        <div className="mt-3 grid gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-white light:text-neutral-950">
+              Failed ({campaign.failedCount})
+            </p>
+            <button
+              type="button"
+              onClick={() => { resetResendFailedFeedback(); setIsConfirmingResend(true) }}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
+            >
+              <RotateCcw size={13} />
+              Resend failed
+            </button>
+          </div>
+          <p className="text-xs text-white/40 light:text-neutral-400">
+            Monthly limit was refunded for failed recipients — resending does not charge it again.
+          </p>
+          {resendFailedStatus === 'error' && resendFailedError ? (
+            <p className="text-xs text-red-400 light:text-red-500">{resendFailedError}</p>
+          ) : null}
+
+          {failedRecipientsStatus === 'loading' ? (
+            <div className="flex items-center gap-2 text-sm text-white/40 light:text-neutral-400">
+              <Loader2 className="animate-spin" size={14} />
+              Loading failed recipients…
+            </div>
+          ) : (
+            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {failedRecipients.map((recipient) => (
+                <li key={recipient.email} className="px-4 py-3">
+                  <p className="text-sm font-medium text-white light:text-neutral-950">{recipient.email}</p>
+                  {recipient.lastError ? (
+                    <p className="mt-0.5 truncate text-xs text-white/40 light:text-neutral-400">{recipient.lastError}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
 
       {isConfirmingResend ? (
         <ResendFailedConfirmDialog
@@ -625,6 +607,15 @@ function CampaignDetailModal({
           }}
         />
       ) : null}
+    </div>
+  )
+}
+
+function CampaignStat({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">{label}</p>
+      <p className="text-xl font-black font-mono" style={{ color }}>{value}</p>
     </div>
   )
 }
