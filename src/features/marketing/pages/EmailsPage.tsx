@@ -156,7 +156,7 @@ function MonthlyUsageCard({ sent, limit }: { sent: number; limit: number }) {
   const color = pct > 85 ? CHART_COLORS[3] : CHART_COLORS[0]
 
   return (
-    <div className="max-w-sm rounded-2xl border border-border bg-card p-5 backdrop-blur-sm light:shadow-sm">
+    <div className="max-w-sm rounded-xl border border-border bg-card p-5">
       <p className="text-sm font-semibold text-white light:text-neutral-950">Monthly usage</p>
       <p className="mt-0.5 text-xs text-white/40 light:text-neutral-400">Resets on the 1st of each month</p>
       <p className="font-data mt-3 text-2xl font-bold tabular-nums" style={{ color }}>
