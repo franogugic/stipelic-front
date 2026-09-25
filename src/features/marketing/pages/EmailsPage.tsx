@@ -687,8 +687,14 @@ function StatusCell({ campaign, slug }: { campaign: CampaignListItem; slug: stri
   if (campaign.status === 'Scheduled') {
     return (
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1" onClick={(e) => e.stopPropagation()}>
-        <span className="inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-xs font-semibold text-cyan-300 light:bg-cyan-50 light:text-cyan-700">
-          <span className="size-1.5 shrink-0 rounded-full bg-cyan-400" />
+        <span
+          className="inline-flex w-fit items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-mono"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--color-chart-5) 12%, transparent)',
+            color: 'var(--color-chart-5)',
+            border: '1px solid color-mix(in srgb, var(--color-chart-5) 13%, transparent)',
+          }}
+        >
           Scheduled for {campaign.scheduledAt ? formatDateTime(campaign.scheduledAt) : '—'}
         </span>
         <button
@@ -715,10 +721,14 @@ function StatusCell({ campaign, slug }: { campaign: CampaignListItem; slug: stri
   if (campaign.status === 'Failed') {
     return (
       <span
-        className="inline-flex w-fit items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-semibold text-red-300 light:bg-red-50 light:text-red-700"
+        className="inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-[11px] font-mono"
+        style={{
+          backgroundColor: 'color-mix(in srgb, var(--color-chart-4) 12%, transparent)',
+          color: 'var(--color-chart-4)',
+          border: '1px solid color-mix(in srgb, var(--color-chart-4) 13%, transparent)',
+        }}
         title={campaign.note ?? undefined}
       >
-        <span className="size-1.5 shrink-0 rounded-full bg-red-400" />
         Failed
       </span>
     )
@@ -726,7 +736,14 @@ function StatusCell({ campaign, slug }: { campaign: CampaignListItem; slug: stri
 
   if (campaign.status === 'Cancelled') {
     return (
-      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
+      <span
+        className="inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-[11px] font-mono"
+        style={{
+          backgroundColor: 'color-mix(in srgb, var(--color-muted-foreground) 12%, transparent)',
+          color: 'var(--color-muted-foreground)',
+          border: '1px solid color-mix(in srgb, var(--color-muted-foreground) 13%, transparent)',
+        }}
+      >
         Cancelled
       </span>
     )
@@ -800,7 +817,7 @@ function ProgressCell({ campaign }: { campaign: CampaignListItem }) {
       <span className={`size-1.5 shrink-0 rounded-full ${dot}`} />
       Sent {campaign.sentCount}/{campaign.recipientCount}
       {campaign.failedCount > 0 ? (
-        <span className="text-red-400 light:text-red-600">· {campaign.failedCount} failed</span>
+        <span style={{ color: 'var(--color-chart-4)' }}>· {campaign.failedCount} failed</span>
       ) : null}
     </p>
   )
