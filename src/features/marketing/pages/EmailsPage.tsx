@@ -494,7 +494,7 @@ function HistoryTab({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card backdrop-blur-sm light:shadow-sm">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="grid grid-cols-[1fr_140px_320px_140px] items-center border-b border-border px-5 py-3">
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Subject</p>
         <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Audience</p>
