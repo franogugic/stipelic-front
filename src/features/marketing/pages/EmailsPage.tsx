@@ -82,7 +82,7 @@ export function EmailsPage() {
             Loading workspace…
           </div>
         ) : !creator ? (
-          <div className="rounded-2xl border border-border bg-card p-8 backdrop-blur-sm light:shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-8">
             <p className="font-semibold text-white light:text-neutral-950">Workspace not found</p>
             <button
               className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
@@ -94,12 +94,10 @@ export function EmailsPage() {
           </div>
         ) : (
           <div className="grid gap-8">
-            <div>
-              <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">Emails</h1>
-              <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
-                Build reusable templates and send them to your captured contacts.
-              </p>
-            </div>
+            <PageHeader
+              title="Emails"
+              subtitle="Build reusable templates and send them to your captured contacts."
+            />
 
             {homeSummary ? (
               <MonthlyUsageCard sent={homeSummary.emailsSentThisMonth} limit={homeSummary.emailsMonthlyLimit} />
@@ -147,6 +145,17 @@ export function EmailsPage() {
         )}
       </div>
     </AppShell>
+  )
+}
+
+function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div>
+      <h1 className="font-bold leading-none" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '2rem' }}>
+        {title}
+      </h1>
+      {subtitle && <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>}
+    </div>
   )
 }
 
