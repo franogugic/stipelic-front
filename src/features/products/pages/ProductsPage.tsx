@@ -81,7 +81,7 @@ export function ProductsPage() {
             Loading workspace…
           </div>
         ) : !creator ? (
-          <div className="rounded-2xl border border-border bg-card p-8 backdrop-blur-sm light:shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-8">
             <p className="font-semibold text-white light:text-neutral-950">Workspace not found</p>
             <button
               className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
