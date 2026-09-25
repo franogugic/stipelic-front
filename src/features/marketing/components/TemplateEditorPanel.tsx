@@ -118,7 +118,7 @@ export function TemplateEditorPanel({
             <button
               type="button"
               onClick={() => handlePickStarter(null)}
-              className="flex flex-col items-start gap-2 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-5 text-left transition hover:border-white/25 hover:bg-white/[0.05] light:border-neutral-300 light:bg-white light:hover:border-neutral-400"
+              className="flex flex-col items-start gap-2 rounded-2xl border border-dashed border-border bg-secondary p-5 text-left transition hover:border-white/25 hover:bg-white/[0.05] light:hover:border-neutral-400"
             >
               <span className="grid size-9 place-items-center rounded-xl bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500">
                 <FileText size={16} />
@@ -138,7 +138,7 @@ export function TemplateEditorPanel({
                   key={starter.key}
                   type="button"
                   onClick={() => handlePickStarter(starter)}
-                  className="flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.06] light:border-neutral-200 light:bg-white light:hover:border-neutral-300"
+                  className="flex flex-col items-start gap-2 rounded-2xl border border-border bg-secondary p-5 text-left transition hover:border-white/20 hover:bg-white/[0.06] light:hover:border-neutral-300"
                 >
                   <span className="grid size-9 place-items-center rounded-xl bg-accent/15 text-accent light:bg-accent/10">
                     <Sparkles size={16} />
@@ -268,7 +268,7 @@ export function TemplateEditorPanel({
                     type="button"
                     disabled={isArchiving}
                     onClick={() => { resetArchiveTemplateFeedback(); setIsConfirmingArchive(true) }}
-                    className="ml-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white/70 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:border-neutral-200 light:bg-white light:text-neutral-600 light:hover:border-red-200 light:hover:bg-red-50 light:hover:text-red-600"
+                    className="ml-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-white/70 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:text-neutral-600 light:hover:text-red-600"
                   >
                     <Archive size={14} />
                     Archive
@@ -289,7 +289,7 @@ export function TemplateEditorPanel({
           </div>
 
           {/* Mail preview */}
-          <div className="rounded-xl bg-white/[0.02] p-5 light:bg-neutral-50">
+          <div className="rounded-xl bg-secondary p-5">
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-400">
               Preview
             </p>
@@ -331,7 +331,7 @@ function ArchiveConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl light:border-neutral-200 light:bg-white">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <div className="grid size-11 place-items-center rounded-xl bg-amber-500/15 light:bg-amber-50">
           <Archive className="text-amber-400 light:text-amber-600" size={22} />
         </div>
@@ -341,7 +341,7 @@ function ArchiveConfirmDialog({
         </p>
         {error ? <p className="mt-3 text-sm text-red-300 light:text-red-600">{error}</p> : null}
         <div className="mt-6 flex gap-3">
-          <button type="button" disabled={isArchiving} className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50" onClick={onCancel}>Cancel</button>
+          <button type="button" disabled={isArchiving} className="flex h-10 flex-1 items-center justify-center rounded-xl border border-border bg-card text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-700" onClick={onCancel}>Cancel</button>
           <button type="button" disabled={isArchiving} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 text-sm font-semibold text-white transition hover:bg-red-400 disabled:opacity-40" onClick={onConfirm}>
             {isArchiving ? <Loader2 className="animate-spin" size={15} /> : null}
             Archive
@@ -372,7 +372,7 @@ export function MailPreview({
   const paragraphs = bodyText.split('\n').filter((line) => line.trim().length > 0)
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-white light:border-neutral-200">
+    <div className="overflow-hidden rounded-xl border border-border bg-white">
       <div className="max-h-[520px] overflow-y-auto p-6">
         {logoUrl ? (
           <img src={logoUrl} alt={brandName} className="mb-4 h-8 object-contain" />
@@ -422,4 +422,4 @@ function ModalField({ label, required, children }: { label: string; required?: b
   )
 }
 
-const inputClass = 'w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 disabled:cursor-not-allowed disabled:opacity-50 light:border-neutral-200 light:bg-white light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100'
+const inputClass = 'w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 disabled:cursor-not-allowed disabled:opacity-50 light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100'
