@@ -127,8 +127,8 @@ export function SendWizardModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 py-8 backdrop-blur-sm">
-      <div className="grid max-h-[90vh] w-full max-w-4xl grid-rows-[auto_1fr] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl light:border-neutral-200 light:bg-white">
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 light:border-neutral-100">
+      <div className="grid max-h-[90vh] w-full max-w-4xl grid-rows-[auto_1fr] overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-3">
             {step === 2 ? (
               <button
@@ -154,7 +154,7 @@ export function SendWizardModal({
 
         {step === 1 ? (
           <div className="grid grid-cols-1 overflow-y-auto lg:grid-cols-[1.2fr_1fr]">
-            <div className="grid gap-2 overflow-y-auto border-b border-white/10 p-6 lg:border-b-0 lg:border-r light:border-neutral-100">
+            <div className="grid gap-2 overflow-y-auto border-b border-border p-6 lg:border-b-0 lg:border-r">
               {activeTemplates.length === 0 ? (
                 <p className="text-sm text-white/40 light:text-neutral-400">
                   No active templates. Create one in the Templates tab first.
@@ -168,7 +168,7 @@ export function SendWizardModal({
                     className={`rounded-xl border px-4 py-3 text-left transition ${
                       selectedTemplateId === t.publicId
                         ? 'border-accent/50 bg-accent/10'
-                        : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.05] light:border-neutral-200 light:bg-white light:hover:bg-neutral-50'
+                        : 'border-border bg-secondary hover:bg-white/[0.05]'
                     }`}
                   >
                     <p className="text-sm font-semibold text-white light:text-neutral-950">{t.name}</p>
@@ -177,7 +177,7 @@ export function SendWizardModal({
                 ))
               )}
             </div>
-            <div className="bg-white/[0.02] p-6 light:bg-neutral-50">
+            <div className="bg-secondary p-6">
               <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-400">
                 Preview
               </p>
@@ -229,7 +229,7 @@ export function SendWizardModal({
               <select
                 value={targetPublicId}
                 onChange={(e) => { setTargetPublicId(e.target.value); setIsRecipientsOpen(false) }}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950"
+                className="mt-2 w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950"
               >
                 {(audienceType === 'LandingPage' ? publishedLandingPages : activeProducts).map((p) => (
                   <option key={p.publicId} value={p.publicId}>
@@ -272,7 +272,7 @@ export function SendWizardModal({
                     type="datetime-local"
                     value={scheduledAtLocal}
                     onChange={(e) => handleScheduledAtChange(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950"
+                    className="w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950"
                   />
                   {scheduleWarning ? (
                     <p className="mt-1.5 text-xs text-red-400 light:text-red-600">{scheduleWarning}</p>
@@ -314,7 +314,7 @@ export function SendWizardModal({
           </div>
         )}
 
-        <div className="flex justify-end gap-3 border-t border-white/10 px-6 py-4 light:border-neutral-100">
+        <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
           {step === 1 ? (
             <button
               type="button"
@@ -370,7 +370,7 @@ function AudiencePreviewCard({
 }) {
   if (status === 'loading') {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white/40 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-400">
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-white/40">
         <Loader2 className="animate-spin" size={14} />
         Checking audience…
       </div>
@@ -386,7 +386,7 @@ function AudiencePreviewCard({
       className={`rounded-xl border px-4 py-3 text-sm ${
         overLimit
           ? 'border-red-500/30 bg-red-500/5 text-red-300 light:border-red-200 light:bg-red-50 light:text-red-700'
-          : 'border-white/10 bg-white/[0.02] text-white/70 light:border-neutral-200 light:bg-neutral-50 light:text-neutral-600'
+          : 'border-border bg-secondary text-white/70'
       }`}
     >
       This will send to{' '}
@@ -424,7 +424,7 @@ function RecipientsListPanel({
   onLoadMore: () => void
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] light:border-neutral-200 light:bg-neutral-50">
+    <div className="rounded-xl border border-border bg-secondary">
       {status === 'loading' ? (
         <div className="flex items-center gap-2 px-4 py-3 text-sm text-white/40 light:text-neutral-400">
           <Loader2 className="animate-spin" size={14} />
@@ -434,7 +434,7 @@ function RecipientsListPanel({
         <p className="px-4 py-3 text-sm text-white/40 light:text-neutral-400">No recipients to show.</p>
       ) : (
         <>
-          <ul className="max-h-56 divide-y divide-white/10 overflow-y-auto light:divide-neutral-100">
+          <ul className="max-h-56 divide-y divide-border overflow-y-auto">
             {emails.map((email) => (
               <li key={email} className="truncate px-4 py-2 text-sm text-white/80 light:text-neutral-700">
                 {email}
@@ -442,7 +442,7 @@ function RecipientsListPanel({
             ))}
           </ul>
           {hasMore ? (
-            <div className="flex justify-center border-t border-white/10 py-2 light:border-neutral-100">
+            <div className="flex justify-center border-t border-border py-2">
               <button
                 type="button"
                 disabled={loadMoreStatus === 'loading'}
@@ -481,7 +481,7 @@ function SendConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-2xl light:border-neutral-200 light:bg-white">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <div className="grid size-11 place-items-center rounded-xl bg-accent/15">
           <CheckCircle2 className="text-accent-strong" size={20} />
         </div>
@@ -514,7 +514,7 @@ function SendConfirmDialog({
             type="button"
             disabled={isSending}
             onClick={onCancel}
-            className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50"
+            className="flex h-10 flex-1 items-center justify-center rounded-xl border border-border bg-card text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-700"
           >
             Cancel
           </button>
