@@ -1,4 +1,4 @@
-import { AlertTriangle, Archive, FileText, History, Loader2, Mail, Plus, RotateCcw, Send } from 'lucide-react'
+import { AlertTriangle, FileText, History, Loader2, Mail, Plus, RotateCcw, Send } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -418,20 +418,25 @@ function TemplatesTab({
   )
 }
 
-function TemplateStatusBadge({ status }: { status: EmailTemplate['status'] }) {
-  if (status === 'Archived') {
-    return (
-      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
-        <Archive size={10} />
-        Archived
-      </span>
-    )
-  }
+const TEMPLATE_STATUS_STYLES: Record<EmailTemplate['status'], { bg: string; color: string }> = {
+  Active: {
+    bg: 'color-mix(in srgb, var(--color-chart-1) 12%, transparent)',
+    color: 'var(--color-chart-1)',
+  },
+  Archived: {
+    bg: 'color-mix(in srgb, var(--color-muted-foreground) 12%, transparent)',
+    color: 'var(--color-muted-foreground)',
+  },
+}
 
+function TemplateStatusBadge({ status }: { status: EmailTemplate['status'] }) {
+  const s = TEMPLATE_STATUS_STYLES[status]
   return (
-    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-300 light:bg-emerald-50 light:text-emerald-700">
-      <span className="size-1.5 rounded-full bg-emerald-400" />
-      Active
+    <span
+      className="inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-[11px] font-mono"
+      style={{ backgroundColor: s.bg, color: s.color, border: `1px solid color-mix(in srgb, ${s.color} 13%, transparent)` }}
+    >
+      {status}
     </span>
   )
 }
