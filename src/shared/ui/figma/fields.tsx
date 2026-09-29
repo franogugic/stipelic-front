@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 
 const LABEL_CLASS = 'block text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5'
 const FIELD_CLASS =
-  'w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-secondary text-foreground placeholder:text-muted-foreground/40 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40'
+  'w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-secondary text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-chart-1/60 disabled:cursor-not-allowed disabled:opacity-40'
 
 export function FieldInput({
   label,
@@ -92,8 +92,8 @@ export function SelectInput({
       style={{ appearance: 'none' }}
       className={
         variant === 'compact'
-          ? 'px-3 py-2 rounded-lg border border-border text-xs bg-secondary text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-40'
-          : 'w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-secondary text-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-40'
+          ? 'px-3 py-2 rounded-lg border border-border text-xs bg-secondary text-muted-foreground focus:outline-none focus:border-chart-1/60 disabled:cursor-not-allowed disabled:opacity-40'
+          : 'w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-secondary text-foreground focus:outline-none focus:border-chart-1/60 disabled:cursor-not-allowed disabled:opacity-40'
       }
     >
       {children}
