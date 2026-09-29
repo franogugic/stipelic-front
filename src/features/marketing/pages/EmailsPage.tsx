@@ -1,20 +1,15 @@
-import { AlertTriangle, FileText, History, Loader2, Mail, Plus, RotateCcw, Send } from 'lucide-react'
+import { AlertTriangle, FileText, History, Loader2, Plus, RotateCcw } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
-import { CHART_COLORS } from '../../../shared/ui/chart-colors'
+import { Card, PageHeader } from '../../../shared/ui/figma'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
-import { getHomeSummary } from '../../orders/api/orders-api'
-import type { HomeSummary } from '../../orders/model/types'
 import { useProductStore } from '../../products/model/product-store'
-import { SendWizardModal } from '../components/SendWizardModal'
 import { TemplateEditorPanel } from '../components/TemplateEditorPanel'
 import { useCampaignStore } from '../model/campaign-store'
 import { useTemplateStore } from '../model/template-store'
 import type { CampaignListItem, EmailTemplate } from '../model/types'
-
-type EmailsTab = 'send' | 'templates' | 'history'
 
 export function EmailsPage() {
   const navigate = useNavigate()
@@ -41,9 +36,8 @@ export function EmailsPage() {
   const campaigns = useCampaignStore((s) => s.campaigns)
   const campaignsStatus = useCampaignStore((s) => s.campaignsStatus)
   const loadCampaigns = useCampaignStore((s) => s.loadCampaigns)
-
-  const [tab, setTab] = useState<EmailsTab>('send')
-  const [homeSummary, setHomeSummary] = useState<HomeSummary | null>(null)
+  const usage = useCampaignStore((s) => s.usage)
+  const loadUsage = useCampaignStore((s) => s.loadUsage)
 
   const isLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
@@ -53,85 +47,51 @@ export function EmailsPage() {
 
   useEffect(() => {
     if (!normalizedSlug) return
-    void getHomeSummary(normalizedSlug).then(setHomeSummary).catch(() => {})
-  }, [normalizedSlug])
-
-  useEffect(() => {
-    if (!normalizedSlug) return
     void loadCreatorSettings(normalizedSlug)
     void loadPages(normalizedSlug)
     void loadProducts(normalizedSlug)
     void loadTemplates(normalizedSlug)
     void loadCampaigns(normalizedSlug)
+    void loadUsage(normalizedSlug)
     const refetchOnFocus = () => {
       void loadTemplates(normalizedSlug)
       void loadCampaigns(normalizedSlug)
+      void loadUsage(normalizedSlug)
     }
     window.addEventListener('focus', refetchOnFocus)
     return () => window.removeEventListener('focus', refetchOnFocus)
-  }, [normalizedSlug, loadCreatorSettings, loadPages, loadProducts, loadTemplates, loadCampaigns])
+  }, [normalizedSlug, loadCreatorSettings, loadPages, loadProducts, loadTemplates, loadCampaigns, loadUsage])
 
   if (!slug) return null
 
   return (
     <AppShell slug={slug} activeSection="emails">
-      <div className="px-8 py-8">
+      <div className="p-8">
         {isLoading ? (
-          <div className="flex h-40 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
+          <div className="flex h-40 items-center justify-center gap-3 text-sm text-muted-foreground">
             <Loader2 className="animate-spin" size={18} />
             Loading workspace…
           </div>
         ) : !creator ? (
-          <div className="rounded-xl border border-border bg-card p-8">
-            <p className="font-semibold text-white light:text-neutral-950">Workspace not found</p>
+          <Card className="p-8">
+            <p className="font-semibold">Workspace not found</p>
             <button
-              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
+              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-muted-foreground transition hover:bg-secondary"
               type="button"
               onClick={() => navigate('/')}
             >
               Go home
             </button>
-          </div>
+          </Card>
         ) : (
-          <div className="grid gap-8">
-            <PageHeader
-              title="Emails"
-              subtitle="Build reusable templates and send them to your captured contacts."
-            />
+          <>
+            <PageHeader title="Email Marketing" subtitle="Send campaigns to your captured subscribers" />
 
-            {homeSummary ? (
-              <MonthlyUsageCard sent={homeSummary.emailsSentThisMonth} limit={homeSummary.emailsMonthlyLimit} />
-            ) : null}
-
-            <div className="flex w-fit gap-1 rounded-lg bg-secondary p-1">
-              <TabButton icon={Send} label="Send" active={tab === 'send'} onClick={() => setTab('send')} />
-              <TabButton icon={FileText} label="Templates" active={tab === 'templates'} onClick={() => setTab('templates')} />
-              <TabButton icon={History} label="History" active={tab === 'history'} onClick={() => setTab('history')} />
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <MonthlyUsageCard usage={usage} />
             </div>
 
-            {tab === 'send' ? (
-              <SendTab
-                slug={normalizedSlug}
-                templates={templates}
-                templatesStatus={templatesStatus}
-                pages={pages}
-                products={products}
-                creatorSettings={creatorSettings}
-                onGoToTemplates={() => setTab('templates')}
-                onSent={() => setTab('history')}
-              />
-            ) : null}
-
-            {tab === 'templates' ? (
-              <TemplatesTab
-                slug={normalizedSlug}
-                templates={templates}
-                templatesStatus={templatesStatus}
-                creatorSettings={creatorSettings}
-              />
-            ) : null}
-
-            {tab === 'history' ? (
+            <div className="grid gap-8">
               <HistoryTab
                 slug={normalizedSlug}
                 campaigns={campaigns}
@@ -139,169 +99,59 @@ export function EmailsPage() {
                 pages={pages}
                 products={products}
               />
-            ) : null}
-
-          </div>
+              <TemplatesTab
+                slug={normalizedSlug}
+                templates={templates}
+                templatesStatus={templatesStatus}
+                creatorSettings={creatorSettings}
+              />
+            </div>
+          </>
         )}
       </div>
     </AppShell>
   )
 }
 
-function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div>
-      <h1 className="font-bold leading-none" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '2rem' }}>
-        {title}
-      </h1>
-      {subtitle && <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>}
-    </div>
-  )
-}
+function MonthlyUsageCard({ usage }: { usage: { sent: number; limit: number } | null }) {
+  // The allowance is per calendar month; the next reset is the 1st of the following month (UTC).
+  const now = new Date()
+  const resetsOn = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
 
-function MonthlyUsageCard({ sent, limit }: { sent: number; limit: number }) {
-  const isUnlimited = limit < 0
-  const pct = isUnlimited ? 0 : Math.min(100, limit > 0 ? (sent / limit) * 100 : 100)
-  const color = pct > 85 ? CHART_COLORS[3] : CHART_COLORS[0]
+  const isUnlimited = usage !== null && usage.limit < 0
+  const pct = usage === null || isUnlimited ? 0 : Math.min(100, usage.limit > 0 ? (usage.sent / usage.limit) * 100 : 100)
+  const color = pct > 85 ? 'var(--color-chart-4)' : 'var(--color-chart-1)'
 
   return (
-    <div className="max-w-sm rounded-xl border border-border bg-card p-5">
-      <p className="text-sm font-semibold text-white light:text-neutral-950">Monthly usage</p>
-      <p className="mt-0.5 text-xs text-white/40 light:text-neutral-400">Resets on the 1st of each month</p>
-      <p className="font-data mt-3 text-2xl font-bold tabular-nums" style={{ color }}>
-        {sent.toLocaleString()}
-        <span className="text-base font-normal text-white/40 light:text-neutral-400">
-          /{isUnlimited ? '∞' : limit.toLocaleString()}
-        </span>
-      </p>
-      {!isUnlimited ? (
+    <Card className="p-5">
+      <p className="text-sm font-bold mb-1">Monthly Usage</p>
+      <p className="text-[11px] text-muted-foreground mb-4">Resets {resetsOn}</p>
+      {usage === null ? (
+        <p className="text-[11px] text-muted-foreground">Loading usage…</p>
+      ) : (
         <>
-          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
-          </div>
-          <p className="mt-2 text-xs text-white/40 light:text-neutral-400">
-            {Math.max(0, limit - sent).toLocaleString()} emails remaining
+          <p className="font-bold mb-3" style={{ fontFamily: 'DM Mono, monospace', fontSize: '1.4rem', color }}>
+            {usage.sent.toLocaleString()}
+            <span className="text-muted-foreground text-base font-normal">
+              /{isUnlimited ? '∞' : usage.limit.toLocaleString()}
+            </span>
+          </p>
+          {!isUnlimited && (
+            <div className="h-1.5 rounded-full w-full mb-2 bg-white/[0.08] light:bg-secondary">
+              <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            {isUnlimited ? 'Unlimited' : `${Math.max(0, usage.limit - usage.sent).toLocaleString()} emails remaining`}
           </p>
         </>
-      ) : null}
-    </div>
-  )
-}
-
-function TabButton({
-  icon: Icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: typeof Send
-  label: string
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-semibold transition-all ${
-        active ? 'text-white' : 'text-muted-foreground hover:text-foreground'
-      }`}
-      style={{ backgroundColor: active ? 'var(--color-chart-1)' : 'transparent' }}
-    >
-      <Icon size={14} />
-      {label}
-    </button>
-  )
-}
-
-function SendTab({
-  slug,
-  templates,
-  templatesStatus,
-  pages,
-  products,
-  creatorSettings,
-  onGoToTemplates,
-  onSent,
-}: {
-  slug: string
-  templates: EmailTemplate[]
-  templatesStatus: 'idle' | 'loading' | 'success' | 'error'
-  pages: ReturnType<typeof useLandingPageStore.getState>['pages']
-  products: ReturnType<typeof useProductStore.getState>['products']
-  creatorSettings: ReturnType<typeof useCreatorStore.getState>['creatorSettings']
-  onGoToTemplates: () => void
-  onSent: () => void
-}) {
-  const [isWizardOpen, setIsWizardOpen] = useState(false)
-  const activeTemplates = templates.filter((t) => t.status === 'Active')
-  const publishedPages = pages.filter((p) => p.status === 'Published')
-  const activeProducts = products.filter((p) => p.status === 'Active')
-  const hasAudience = publishedPages.length > 0 || activeProducts.length > 0
-
-  if (templatesStatus === 'loading') {
-    return (
-      <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-        <Loader2 className="animate-spin" size={16} />
-        Loading templates…
-      </div>
-    )
-  }
-
-  if (activeTemplates.length === 0) {
-    return (
-      <EmptyState
-        icon={FileText}
-        title="No templates yet"
-        description="Create a reusable template first — then you can send it to any audience."
-        actionLabel="Create your first template"
-        onAction={onGoToTemplates}
-      />
-    )
-  }
-
-  if (!hasAudience) {
-    return (
-      <EmptyState
-        icon={Mail}
-        title="No audience yet"
-        description="Publish a landing page and capture some contacts before you can send an email."
-      />
-    )
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-card py-20 text-center light:border-neutral-300">
-      <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
-        <Send size={24} strokeWidth={1.5} />
-      </span>
-      <div>
-        <p className="text-sm font-semibold text-white light:text-neutral-950">Ready to send</p>
-        <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
-          Pick a template and an audience, then send it.
-        </p>
-      </div>
-      <button
-        type="button"
-        className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong"
-        onClick={() => setIsWizardOpen(true)}
-      >
-        <Send size={15} />
-        Send email
-      </button>
-
-      {isWizardOpen ? (
-        <SendWizardModal
-          slug={slug}
-          templates={templates}
-          landingPages={pages}
-          products={products}
-          creatorSettings={creatorSettings}
-          onClose={() => setIsWizardOpen(false)}
-          onSent={() => { setIsWizardOpen(false); onSent() }}
-        />
-      ) : null}
-    </div>
+      )}
+    </Card>
   )
 }
 
