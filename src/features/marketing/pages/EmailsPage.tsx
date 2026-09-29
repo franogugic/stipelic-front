@@ -6,6 +6,7 @@ import { Card, PageHeader } from '../../../shared/ui/figma'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
 import { useProductStore } from '../../products/model/product-store'
+import { NewCampaignCard } from '../components/NewCampaignCard'
 import { OpenRateTrendCard } from '../components/OpenRateTrendCard'
 import { TemplateEditorPanel } from '../components/TemplateEditorPanel'
 import { useCampaignStore } from '../model/campaign-store'
@@ -94,6 +95,10 @@ export function EmailsPage() {
             <div className="grid grid-cols-3 gap-4 mb-6">
               <MonthlyUsageCard usage={usage} />
               <OpenRateTrendCard className="col-span-2" />
+            </div>
+
+            <div className="grid grid-cols-5 gap-6 mb-6">
+              <NewCampaignCard className="col-span-3" slug={normalizedSlug} creatorSettings={creatorSettings} />
             </div>
 
             <div className="grid gap-8">
