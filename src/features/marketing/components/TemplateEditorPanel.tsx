@@ -1,11 +1,16 @@
-import { Archive, FileText, Loader2, Mail, Sparkles } from 'lucide-react'
+import { Archive, FileText, Loader2, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { FieldInput, GhostBtn, Modal, PrimaryBtn, TextArea } from '../../../shared/ui/figma'
 import type { CreatorSettings } from '../../creators/model/types'
+import {
+  BODY_MAX_LENGTH,
+  CTA_LABEL_MAX_LENGTH,
+  CTA_URL_MAX_LENGTH,
+  SUBJECT_MAX_LENGTH,
+} from '../model/mail-content-rules'
 import { useTemplateStore } from '../model/template-store'
 import type { EmailTemplate, EmailTemplateStarter } from '../model/types'
 
-const BODY_MAX_LENGTH = 10_000
-const SUBJECT_MAX_LENGTH = 200
 const NAME_MAX_LENGTH = 100
 
 export function TemplateEditorPanel({
@@ -95,22 +100,16 @@ export function TemplateEditorPanel({
   }
 
   return (
-    <div className="h-full rounded-xl border border-border bg-card p-5">
+    <div className="h-full rounded-lg border border-border p-5 overflow-y-auto">
       {pickerStep === 'choose' ? (
-        <div className="h-full overflow-y-auto">
+        <div>
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-bold" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '1.2rem' }}>
               New Template
             </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-xs font-medium text-muted-foreground transition hover:text-foreground"
-            >
-              Cancel
-            </button>
+            <GhostBtn onClick={onClose}>Cancel</GhostBtn>
           </div>
-          <p className="mb-4 text-sm text-white/50 light:text-neutral-500">
+          <p className="mb-4 text-sm text-muted-foreground">
             Start from scratch, or pick a starter to pre-fill the subject and body — nothing is saved until you
             confirm.
           </p>
@@ -118,17 +117,15 @@ export function TemplateEditorPanel({
             <button
               type="button"
               onClick={() => handlePickStarter(null)}
-              className="flex flex-col items-start gap-2 rounded-2xl border border-dashed border-border bg-secondary p-5 text-left transition hover:border-white/25 hover:bg-white/[0.05] light:hover:border-neutral-400"
+              className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-border bg-secondary p-4 text-left transition-colors hover:border-chart-1/60"
             >
-              <span className="grid size-9 place-items-center rounded-xl bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500">
-                <FileText size={16} />
-              </span>
-              <span className="text-sm font-semibold text-white light:text-neutral-950">Start from scratch</span>
-              <span className="text-xs text-white/40 light:text-neutral-400">Blank subject and body.</span>
+              <FileText size={16} className="text-muted-foreground" />
+              <span className="text-sm font-semibold">Start from scratch</span>
+              <span className="text-[11px] text-muted-foreground">Blank subject and body.</span>
             </button>
 
             {startersStatus === 'loading' ? (
-              <div className="col-span-full flex h-32 items-center justify-center gap-2 text-sm text-white/40 light:text-neutral-400">
+              <div className="col-span-full flex h-32 items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="animate-spin" size={16} />
                 Loading starters…
               </div>
@@ -138,161 +135,118 @@ export function TemplateEditorPanel({
                   key={starter.key}
                   type="button"
                   onClick={() => handlePickStarter(starter)}
-                  className="flex flex-col items-start gap-2 rounded-2xl border border-border bg-secondary p-5 text-left transition hover:border-white/20 hover:bg-white/[0.06] light:hover:border-neutral-300"
+                  className="flex flex-col items-start gap-2 rounded-lg border border-border bg-secondary p-4 text-left transition-colors hover:border-chart-1/60"
                 >
-                  <span className="grid size-9 place-items-center rounded-xl bg-accent/15 text-accent light:bg-accent/10">
-                    <Sparkles size={16} />
-                  </span>
-                  <span className="text-sm font-semibold text-white light:text-neutral-950">{starter.name}</span>
-                  <span className="line-clamp-1 text-xs text-white/40 light:text-neutral-400">{starter.subject}</span>
+                  <Sparkles size={16} style={{ color: 'var(--color-chart-1)' }} />
+                  <span className="text-sm font-semibold">{starter.name}</span>
+                  <span className="line-clamp-1 text-[11px] text-muted-foreground">{starter.subject}</span>
                 </button>
               ))
             )}
           </div>
         </div>
       ) : (
-        <div className="grid h-full grid-cols-1 gap-6 overflow-y-auto lg:grid-cols-[1.2fr_1fr]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_1fr]">
           {/* Form */}
-          <div className="grid gap-5">
+          <div className="space-y-3">
             <h2 className="font-bold" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '1.2rem' }}>
               {savedTemplate ? 'Edit Template' : 'New Template'}
             </h2>
 
-            {!isActive ? (
-              <p className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-200 light:bg-amber-50 light:text-amber-800">
+            {!isActive && (
+              <p className="text-xs" style={{ color: 'var(--color-chart-5)' }}>
                 This template is archived and can no longer be edited or sent.
               </p>
-            ) : null}
+            )}
 
-            <ModalField label="Name" required>
-              <input
-                type="text"
-                maxLength={NAME_MAX_LENGTH}
-                disabled={!isActive}
-                value={name}
-                onChange={(e) => { resetSaveTemplateFeedback(); setName(e.target.value) }}
-                placeholder="Monthly newsletter"
-                className={inputClass}
-              />
-            </ModalField>
+            <FieldInput
+              label="Name"
+              value={name}
+              onChange={(value) => { resetSaveTemplateFeedback(); setName(value) }}
+              placeholder="Monthly newsletter"
+              maxLength={NAME_MAX_LENGTH}
+              disabled={!isActive}
+            />
 
-            <ModalField label="Subject" required>
-              <input
-                type="text"
-                maxLength={SUBJECT_MAX_LENGTH}
-                disabled={!isActive}
-                value={subject}
-                onChange={(e) => { resetSaveTemplateFeedback(); setSubject(e.target.value) }}
-                placeholder="Big news for you…"
-                className={inputClass}
-              />
-            </ModalField>
+            <FieldInput
+              label="Subject"
+              value={subject}
+              onChange={(value) => { resetSaveTemplateFeedback(); setSubject(value) }}
+              placeholder="Big news for you…"
+              maxLength={SUBJECT_MAX_LENGTH}
+              disabled={!isActive}
+            />
 
-            <ModalField label="Body" required>
-              <textarea
+            <div>
+              <TextArea
+                label="Body"
                 rows={7}
+                value={bodyText}
+                onChange={(value) => { resetSaveTemplateFeedback(); setBodyText(value) }}
+                placeholder="Write your update…"
                 maxLength={BODY_MAX_LENGTH}
                 disabled={!isActive}
-                value={bodyText}
-                onChange={(e) => { resetSaveTemplateFeedback(); setBodyText(e.target.value) }}
-                placeholder="Write your update…"
-                className={`${inputClass} resize-none`}
               />
-              <p className="text-right text-xs text-white/30 light:text-neutral-400">
+              <p className="mt-1 text-right text-[11px] text-muted-foreground">
                 {bodyText.length} / {BODY_MAX_LENGTH}
               </p>
-            </ModalField>
-
-            <div className="grid grid-cols-2 gap-4">
-              <ModalField label="CTA label">
-                <input
-                  type="text"
-                  maxLength={100}
-                  disabled={!isActive}
-                  value={ctaLabel}
-                  onChange={(e) => { resetSaveTemplateFeedback(); setCtaLabel(e.target.value) }}
-                  placeholder="Shop now"
-                  className={inputClass}
-                />
-              </ModalField>
-              <ModalField label="CTA URL">
-                <input
-                  type="url"
-                  maxLength={2000}
-                  disabled={!isActive}
-                  value={ctaUrl}
-                  onChange={(e) => { resetSaveTemplateFeedback(); setCtaUrl(e.target.value) }}
-                  placeholder="https://…"
-                  className={inputClass}
-                />
-              </ModalField>
             </div>
-            {!ctaValid ? (
-              <p className="-mt-3 text-xs font-medium text-red-400 light:text-red-600">
-                Set both a CTA label and URL, or leave both empty.
-              </p>
-            ) : null}
 
-            {saveTemplateError ? (
-              <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">
-                {saveTemplateError}
-              </p>
-            ) : null}
+            <div className="grid grid-cols-2 gap-3">
+              <FieldInput
+                label="CTA label"
+                value={ctaLabel}
+                onChange={(value) => { resetSaveTemplateFeedback(); setCtaLabel(value) }}
+                placeholder="Shop now"
+                maxLength={CTA_LABEL_MAX_LENGTH}
+                disabled={!isActive}
+              />
+              <FieldInput
+                label="CTA URL"
+                type="url"
+                value={ctaUrl}
+                onChange={(value) => { resetSaveTemplateFeedback(); setCtaUrl(value) }}
+                placeholder="https://…"
+                maxLength={CTA_URL_MAX_LENGTH}
+                disabled={!isActive}
+                error={!ctaValid ? 'Set both a CTA label and URL, or leave both empty.' : undefined}
+              />
+            </div>
 
-            {archiveTemplateError ? (
-              <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">
-                {archiveTemplateError}
-              </p>
-            ) : null}
-
-            {isActive ? (
-              <div className="flex gap-2 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <button
-                  type="button"
-                  disabled={!canSave}
-                  onClick={() => void handleSave()}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 light:text-neutral-950"
-                >
-                  {isSaving ? <Loader2 className="animate-spin" size={15} /> : null}
-                  {savedTemplate ? 'Save changes' : 'Create template'}
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm text-muted-foreground transition hover:text-foreground"
-                >
-                  Discard
-                </button>
-                {savedTemplate ? (
-                  <button
-                    type="button"
-                    disabled={isArchiving}
-                    onClick={() => { resetArchiveTemplateFeedback(); setIsConfirmingArchive(true) }}
-                    className="ml-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-white/70 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 light:text-neutral-600 light:hover:text-red-600"
-                  >
-                    <Archive size={14} />
-                    Archive
-                  </button>
-                ) : null}
-              </div>
-            ) : (
-              <div className="pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm text-muted-foreground transition hover:text-foreground"
-                >
-                  Close
-                </button>
-              </div>
+            {saveTemplateError && (
+              <p className="text-xs" style={{ color: 'var(--color-chart-4)' }}>{saveTemplateError}</p>
             )}
+            {archiveTemplateError && (
+              <p className="text-xs" style={{ color: 'var(--color-chart-4)' }}>{archiveTemplateError}</p>
+            )}
+
+            <div className="flex gap-2 pt-4 border-t border-border">
+              {isActive ? (
+                <>
+                  <PrimaryBtn loading={isSaving} disabled={!canSave} onClick={() => void handleSave()}>
+                    {savedTemplate ? 'Save changes' : 'Create template'}
+                  </PrimaryBtn>
+                  <GhostBtn onClick={onClose}>Discard</GhostBtn>
+                  {savedTemplate && (
+                    <GhostBtn
+                      className="ml-auto"
+                      icon={<Archive size={12} />}
+                      disabled={isArchiving}
+                      onClick={() => { resetArchiveTemplateFeedback(); setIsConfirmingArchive(true) }}
+                    >
+                      Archive
+                    </GhostBtn>
+                  )}
+                </>
+              ) : (
+                <GhostBtn onClick={onClose}>Close</GhostBtn>
+              )}
+            </div>
           </div>
 
           {/* Mail preview */}
-          <div className="rounded-xl bg-secondary p-5">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30 light:text-neutral-400">
-              Preview
-            </p>
+          <div className="rounded-lg bg-secondary p-5">
+            <p className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">Preview</p>
             <MailPreview
               subject={subject}
               bodyText={bodyText}
@@ -306,48 +260,27 @@ export function TemplateEditorPanel({
         </div>
       )}
 
-      {isConfirmingArchive ? (
-        <ArchiveConfirmDialog
-          isArchiving={isArchiving}
-          error={archiveTemplateError}
-          onCancel={() => setIsConfirmingArchive(false)}
-          onConfirm={() => void handleConfirmArchive()}
-        />
-      ) : null}
-    </div>
-  )
-}
-
-function ArchiveConfirmDialog({
-  isArchiving,
-  error,
-  onCancel,
-  onConfirm,
-}: {
-  isArchiving: boolean
-  error: string | null
-  onCancel: () => void
-  onConfirm: () => void
-}) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
-        <div className="grid size-11 place-items-center rounded-xl bg-amber-500/15 light:bg-amber-50">
-          <Archive className="text-amber-400 light:text-amber-600" size={22} />
-        </div>
-        <h2 className="mt-4 text-lg font-semibold text-white light:text-neutral-950">Archive this template?</h2>
-        <p className="mt-2 text-sm leading-6 text-white/50 light:text-neutral-500">
+      <Modal
+        open={isConfirmingArchive}
+        title="Archive this template?"
+        onClose={() => setIsConfirmingArchive(false)}
+        dismissable={!isArchiving}
+      >
+        <p className="text-sm text-muted-foreground mb-5">
           It will no longer be available to pick when sending — past sends made from it are unaffected.
         </p>
-        {error ? <p className="mt-3 text-sm text-red-300 light:text-red-600">{error}</p> : null}
-        <div className="mt-6 flex gap-3">
-          <button type="button" disabled={isArchiving} className="flex h-10 flex-1 items-center justify-center rounded-xl border border-border bg-card text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-700" onClick={onCancel}>Cancel</button>
-          <button type="button" disabled={isArchiving} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 text-sm font-semibold text-white transition hover:bg-red-400 disabled:opacity-40" onClick={onConfirm}>
-            {isArchiving ? <Loader2 className="animate-spin" size={15} /> : null}
+        {archiveTemplateError && (
+          <p className="text-xs mb-3" style={{ color: 'var(--color-chart-4)' }}>{archiveTemplateError}</p>
+        )}
+        <div className="flex gap-2">
+          <PrimaryBtn className="flex-1 justify-center" loading={isArchiving} onClick={() => void handleConfirmArchive()}>
             Archive
-          </button>
+          </PrimaryBtn>
+          <GhostBtn className="px-5" disabled={isArchiving} onClick={() => setIsConfirmingArchive(false)}>
+            Cancel
+          </GhostBtn>
         </div>
-      </div>
+      </Modal>
     </div>
   )
 }
@@ -409,17 +342,3 @@ export function MailPreview({
     </div>
   )
 }
-
-function ModalField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div className="grid gap-1.5">
-      <label className="flex items-center gap-1.5 text-sm font-medium text-white/80 light:text-neutral-700">
-        <Mail size={13} className="text-white/30 light:text-neutral-400" />
-        {label}{required ? <span className="ml-0.5 text-red-400 light:text-red-500">*</span> : null}
-      </label>
-      {children}
-    </div>
-  )
-}
-
-const inputClass = 'w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 disabled:cursor-not-allowed disabled:opacity-50 light:text-neutral-950 light:placeholder-neutral-400 light:focus:border-neutral-400 light:focus:ring-neutral-100'
