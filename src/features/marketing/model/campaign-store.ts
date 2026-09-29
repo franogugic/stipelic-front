@@ -1,9 +1,11 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
+import { getHomeSummary } from '../../orders/api/orders-api'
 import {
   cancelScheduledCampaign,
   getAudiencePreview,
   getAudienceRecipients,
+  getCampaignAudiences,
   getCampaign,
   getFailedRecipients,
   listCampaigns,
@@ -12,6 +14,7 @@ import {
 } from '../api/campaigns-api'
 import type {
   AudiencePreview,
+  CampaignAudiences,
   CampaignAudienceType,
   CampaignDetail,
   CampaignListItem,
@@ -24,6 +27,9 @@ type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error'
 
 const AUDIENCE_RECIPIENTS_PAGE_SIZE = 10
 
+// Monthly email allowance; a negative limit means unlimited.
+export type EmailUsage = { sent: number; limit: number }
+
 type CampaignState = {
   campaigns: CampaignListItem[]
   campaignsStatus: LoadStatus
@@ -32,6 +38,12 @@ type CampaignState = {
 
   currentCampaign: CampaignDetail | null
   currentCampaignStatus: LoadStatus
+
+  audiences: CampaignAudiences | null
+  audiencesStatus: LoadStatus
+  audiencesSlug: string | null
+
+  usage: EmailUsage | null
 
   audiencePreview: AudiencePreview | null
   audiencePreviewStatus: LoadStatus
@@ -55,6 +67,8 @@ type CampaignState = {
 
   loadCampaigns: (slug: string) => Promise<void>
   loadCampaign: (slug: string, campaignPublicId: string) => Promise<void>
+  loadAudiences: (slug: string) => Promise<void>
+  loadUsage: (slug: string) => Promise<void>
   clearCurrentCampaign: () => void
   loadAudiencePreview: (
     slug: string,
@@ -92,6 +106,12 @@ const initialCampaignState = {
 
   currentCampaign: null,
   currentCampaignStatus: 'idle' as LoadStatus,
+
+  audiences: null,
+  audiencesStatus: 'idle' as LoadStatus,
+  audiencesSlug: null,
+
+  usage: null,
 
   audiencePreview: null,
   audiencePreviewStatus: 'idle' as LoadStatus,
@@ -146,6 +166,29 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       set({ currentCampaign: campaign, currentCampaignStatus: 'success' })
     } catch {
       set({ currentCampaignStatus: 'error' })
+    }
+  },
+
+  loadAudiences: async (slug) => {
+    if (get().audiencesStatus === 'loading') return
+    // Only the first load for a workspace shows a loading state; later refreshes swap the data in silently.
+    if (get().audiences === null || get().audiencesSlug !== slug) {
+      set({ audiences: null, audiencesStatus: 'loading', audiencesSlug: slug })
+    }
+    try {
+      const audiences = await getCampaignAudiences(slug)
+      set({ audiences, audiencesStatus: 'success', audiencesSlug: slug })
+    } catch {
+      set({ audiencesStatus: 'error' })
+    }
+  },
+
+  loadUsage: async (slug) => {
+    try {
+      const summary = await getHomeSummary(slug)
+      set({ usage: { sent: summary.emailsSentThisMonth, limit: summary.emailsMonthlyLimit } })
+    } catch {
+      // Usage is informational; keep whatever was last known rather than blocking the page.
     }
   },
 
