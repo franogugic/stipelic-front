@@ -6,6 +6,7 @@ import {
   getAudiencePreview,
   getAudienceRecipients,
   getCampaignAudiences,
+  getOpenRateTrend,
   getCampaign,
   getFailedRecipients,
   listCampaigns,
@@ -19,6 +20,7 @@ import type {
   CampaignDetail,
   CampaignListItem,
   FailedRecipient,
+  OpenRateTrend,
   SendCampaignRequest,
 } from './types'
 
@@ -26,6 +28,7 @@ type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
 type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error'
 
 const AUDIENCE_RECIPIENTS_PAGE_SIZE = 10
+export const OPEN_RATE_TREND_MONTHS = 6
 
 // Monthly email allowance; a negative limit means unlimited.
 export type EmailUsage = { sent: number; limit: number }
@@ -44,6 +47,9 @@ type CampaignState = {
   audiencesSlug: string | null
 
   usage: EmailUsage | null
+
+  openRateTrend: OpenRateTrend | null
+  openRateTrendStatus: LoadStatus
 
   audiencePreview: AudiencePreview | null
   audiencePreviewStatus: LoadStatus
@@ -69,6 +75,7 @@ type CampaignState = {
   loadCampaign: (slug: string, campaignPublicId: string) => Promise<void>
   loadAudiences: (slug: string) => Promise<void>
   loadUsage: (slug: string) => Promise<void>
+  loadOpenRateTrend: (slug: string) => Promise<void>
   clearCurrentCampaign: () => void
   loadAudiencePreview: (
     slug: string,
@@ -112,6 +119,9 @@ const initialCampaignState = {
   audiencesSlug: null,
 
   usage: null,
+
+  openRateTrend: null,
+  openRateTrendStatus: 'idle' as LoadStatus,
 
   audiencePreview: null,
   audiencePreviewStatus: 'idle' as LoadStatus,
@@ -189,6 +199,17 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       set({ usage: { sent: summary.emailsSentThisMonth, limit: summary.emailsMonthlyLimit } })
     } catch {
       // Usage is informational; keep whatever was last known rather than blocking the page.
+    }
+  },
+
+  loadOpenRateTrend: async (slug) => {
+    // Refreshes (after a send, on focus) keep showing the last chart instead of flashing a loader.
+    if (get().openRateTrend === null) set({ openRateTrendStatus: 'loading' })
+    try {
+      const openRateTrend = await getOpenRateTrend(slug, OPEN_RATE_TREND_MONTHS)
+      set({ openRateTrend, openRateTrendStatus: 'success' })
+    } catch {
+      if (get().openRateTrend === null) set({ openRateTrendStatus: 'error' })
     }
   },
 

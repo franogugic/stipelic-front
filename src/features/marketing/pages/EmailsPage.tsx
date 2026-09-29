@@ -6,6 +6,7 @@ import { Card, PageHeader } from '../../../shared/ui/figma'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
 import { useProductStore } from '../../products/model/product-store'
+import { OpenRateTrendCard } from '../components/OpenRateTrendCard'
 import { TemplateEditorPanel } from '../components/TemplateEditorPanel'
 import { useCampaignStore } from '../model/campaign-store'
 import { useTemplateStore } from '../model/template-store'
@@ -38,6 +39,7 @@ export function EmailsPage() {
   const loadCampaigns = useCampaignStore((s) => s.loadCampaigns)
   const usage = useCampaignStore((s) => s.usage)
   const loadUsage = useCampaignStore((s) => s.loadUsage)
+  const loadOpenRateTrend = useCampaignStore((s) => s.loadOpenRateTrend)
 
   const isLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
@@ -53,14 +55,16 @@ export function EmailsPage() {
     void loadTemplates(normalizedSlug)
     void loadCampaigns(normalizedSlug)
     void loadUsage(normalizedSlug)
+    void loadOpenRateTrend(normalizedSlug)
     const refetchOnFocus = () => {
       void loadTemplates(normalizedSlug)
       void loadCampaigns(normalizedSlug)
       void loadUsage(normalizedSlug)
+      void loadOpenRateTrend(normalizedSlug)
     }
     window.addEventListener('focus', refetchOnFocus)
     return () => window.removeEventListener('focus', refetchOnFocus)
-  }, [normalizedSlug, loadCreatorSettings, loadPages, loadProducts, loadTemplates, loadCampaigns, loadUsage])
+  }, [normalizedSlug, loadCreatorSettings, loadPages, loadProducts, loadTemplates, loadCampaigns, loadUsage, loadOpenRateTrend])
 
   if (!slug) return null
 
@@ -89,6 +93,7 @@ export function EmailsPage() {
 
             <div className="grid grid-cols-3 gap-4 mb-6">
               <MonthlyUsageCard usage={usage} />
+              <OpenRateTrendCard className="col-span-2" />
             </div>
 
             <div className="grid gap-8">
