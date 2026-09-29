@@ -5,6 +5,14 @@ const LABEL_CLASS = 'block text-[11px] uppercase tracking-widest text-muted-fore
 const FIELD_CLASS =
   'w-full px-3 py-2.5 rounded-lg border border-border text-sm bg-secondary text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-chart-1/60 disabled:cursor-not-allowed disabled:opacity-40'
 
+function FieldError({ id, message }: { id: string; message: string }) {
+  return (
+    <p id={id} className="text-xs mt-1.5" style={{ color: 'var(--color-chart-4)' }}>
+      {message}
+    </p>
+  )
+}
+
 export function FieldInput({
   label,
   value,
@@ -53,11 +61,7 @@ export function FieldInput({
         aria-describedby={error ? errorId : undefined}
         className={FIELD_CLASS}
       />
-      {error && (
-        <p id={errorId} className="text-xs mt-1.5" style={{ color: 'var(--color-chart-4)' }}>
-          {error}
-        </p>
-      )}
+      {error && <FieldError id={errorId} message={error} />}
     </div>
   )
 }
@@ -67,6 +71,7 @@ export function SelectInput({
   label,
   value,
   onChange,
+  error,
   disabled,
   name,
   className = '',
@@ -76,12 +81,14 @@ export function SelectInput({
   label?: string
   value: string
   onChange: (value: string) => void
+  error?: string
   disabled?: boolean
   name?: string
   className?: string
   children: ReactNode
 }) {
   const id = useId()
+  const errorId = `${id}-error`
   const select = (
     <select
       id={id}
@@ -89,6 +96,8 @@ export function SelectInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? errorId : undefined}
       style={{ appearance: 'none' }}
       className={
         variant === 'compact'
@@ -99,13 +108,16 @@ export function SelectInput({
       {children}
     </select>
   )
-  if (!label) return className ? <div className={className}>{select}</div> : select
+  if (!label && !error) return className ? <div className={className}>{select}</div> : select
   return (
     <div className={className}>
-      <label htmlFor={id} className={LABEL_CLASS}>
-        {label}
-      </label>
+      {label && (
+        <label htmlFor={id} className={LABEL_CLASS}>
+          {label}
+        </label>
+      )}
       {select}
+      {error && <FieldError id={errorId} message={error} />}
     </div>
   )
 }
@@ -117,6 +129,7 @@ export function TextArea({
   placeholder,
   rows = 5,
   maxLength,
+  error,
   disabled,
   name,
   className = '',
@@ -127,11 +140,13 @@ export function TextArea({
   placeholder?: string
   rows?: number
   maxLength?: number
+  error?: string
   disabled?: boolean
   name?: string
   className?: string
 }) {
   const id = useId()
+  const errorId = `${id}-error`
   return (
     <div className={className}>
       {label && (
@@ -148,8 +163,11 @@ export function TextArea({
         placeholder={placeholder}
         maxLength={maxLength}
         disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         className={`${FIELD_CLASS} resize-none`}
       />
+      {error && <FieldError id={errorId} message={error} />}
     </div>
   )
 }
