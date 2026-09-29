@@ -112,6 +112,7 @@ export function EmailsPage() {
               <NewCampaignCard className="col-span-3" slug={normalizedSlug} creatorSettings={creatorSettings} />
               <SentCampaignsCard
                 className="col-span-2"
+                slug={normalizedSlug}
                 campaigns={campaigns}
                 status={campaignsStatus}
                 audienceName={audienceName}
