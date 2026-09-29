@@ -5,6 +5,12 @@ import { Card } from './Card'
 
 const FOCUSABLE_INPUT = 'input:not([disabled]), textarea:not([disabled]), select:not([disabled])'
 
+// Open modals, oldest first — only the last one reacts to Escape, and the body scroll lock is
+// released (back to its original value) only once the last one closes.
+type OpenModal = { isDismissable: () => boolean; close: () => void }
+const openModals: OpenModal[] = []
+let scrollLockOriginal: string | null = null
+
 export function Modal({
   open,
   title,
@@ -37,17 +43,34 @@ export function Modal({
     const firstInput = dialog?.querySelector<HTMLElement>(FOCUSABLE_INPUT)
     ;(firstInput ?? dialog)?.focus()
 
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    if (openModals.length === 0) {
+      scrollLockOriginal = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+    }
+    const entry: OpenModal = {
+      isDismissable: () => dismissableRef.current,
+      close: () => onCloseRef.current(),
+    }
+    openModals.push(entry)
 
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && dismissableRef.current) onCloseRef.current()
+      if (e.key !== 'Escape') return
+      const top = openModals[openModals.length - 1]
+      if (top !== entry || !entry.isDismissable()) return
+      // React may flush the close (and this modal's cleanup) between two listeners of the same event,
+      // which would make the modal below look topmost — so stop the event here.
+      e.stopImmediatePropagation()
+      entry.close()
     }
     document.addEventListener('keydown', handleKey)
 
     return () => {
       document.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = previousOverflow
+      openModals.splice(openModals.indexOf(entry), 1)
+      if (openModals.length === 0) {
+        document.body.style.overflow = scrollLockOriginal ?? ''
+        scrollLockOriginal = null
+      }
       previouslyFocused?.focus?.()
     }
   }, [open])
