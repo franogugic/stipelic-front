@@ -68,13 +68,6 @@ export type CampaignDetail = {
   uniqueOpenCount: number
 }
 
-export type AudiencePreview = {
-  recipientCount: number
-  monthlyLimit: number
-  usedThisMonth: number
-  remaining: number
-}
-
 // Content is either taken from a template (`templatePublicId` alone) or sent inline (`subject` +
 // `bodyText`, CTA label and URL both-or-neither); inline content wins and the template, if also
 // given, is only kept as a reference. `targetPublicId` is omitted for the All audience.
@@ -129,10 +122,5 @@ export type Contact = {
 
 export type ContactsPage = {
   contacts: Contact[]
-  hasMore: boolean
-}
-
-export type AudienceRecipientsPage = {
-  emails: string[]
   hasMore: boolean
 }
