@@ -82,7 +82,7 @@ export function EmailsPage() {
 
   return (
     <AppShell slug={slug} activeSection="emails">
-      <div className="p-8">
+      <div className="p-8 text-foreground">
         {isLoading ? (
           <div className="flex h-40 items-center justify-center gap-3 text-sm text-muted-foreground">
             <Loader2 className="animate-spin" size={18} />
