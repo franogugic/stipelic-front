@@ -468,10 +468,13 @@ function HistoryTab({
   const targetName = useMemo(() => {
     const lpByPublicId = new Map(pages.map((p) => [p.publicId, p.title]))
     const productByPublicId = new Map(products.map((p) => [p.publicId, p.name]))
-    return (campaign: CampaignListItem) =>
-      campaign.audienceType === 'LandingPage'
-        ? lpByPublicId.get(campaign.targetPublicId) ?? '—'
-        : productByPublicId.get(campaign.targetPublicId) ?? '—'
+    return (campaign: CampaignListItem) => {
+      if (campaign.audienceType === 'All') return 'All subscribers'
+      const target = campaign.targetPublicId ?? ''
+      return campaign.audienceType === 'LandingPage'
+        ? lpByPublicId.get(target) ?? '—'
+        : productByPublicId.get(target) ?? '—'
+    }
   }, [pages, products])
 
   if (campaignsStatus === 'loading') {

@@ -2,10 +2,12 @@ import { apiRequest } from '../../../shared/api/http-client'
 import type {
   AudiencePreview,
   AudienceRecipientsPage,
+  CampaignAudiences,
   CampaignAudienceType,
   CampaignDetail,
   CampaignListItem,
   FailedRecipient,
+  OpenRateTrend,
   ResendFailedResult,
   SendCampaignRequest,
 } from '../model/types'
@@ -21,12 +23,31 @@ function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
   return response.data
 }
 
+// The All audience has no target, so the parameter is left out for it.
+function audienceParams(audienceType: CampaignAudienceType, targetPublicId: string | null) {
+  const params = new URLSearchParams({ audienceType })
+  if (targetPublicId) params.set('targetPublicId', targetPublicId)
+  return params
+}
+
+export function getCampaignAudiences(slug: string) {
+  return apiRequest<ApiResponse<CampaignAudiences>>(
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/audiences`,
+  ).then(unwrapApiResponse)
+}
+
+export function getOpenRateTrend(slug: string, months = 6) {
+  return apiRequest<ApiResponse<OpenRateTrend>>(
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/open-rate-trend?months=${months}`,
+  ).then(unwrapApiResponse)
+}
+
 export function getAudiencePreview(
   slug: string,
   audienceType: CampaignAudienceType,
-  targetPublicId: string,
+  targetPublicId: string | null,
 ) {
-  const params = new URLSearchParams({ audienceType, targetPublicId })
+  const params = audienceParams(audienceType, targetPublicId)
   return apiRequest<ApiResponse<AudiencePreview>>(
     `/api/creators/${encodeURIComponent(slug)}/campaigns/audience-preview?${params.toString()}`,
   ).then(unwrapApiResponse)
@@ -35,10 +56,10 @@ export function getAudiencePreview(
 export function getAudienceRecipients(
   slug: string,
   audienceType: CampaignAudienceType,
-  targetPublicId: string,
+  targetPublicId: string | null,
   options: { afterEmail?: string; limit?: number } = {},
 ) {
-  const params = new URLSearchParams({ audienceType, targetPublicId })
+  const params = audienceParams(audienceType, targetPublicId)
   if (options.afterEmail) params.set('afterEmail', options.afterEmail)
   if (options.limit) params.set('limit', String(options.limit))
 
