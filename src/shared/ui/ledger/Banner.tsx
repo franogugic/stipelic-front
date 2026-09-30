@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { Button } from './Button'
 import type { ButtonVariant } from './Button'
 
-export type BannerTone = 'info' | 'success' | 'warning' | 'danger'
+export type BannerTone = 'info' | 'success' | 'warning' | 'danger' | 'accent'
 
 type BannerAction = { label: string; variant: ButtonVariant } & ({ to: string; href?: undefined } | { href: string; to?: undefined })
 

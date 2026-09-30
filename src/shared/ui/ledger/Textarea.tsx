@@ -1,5 +1,5 @@
-import type { TextareaHTMLAttributes } from 'react'
+import type { ComponentPropsWithRef } from 'react'
 
-export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function Textarea({ className, ...rest }: ComponentPropsWithRef<'textarea'>) {
   return <textarea className={['textarea', className].filter(Boolean).join(' ')} {...rest} />
 }

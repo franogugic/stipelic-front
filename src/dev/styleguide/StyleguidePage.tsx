@@ -1,6 +1,9 @@
 import { LayoutGrid, SunMoon } from 'lucide-react'
 import { useThemeStore } from '../../shared/model/theme-store'
 import { Button } from '../../shared/ui/ledger'
+import { ButtonsSection, FormsSection } from './ButtonsAndForms'
+import { DataSection } from './DataSection'
+import { FeedbackSection, StatesSection } from './FeedbackAndStates'
 import { FoundationsSections } from './FoundationsSections'
 import './styleguide.css'
 
@@ -53,9 +56,19 @@ export default function StyleguidePage() {
               <a href="#colour">Colour</a>
               <a href="#type">Typography</a>
               <a href="#shape">Space &amp; shape</a>
+              <a href="#buttons">Buttons</a>
+              <a href="#forms">Forms</a>
+              <a href="#data">Data display</a>
+              <a href="#feedback">Feedback</a>
+              <a href="#states">Screen states</a>
             </nav>
 
             <FoundationsSections />
+            <ButtonsSection />
+            <FormsSection />
+            <DataSection />
+            <FeedbackSection />
+            <StatesSection />
           </main>
         </div>
       </div>

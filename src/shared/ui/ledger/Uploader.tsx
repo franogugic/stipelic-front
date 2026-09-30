@@ -123,7 +123,7 @@ export function Uploader({
           </div>
         </div>
         <div className="uploader__preview" hidden={view !== 'preview'}>
-          <img className="uploader__thumb" src={value ?? ''} alt="" />
+          <img className="uploader__thumb" src={value || undefined} alt="" />
           <div className="uploader__meta">
             <span className="uploader__name">{fileName}</span>
             <div className="cluster cluster--sm">
