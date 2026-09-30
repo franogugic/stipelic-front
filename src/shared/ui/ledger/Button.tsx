@@ -9,7 +9,7 @@ type Shared = {
   variant?: ButtonVariant
   size?: 'sm' | 'lg'
   block?: boolean
-  /** Leading icon; the label is then wrapped in a span, as in the prototype. */
+  /** Leading icon; the label is then wrapped in a span, as in the prototype (also when `loading` is set). */
   icon?: LucideIcon
   /** Sets aria-busy; the spinner comes from the CSS. */
   loading?: boolean
@@ -96,7 +96,7 @@ export function Button(props: ButtonProps) {
   ) : (
     <>
       {Icon && <Icon />}
-      {Icon ? <span>{children}</span> : children}
+      {Icon || loading !== undefined ? <span>{children}</span> : children}
     </>
   )
 
