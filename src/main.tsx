@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import './styles/ledger/index.css'
 import App from './App.tsx'
+import './shared/model/theme-store'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
