@@ -37,7 +37,9 @@ export type Creator = {
   status: string
   defaultCurrency: string
   planCode: string
+  planName: string
   cancelAtPeriodEnd: boolean
+  currentPeriodEnd: string | null
   countryCode: string
   payoutMode: PayoutMode
   stripeConnectDetailsSubmitted: boolean
