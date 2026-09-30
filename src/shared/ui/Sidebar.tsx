@@ -5,8 +5,10 @@ import { useAuthStore } from '../../features/auth/model/auth-store'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { initials, monogram } from '../lib/format'
 import { Avatar, Brand, Button, ThemeSwitch } from './ledger'
+import { NAV_SECTION_LABELS } from './nav-sections'
+import type { NavSection } from './nav-sections'
 
-export type NavSection = 'overview' | 'landing-pages' | 'products' | 'orders' | 'emails' | 'subscribers' | 'payouts' | 'settings'
+export type { NavSection } from './nav-sections'
 
 type SidebarProps = {
   slug: string
@@ -19,30 +21,30 @@ type NavItem = { section: NavSection | 'admin-payouts'; label: string; icon: Luc
 type NavGroup = { id: string; label?: string; items: NavItem[] }
 
 const NAV_GROUPS: NavGroup[] = [
-  { id: 'main', items: [{ section: 'overview', label: 'Dashboard', icon: LayoutDashboard, href: (s) => `/app/${s}` }] },
+  { id: 'main', items: [{ section: 'overview', label: NAV_SECTION_LABELS['overview'], icon: LayoutDashboard, href: (s) => `/app/${s}` }] },
   {
     id: 'sell',
     label: 'Sell',
     items: [
-      { section: 'landing-pages', label: 'Landing Pages', icon: PanelsTopLeft, href: (s) => `/app/${s}/landing-pages` },
-      { section: 'products', label: 'Products', icon: Package, href: (s) => `/app/${s}/products` },
-      { section: 'orders', label: 'Orders', icon: Receipt, href: (s) => `/app/${s}/orders` },
+      { section: 'landing-pages', label: NAV_SECTION_LABELS['landing-pages'], icon: PanelsTopLeft, href: (s) => `/app/${s}/landing-pages` },
+      { section: 'products', label: NAV_SECTION_LABELS['products'], icon: Package, href: (s) => `/app/${s}/products` },
+      { section: 'orders', label: NAV_SECTION_LABELS['orders'], icon: Receipt, href: (s) => `/app/${s}/orders` },
     ],
   },
   {
     id: 'audience',
     label: 'Audience',
     items: [
-      { section: 'emails', label: 'Email Marketing', icon: Mail, href: (s) => `/app/${s}/emails` },
-      { section: 'subscribers', label: 'Subscribers', icon: Users, href: (s) => `/app/${s}/subscribers` },
+      { section: 'emails', label: NAV_SECTION_LABELS['emails'], icon: Mail, href: (s) => `/app/${s}/emails` },
+      { section: 'subscribers', label: NAV_SECTION_LABELS['subscribers'], icon: Users, href: (s) => `/app/${s}/subscribers` },
     ],
   },
   {
     id: 'account',
     label: 'Account',
     items: [
-      { section: 'payouts', label: 'Payouts', icon: Landmark, href: (s) => `/app/${s}/payouts` },
-      { section: 'settings', label: 'Settings', icon: Settings, href: (s) => `/app/${s}/settings` },
+      { section: 'payouts', label: NAV_SECTION_LABELS['payouts'], icon: Landmark, href: (s) => `/app/${s}/payouts` },
+      { section: 'settings', label: NAV_SECTION_LABELS['settings'], icon: Settings, href: (s) => `/app/${s}/settings` },
     ],
   },
 ]
