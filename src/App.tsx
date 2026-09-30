@@ -1,10 +1,12 @@
 import { AppRouter } from './app/router/AppRouter'
-import { TooltipProvider } from './shared/ui/ledger'
+import { ToastProvider, TooltipProvider } from './shared/ui/ledger'
 
 function App() {
   return (
     <TooltipProvider>
-      <AppRouter />
+      <ToastProvider>
+        <AppRouter />
+      </ToastProvider>
     </TooltipProvider>
   )
 }
