@@ -12,5 +12,6 @@
 @import "./components/menu-tooltip.css";
 @import "./components/modal.css";
 @import "./components/toasts.css";
+@import "./components/states.css";
 @import "./motion.css";
 @import "./components/charts.css";
