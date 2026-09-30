@@ -5,7 +5,11 @@ import type { ButtonVariant } from './Button'
 
 export type BannerTone = 'info' | 'success' | 'warning' | 'danger' | 'accent'
 
-type BannerAction = { label: string; variant: ButtonVariant } & ({ to: string; href?: undefined } | { href: string; to?: undefined })
+type BannerAction = { label: string; variant: ButtonVariant } & (
+  | { to: string; href?: undefined; onClick?: undefined; loading?: undefined }
+  | { href: string; to?: undefined; onClick?: undefined; loading?: undefined }
+  | { onClick: () => void; loading?: boolean; to?: undefined; href?: undefined }
+)
 
 /** Workspace banner above a screen (the shell mounts it in Unit 3). Markup from the prototype's bannerMarkup. */
 export function Banner({
@@ -18,10 +22,18 @@ export function Banner({
   tone: BannerTone
   icon: LucideIcon
   title: ReactNode
-  action: BannerAction
+  action?: BannerAction
   children?: ReactNode
 }) {
-  const { label, variant, ...target } = action
+  let actionButton = null
+  if (action) {
+    const { label, variant, ...target } = action
+    actionButton = (
+      <Button variant={variant} size="sm" {...target}>
+        {label}
+      </Button>
+    )
+  }
   return (
     <div className={`banner banner--${tone}`} role="status">
       <div className="banner__inner">
@@ -31,9 +43,7 @@ export function Banner({
         <p className="banner__text">
           <strong>{title}</strong> {children}
         </p>
-        <Button variant={variant} size="sm" {...target}>
-          {label}
-        </Button>
+        {actionButton}
       </div>
     </div>
   )

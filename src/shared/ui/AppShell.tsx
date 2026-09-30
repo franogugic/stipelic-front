@@ -6,6 +6,7 @@ import { Brand, Button, ThemeToggleButton } from './ledger'
 import { NAV_SECTION_LABELS } from './nav-sections'
 import type { NavSection } from './nav-sections'
 import { Sidebar } from './Sidebar'
+import { WorkspaceBanners } from './WorkspaceBanners'
 
 type AppShellProps = {
   slug: string
@@ -101,7 +102,9 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
               <ThemeToggleButton />
             </div>
           </header>
-          <div className="app-banners" />
+          <div className="app-banners">
+            <WorkspaceBanners slug={slug} />
+          </div>
           <main className="page" id="main" tabIndex={-1}>
             {children}
           </main>
