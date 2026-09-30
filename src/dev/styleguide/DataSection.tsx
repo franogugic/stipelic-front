@@ -28,12 +28,13 @@ import {
 import type { StatusKind } from '../../shared/ui/ledger'
 import { ChipsAndAvatarsCard } from './ButtonsAndForms'
 
-// Specimen data only — the prototype computes these figures from its mock data, which is not ported.
-const MONTHLY_REVENUE_CENTS = [18200, 24100, 31800, 29900, 41200, 38600, 47100, 52800, 49300, 61500, 58900, 68500]
+// Specimen data, read from the running prototype's styleguide. The sparkline values are scaled so the
+// curve renders the same path as the prototype's; only its shape is visible.
+const MONTHLY_REVENUE_CENTS = [0, 38014, 0, 29606, 33363, 41239, 32326, 37112, 51076, 60000, 59092, 56382]
 const TOTAL_CENTS = 468500
-const THIS_MONTH_CENTS = 68500
-const LAST_MONTH_CENTS = 58900
-const CHANGE = ((THIS_MONTH_CENTS - LAST_MONTH_CENTS) / LAST_MONTH_CENTS) * 100
+const THIS_MONTH_CENTS = 54400
+const LAST_MONTH_CENTS = 56500
+const CHANGE = -3.7
 
 const BADGES: Array<[string, StatusKind, string[]]> = [
   ['Orders', 'order', ['paid', 'pending', 'failed', 'refunded']],
@@ -45,14 +46,22 @@ const BADGES: Array<[string, StatusKind, string[]]> = [
   ['Subscription', 'subscription', ['active', 'unpaid', 'past_due', 'cancelling']],
 ]
 
+// Newest first, like the prototype's mock orders; the footer totals come from ORDER_TOTALS.
 const ORDERS = [
-  { id: 1, number: 1042, name: 'Ana Kovač', email: 'ana.kovac@example.com', product: 'Adriatic Summer Presets', createdAt: '2026-07-14T09:30:00', status: 'paid', cents: 2900 },
-  { id: 2, number: 1041, name: 'Luka Marić', email: 'luka.maric@example.com', product: 'Color Grading Guide', createdAt: '2026-07-13T17:05:00', status: 'paid', cents: 4900 },
-  { id: 3, number: 1040, name: 'Ivana Babić', email: 'ivana.babic@example.com', product: 'Adriatic Summer Presets', createdAt: '2026-07-12T11:48:00', status: 'pending', cents: 2900 },
-  { id: 4, number: 1039, name: 'Marko Jurić', email: 'marko.juric@example.com', product: 'Color Grading Guide', createdAt: '2026-07-11T20:12:00', status: 'failed', cents: 4900 },
-  { id: 5, number: 1038, name: 'Petra Novak', email: 'petra.novak@example.com', product: 'Adriatic Summer Presets', createdAt: '2026-07-10T08:21:00', status: 'refunded', cents: 2900 },
-  { id: 6, number: 1037, name: 'Tomislav Pavić', email: 'tomislav.pavic@example.com', product: 'Color Grading Guide', createdAt: '2026-07-09T14:02:00', status: 'paid', cents: 4900 },
+  { id: 1, number: 1072, name: 'Teodora Kovač', email: 'teodora.kovac@gmail.com', product: 'Freelance OS for Notion', createdAt: '2026-09-26T12:00:00', status: 'pending', cents: 3900 },
+  { id: 2, number: 1071, name: 'Dunja Mehmedović', email: 'dunja_mehmedovic@bih.net.ba', product: 'Adriatic Summer Presets', createdAt: '2026-09-25T12:00:00', status: 'refunded', cents: 2900 },
+  { id: 3, number: 1070, name: 'Borna Rakić', email: 'b.rakic@yahoo.com', product: 'Brand Identity Masterclass', createdAt: '2026-09-23T12:00:00', status: 'paid', cents: 14900 },
+  { id: 4, number: 1069, name: 'Klara Mitrović', email: 'klara.mitrovic3@mts.rs', product: 'Adriatic Summer Presets', createdAt: '2026-09-22T12:00:00', status: 'paid', cents: 2900 },
+  { id: 5, number: 1068, name: 'Stefan Jovanović', email: 'stefan_jovanovic@icloud.com', product: 'Adriatic Summer Presets', createdAt: '2026-09-18T12:00:00', status: 'paid', cents: 2900 },
+  { id: 6, number: 1067, name: 'Borna Tomić', email: 'borna.tomic6@siol.net', product: 'Brand Identity Masterclass', createdAt: '2026-09-17T12:00:00', status: 'paid', cents: 14900 },
+  { id: 7, number: 1066, name: 'Ana Vidović', email: 'ana.vidovic@siol.net', product: 'Brand Identity Masterclass', createdAt: '2026-09-12T12:00:00', status: 'paid', cents: 14900 },
+  { id: 8, number: 1036, name: 'Amir Ilić', email: 'amir.ilic@gmail.com', product: '1:1 Portfolio Review', createdAt: '2026-05-17T12:00:00', status: 'refunded', cents: 9000 },
+  { id: 9, number: 1030, name: 'Marija Radić', email: 'marija.radic4@gmail.com', product: 'Adriatic Summer Presets', createdAt: '2026-04-19T12:00:00', status: 'failed', cents: 2900 },
+  { id: 10, number: 1024, name: 'Nina Stojanović', email: 'ninastojanovic81@icloud.com', product: '1:1 Portfolio Review', createdAt: '2026-03-05T12:00:00', status: 'refunded', cents: 9000 },
 ]
+
+// How many orders each tab matches in the full data set (the list above is only the first page).
+const ORDER_TOTALS: Record<string, number> = { all: 72, paid: 63, other: 9 }
 
 export function DataSection() {
   const toast = useToast()
@@ -66,8 +75,7 @@ export function DataSection() {
     panelId: 'sg-panel-orders',
   })
   const rows = ORDERS.filter((order) => tabs.active === 'all' || (tabs.active === 'paid' ? order.status === 'paid' : order.status !== 'paid')).slice(0, 5)
-  const matching = ORDERS.filter((order) => tabs.active === 'all' || (tabs.active === 'paid' ? order.status === 'paid' : order.status !== 'paid'))
-  const previousMonth = new Date(2026, 5, 1)
+  const previousMonth = new Date(2026, 7, 1)
 
   return (
     <section className="section" id="data" aria-labelledby="data-title">
@@ -76,7 +84,7 @@ export function DataSection() {
           <h2 className="section-title" id="data-title">
             Data display
           </h2>
-          <p>Metrics, badges, meters and tables — all figures below are specimen data.</p>
+          <p>Metrics, badges, meters and tables — all figures below are computed from the mock data.</p>
         </div>
       </div>
 
@@ -101,14 +109,14 @@ export function DataSection() {
             <Sparkline values={MONTHLY_REVENUE_CENTS} label="Revenue over the last 12 months" />
           </div>
         </article>
-        <Metric label="Average order value" icon={Receipt} value={<Money amountCents={3700} />} meta={plural(86, 'paid order')} />
+        <Metric label="Average order value" icon={Receipt} value={<Money amountCents={7437} />} meta={plural(63, 'paid order')} />
         <Metric
           label="Active subscribers"
           icon={Users}
-          value={number(1248)}
+          value={number(124)}
           meta={
             <>
-              <Delta change={1}>{number(64)}</Delta> new this month
+              <Delta change={1}>{number(16)}</Delta> new this month
             </>
           }
         />
@@ -121,9 +129,9 @@ export function DataSection() {
               </span>
               <Badge tone="solid-accent">Pro</Badge>
             </div>
-            <Meter label="Landing pages" used={12} limit={20} />
-            <Meter label="Products" used={18} limit={20} />
-            <Meter label="Emails this month" used={4200} limit={5000} />
+            <Meter label="Landing pages" used={5} limit={20} />
+            <Meter label="Products" used={5} limit={25} />
+            <Meter label="Emails this month" used={207} limit={5000} />
           </div>
         </article>
       </div>
@@ -251,7 +259,7 @@ export function DataSection() {
               </tbody>
             </table>
           </div>
-          <TableFooter count={`Showing ${rows.length} of ${plural(matching.length, 'order')}`} />
+          <TableFooter count={`Showing ${rows.length} of ${plural(ORDER_TOTALS[tabs.active], 'order')}`} />
         </TabPanel>
       </div>
     </section>

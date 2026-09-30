@@ -80,7 +80,7 @@ export function FeedbackSection() {
         <Banner tone="warning" icon={CreditCard} title="Your workspace is waiting for payment." action={{ label: 'Complete payment', href: '#feedback', variant: 'primary' }}>
           Publishing pages is paused until the Pro subscription is paid.
         </Banner>
-        <Banner tone="info" icon={CalendarClock} title="Your Pro plan ends on 14 Aug 2026." action={{ label: 'Keep my plan', href: '#feedback', variant: 'secondary' }}>
+        <Banner tone="info" icon={CalendarClock} title="Your Pro plan ends on 14 Oct 2026." action={{ label: 'Keep my plan', href: '#feedback', variant: 'secondary' }}>
           After that, your workspace moves to the Free plan and its limits.
         </Banner>
         <Banner tone="accent" icon={Landmark} title="Payouts aren’t set up yet." action={{ label: 'Set up payouts', href: '#feedback', variant: 'secondary' }}>
@@ -114,9 +114,6 @@ export function FeedbackSection() {
           </Button>
           <Button variant="secondary" icon={CircleAlert} onClick={() => toast({ tone: 'danger', title: 'Couldn’t publish page', message: 'Your workspace is waiting for payment.' })}>
             Error toast
-          </Button>
-          <Button variant="secondary" icon={Info} onClick={() => toast({ tone: 'info', title: 'Heads up', message: 'Info toasts carry neutral news.' })}>
-            Info toast
           </Button>
           <Button variant="secondary" icon={AppWindow} onClick={openForm}>
             Form modal
