@@ -2,6 +2,7 @@ import { Menu } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { Brand, Button, ThemeToggleButton } from './ledger'
 import { NAV_SECTION_LABELS } from './nav-sections'
 import type { NavSection } from './nav-sections'
@@ -27,6 +28,13 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLElement>(null)
   const restoreFocus = useRef(false)
+
+  // The shell (workspace name, plan, banners) needs the creator on every page, including ones that never load it.
+  const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
+  const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
+  useEffect(() => {
+    if (currentCreatorStatus === 'idle') void loadCurrentCreator()
+  }, [currentCreatorStatus, loadCurrentCreator])
 
   const closeDrawer = useCallback((restore = true) => {
     restoreFocus.current = restore
