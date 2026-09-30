@@ -14,7 +14,6 @@ import { QuickStatsColumn } from "../components/QuickStatsColumn";
 import { RecentTransactionsCard } from "../components/RecentTransactionsCard";
 import { RevenueByProductChart } from "../components/RevenueByProductChart";
 import { RevenueTrendChart } from "../components/RevenueTrendChart";
-import { WorkspaceStatusBanner } from "../components/WorkspaceStatusBanner";
 import { useCreatorStore } from "../model/creator-store";
 import { usePayoutStore } from "../model/payout-store";
 
@@ -25,13 +24,10 @@ export function CreatorWorkspacePage() {
   const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus);
   const creatorPlans = useCreatorStore((s) => s.creatorPlans);
   const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans);
-  const checkoutStatus = useCreatorStore((s) => s.checkoutStatus);
-  const checkoutError = useCreatorStore((s) => s.checkoutError);
   const cancelSubscriptionStatus = useCreatorStore(
     (s) => s.cancelSubscriptionStatus,
   );
   const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator);
-  const startCreatorCheckout = useCreatorStore((s) => s.startCreatorCheckout);
   const cancelSubscription = useCreatorStore((s) => s.cancelSubscription);
 
   const loadPayoutSummary = usePayoutStore((s) => s.loadPayoutSummary);
@@ -46,9 +42,6 @@ export function CreatorWorkspacePage() {
   const isLoading =
     currentCreatorStatus === "loading" || currentCreatorStatus === "idle";
   const creator = currentCreator?.slug === slug ? currentCreator : null;
-  const requiresPayment = creator?.status.toLowerCase() === "pendingpayment";
-  const isSuspended = creator?.status.toLowerCase() === "suspended";
-  const isStartingCheckout = checkoutStatus === "submitting";
   const isCancellingSubscription = cancelSubscriptionStatus === "submitting";
   const currentPlan = creatorPlans.find((p) => p.code === creator?.planCode);
   const maxEmailsPerMonth =
@@ -106,11 +99,6 @@ export function CreatorWorkspacePage() {
     return () => window.removeEventListener("focus", refetchOnFocus);
   }, [creator?.payoutMode, creator?.slug, loadPayoutSummary]);
 
-  const startCheckout = async () => {
-    const checkout = await startCreatorCheckout();
-    if (checkout?.checkoutUrl) window.location.assign(checkout.checkoutUrl);
-  };
-
   if (!slug) return null;
 
   return (
@@ -142,14 +130,6 @@ export function CreatorWorkspacePage() {
         <div className="flex min-h-screen flex-col">
           {/* ── Body ────────────────────────────────────────────────── */}
           <div className="flex-1 p-8">
-            <WorkspaceStatusBanner
-              requiresPayment={requiresPayment}
-              isSuspended={isSuspended}
-              checkoutError={checkoutError}
-              isStartingCheckout={isStartingCheckout}
-              onPayNow={() => void startCheckout()}
-            />
-
             {/* ── Greeting header ──────────────────────────────────── */}
 
             <div className="mb-8">

@@ -1,0 +1,141 @@
+/* --------------------------------------------------------------------------
+   6. Buttons
+   -------------------------------------------------------------------------- */
+.btn {
+  --btn-bg: transparent;
+  --btn-fg: var(--color-text);
+  --btn-border: transparent;
+  --btn-shadow: none;
+  --btn-height: var(--control-md);
+  --btn-pad: var(--space-4);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--btn-height);
+  padding: 0 var(--btn-pad);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--radius-md);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  box-shadow: var(--btn-shadow);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.btn svg {
+  width: var(--icon-md);
+  height: var(--icon-md);
+  stroke-width: 2;
+}
+
+.btn:active:not(:disabled, [aria-disabled="true"]) {
+  transform: translateY(1px);
+}
+
+.btn--primary {
+  --btn-bg: var(--color-primary);
+  --btn-fg: var(--color-on-primary);
+  --btn-shadow: var(--shadow-sm), var(--shadow-inset-highlight);
+}
+
+.btn--primary:hover { --btn-bg: var(--color-primary-hover); }
+
+.btn--accent {
+  --btn-bg: var(--color-accent);
+  --btn-fg: var(--color-on-accent);
+  --btn-shadow: var(--shadow-sm), var(--shadow-inset-accent);
+}
+
+.btn--accent:hover { --btn-bg: var(--color-accent-hover); }
+
+.btn--secondary {
+  --btn-bg: var(--color-surface);
+  --btn-border: var(--color-border-strong);
+  --btn-shadow: var(--shadow-xs);
+}
+
+.btn--secondary:hover { --btn-bg: var(--color-surface-2); }
+
+.btn--ghost:hover { --btn-bg: var(--color-hover); }
+.btn--ghost[aria-expanded="true"] { --btn-bg: var(--color-pressed); }
+
+.btn--danger {
+  --btn-bg: var(--color-danger-solid);
+  --btn-fg: var(--color-on-danger);
+  --btn-shadow: var(--shadow-sm), var(--shadow-inset-highlight);
+}
+
+.btn--danger:hover { --btn-bg: var(--color-danger-hover); }
+
+.btn--danger-ghost { --btn-fg: var(--color-danger); }
+.btn--danger-ghost:hover { --btn-bg: var(--color-danger-soft); }
+
+.btn--sm {
+  --btn-height: var(--control-sm);
+  --btn-pad: var(--space-3);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+}
+
+.btn--lg {
+  --btn-height: var(--control-lg);
+  --btn-pad: var(--space-5);
+  font-size: var(--text-lg);
+}
+
+.btn--icon {
+  --btn-pad: 0;
+  width: var(--btn-height);
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  --btn-bg: var(--color-surface-3);
+  --btn-fg: var(--color-text-disabled);
+  --btn-border: transparent;
+  --btn-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn--ghost:disabled,
+.btn--ghost[aria-disabled="true"] {
+  --btn-bg: transparent;
+}
+
+.btn[aria-busy="true"] {
+  color: transparent;
+  pointer-events: none;
+}
+
+.btn[aria-busy="true"]::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--btn-fg);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+.btn[aria-busy="true"] > * {
+  visibility: hidden;
+}

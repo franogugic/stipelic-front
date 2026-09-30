@@ -1,28 +1,31 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
+import { getHomeSummary } from '../../orders/api/orders-api'
 import {
   cancelScheduledCampaign,
-  getAudiencePreview,
-  getAudienceRecipients,
-  getCampaign,
+  getCampaignAudiences,
+  getOpenRateTrend,
   getFailedRecipients,
   listCampaigns,
   resendFailedRecipients,
   sendCampaign,
 } from '../api/campaigns-api'
 import type {
-  AudiencePreview,
-  CampaignAudienceType,
+  CampaignAudiences,
   CampaignDetail,
   CampaignListItem,
   FailedRecipient,
+  OpenRateTrend,
   SendCampaignRequest,
 } from './types'
 
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
 type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error'
 
-const AUDIENCE_RECIPIENTS_PAGE_SIZE = 10
+export const OPEN_RATE_TREND_MONTHS = 6
+
+// Monthly email allowance; a negative limit means unlimited.
+export type EmailUsage = { sent: number; limit: number }
 
 type CampaignState = {
   campaigns: CampaignListItem[]
@@ -30,16 +33,14 @@ type CampaignState = {
   campaignsSlug: string | null
   campaignsRevalidating: boolean
 
-  currentCampaign: CampaignDetail | null
-  currentCampaignStatus: LoadStatus
+  audiences: CampaignAudiences | null
+  audiencesStatus: LoadStatus
+  audiencesSlug: string | null
 
-  audiencePreview: AudiencePreview | null
-  audiencePreviewStatus: LoadStatus
+  usage: EmailUsage | null
 
-  audienceRecipients: string[]
-  audienceRecipientsStatus: LoadStatus
-  audienceRecipientsHasMore: boolean
-  audienceRecipientsLoadMoreStatus: LoadStatus
+  openRateTrend: OpenRateTrend | null
+  openRateTrendStatus: LoadStatus
 
   sendCampaignStatus: SubmitStatus
   sendCampaignError: string | null
@@ -54,25 +55,9 @@ type CampaignState = {
   resendFailedError: string | null
 
   loadCampaigns: (slug: string) => Promise<void>
-  loadCampaign: (slug: string, campaignPublicId: string) => Promise<void>
-  clearCurrentCampaign: () => void
-  loadAudiencePreview: (
-    slug: string,
-    audienceType: CampaignAudienceType,
-    targetPublicId: string,
-  ) => Promise<void>
-  clearAudiencePreview: () => void
-  loadAudienceRecipients: (
-    slug: string,
-    audienceType: CampaignAudienceType,
-    targetPublicId: string,
-  ) => Promise<void>
-  loadMoreAudienceRecipients: (
-    slug: string,
-    audienceType: CampaignAudienceType,
-    targetPublicId: string,
-  ) => Promise<void>
-  clearAudienceRecipients: () => void
+  loadAudiences: (slug: string) => Promise<void>
+  loadUsage: (slug: string) => Promise<void>
+  loadOpenRateTrend: (slug: string) => Promise<void>
   sendCampaignForSlug: (slug: string, request: SendCampaignRequest) => Promise<CampaignDetail | null>
   resetSendCampaignFeedback: () => void
   cancelScheduledCampaignForSlug: (slug: string, campaignPublicId: string) => Promise<boolean>
@@ -90,16 +75,14 @@ const initialCampaignState = {
   campaignsSlug: null,
   campaignsRevalidating: false,
 
-  currentCampaign: null,
-  currentCampaignStatus: 'idle' as LoadStatus,
+  audiences: null,
+  audiencesStatus: 'idle' as LoadStatus,
+  audiencesSlug: null,
 
-  audiencePreview: null,
-  audiencePreviewStatus: 'idle' as LoadStatus,
+  usage: null,
 
-  audienceRecipients: [] as string[],
-  audienceRecipientsStatus: 'idle' as LoadStatus,
-  audienceRecipientsHasMore: false,
-  audienceRecipientsLoadMoreStatus: 'idle' as LoadStatus,
+  openRateTrend: null,
+  openRateTrendStatus: 'idle' as LoadStatus,
 
   sendCampaignStatus: 'idle' as SubmitStatus,
   sendCampaignError: null,
@@ -139,85 +122,45 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     }
   },
 
-  loadCampaign: async (slug, campaignPublicId) => {
-    set({ currentCampaignStatus: 'loading' })
+  loadAudiences: async (slug) => {
+    if (get().audiencesStatus === 'loading') return
+    // Only the first load for a workspace shows a loading state; later refreshes swap the data in silently.
+    if (get().audiences === null || get().audiencesSlug !== slug) {
+      set({ audiences: null, audiencesStatus: 'loading', audiencesSlug: slug })
+    }
     try {
-      const campaign = await getCampaign(slug, campaignPublicId)
-      set({ currentCampaign: campaign, currentCampaignStatus: 'success' })
+      const audiences = await getCampaignAudiences(slug)
+      set({ audiences, audiencesStatus: 'success', audiencesSlug: slug })
     } catch {
-      set({ currentCampaignStatus: 'error' })
+      set({ audiencesStatus: 'error' })
     }
   },
 
-  clearCurrentCampaign: () => {
-    set({ currentCampaign: null, currentCampaignStatus: 'idle' })
-  },
-
-  loadAudiencePreview: async (slug, audienceType, targetPublicId) => {
-    set({ audiencePreviewStatus: 'loading' })
+  loadUsage: async (slug) => {
     try {
-      const preview = await getAudiencePreview(slug, audienceType, targetPublicId)
-      set({ audiencePreview: preview, audiencePreviewStatus: 'success' })
+      const summary = await getHomeSummary(slug)
+      set({ usage: { sent: summary.emailsSentThisMonth, limit: summary.emailsMonthlyLimit } })
     } catch {
-      set({ audiencePreview: null, audiencePreviewStatus: 'error' })
+      // Usage is informational; keep whatever was last known rather than blocking the page.
     }
   },
 
-  clearAudiencePreview: () => {
-    set({ audiencePreview: null, audiencePreviewStatus: 'idle' })
-  },
-
-  loadAudienceRecipients: async (slug, audienceType, targetPublicId) => {
-    set({ audienceRecipientsStatus: 'loading' })
+  loadOpenRateTrend: async (slug) => {
+    // Refreshes (after a send, on focus) keep showing the last chart instead of flashing a loader.
+    if (get().openRateTrend === null) set({ openRateTrendStatus: 'loading' })
     try {
-      const page = await getAudienceRecipients(slug, audienceType, targetPublicId, {
-        limit: AUDIENCE_RECIPIENTS_PAGE_SIZE,
-      })
-      set({
-        audienceRecipients: page.emails,
-        audienceRecipientsHasMore: page.hasMore,
-        audienceRecipientsStatus: 'success',
-      })
+      const openRateTrend = await getOpenRateTrend(slug, OPEN_RATE_TREND_MONTHS)
+      set({ openRateTrend, openRateTrendStatus: 'success' })
     } catch {
-      set({ audienceRecipients: [], audienceRecipientsHasMore: false, audienceRecipientsStatus: 'error' })
+      if (get().openRateTrend === null) set({ openRateTrendStatus: 'error' })
     }
-  },
-
-  loadMoreAudienceRecipients: async (slug, audienceType, targetPublicId) => {
-    const { audienceRecipients, audienceRecipientsLoadMoreStatus } = get()
-    if (audienceRecipientsLoadMoreStatus === 'loading' || audienceRecipients.length === 0) return
-
-    set({ audienceRecipientsLoadMoreStatus: 'loading' })
-    try {
-      const afterEmail = audienceRecipients[audienceRecipients.length - 1]
-      const page = await getAudienceRecipients(slug, audienceType, targetPublicId, {
-        afterEmail,
-        limit: AUDIENCE_RECIPIENTS_PAGE_SIZE,
-      })
-      set({
-        audienceRecipients: [...audienceRecipients, ...page.emails],
-        audienceRecipientsHasMore: page.hasMore,
-        audienceRecipientsLoadMoreStatus: 'success',
-      })
-    } catch {
-      set({ audienceRecipientsLoadMoreStatus: 'error' })
-    }
-  },
-
-  clearAudienceRecipients: () => {
-    set({
-      audienceRecipients: [],
-      audienceRecipientsHasMore: false,
-      audienceRecipientsStatus: 'idle',
-      audienceRecipientsLoadMoreStatus: 'idle',
-    })
   },
 
   sendCampaignForSlug: async (slug, request) => {
     set({ sendCampaignStatus: 'submitting', sendCampaignError: null })
     try {
       const campaign = await sendCampaign(slug, request)
-      set({ sendCampaignStatus: 'success', sendCampaignError: null, currentCampaign: campaign })
+      set({ sendCampaignStatus: 'success', sendCampaignError: null })
       void get().loadCampaigns(slug)
       return campaign
     } catch (error) {
@@ -270,9 +213,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     try {
       const result = await resendFailedRecipients(slug, campaignPublicId)
       set({ resendFailedStatus: 'success', resendFailedError: null })
-      // Refetch this campaign's own progress and the failed-recipients list, and the send history
-      // list (so its Failed(N) badge count reflects the requeue too).
-      void get().loadCampaign(slug, campaignPublicId)
+      // Refetch the failed-recipients list and the campaigns list (so the counts reflect the requeue too).
       void get().loadFailedRecipients(slug, campaignPublicId)
       void get().loadCampaigns(slug)
       return result.requeuedCount

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { Dropdown } from '../../../shared/ui/Dropdown'
+import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
 import { useProductStore } from '../../products/model/product-store'
 import { listOrders } from '../api/orders-api'
 import { OrderStatusBadge } from '../components/OrderStatusBadge'
@@ -22,17 +23,24 @@ export function OrdersPage() {
   const { slug } = useParams<{ slug: string }>()
   const products = useProductStore((s) => s.products)
   const loadProducts = useProductStore((s) => s.loadProducts)
+  const landingPages = useLandingPageStore((s) => s.pages)
+  const loadLandingPages = useLandingPageStore((s) => s.loadPages)
   const [orders, setOrders] = useState<Order[]>([])
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [hasMore, setHasMore] = useState(false)
   const [loadMoreStatus, setLoadMoreStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [search, setSearch] = useState('')
   const [productFilter, setProductFilter] = useState('all')
+  const [landingPageFilter, setLandingPageFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all')
 
   useEffect(() => {
     if (slug) void loadProducts(slug)
   }, [slug, loadProducts])
+
+  useEffect(() => {
+    if (slug) void loadLandingPages(slug)
+  }, [slug, loadLandingPages])
 
   // Product/status are real server-side filters (narrow the full order set, not just the loaded
   // page), so changing either re-runs the query from the start — same as a fresh mount.
@@ -45,6 +53,7 @@ export function OrdersPage() {
       try {
         const page = await listOrders(slug!, {
           productId: productFilter === 'all' ? undefined : productFilter,
+          landingPageId: landingPageFilter === 'all' ? undefined : landingPageFilter,
           status: statusFilter === 'all' ? undefined : statusFilter,
           limit: PAGE_SIZE,
         })
@@ -59,7 +68,7 @@ export function OrdersPage() {
 
     void run()
     return () => { isCurrent = false }
-  }, [slug, productFilter, statusFilter])
+  }, [slug, productFilter, landingPageFilter, statusFilter])
 
   const loadMore = () => {
     if (!slug || orders.length === 0) return
@@ -67,6 +76,7 @@ export function OrdersPage() {
     setLoadMoreStatus('loading')
     listOrders(slug, {
       productId: productFilter === 'all' ? undefined : productFilter,
+      landingPageId: landingPageFilter === 'all' ? undefined : landingPageFilter,
       status: statusFilter === 'all' ? undefined : statusFilter,
       afterCreatedAt: last.createdAt,
       afterId: last.publicId,
@@ -93,6 +103,11 @@ export function OrdersPage() {
   const productOptions = useMemo(
     () => [{ value: 'all', label: 'All products' }, ...products.map((p) => ({ value: p.publicId, label: p.name }))],
     [products],
+  )
+
+  const landingPageOptions = useMemo(
+    () => [{ value: 'all', label: 'All landing pages' }, ...landingPages.map((p) => ({ value: p.publicId, label: p.title }))],
+    [landingPages],
   )
 
   const exportCsv = () => {
@@ -139,6 +154,7 @@ export function OrdersPage() {
             />
           </div>
           <Dropdown value={productFilter} onChange={setProductFilter} options={productOptions} className="w-44" />
+          <Dropdown value={landingPageFilter} onChange={setLandingPageFilter} options={landingPageOptions} className="w-44" />
           <Dropdown value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} className="w-40" />
           <GhostBtn onClick={exportCsv}>
             <Download size={13} /> Export

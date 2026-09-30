@@ -1,128 +1,135 @@
-import {
-  Banknote,
-  Layers,
-  LayoutDashboard,
-  Loader2,
-  LogOut,
-  Mail,
-  Package,
-  Settings,
-  ShieldCheck,
-  ShoppingBag,
-  Users,
-} from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Landmark, LayoutDashboard, LogOut, Mail, Package, PanelsTopLeft, Receipt, Settings, ShieldCheck, Users, X } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
-import { LOGO_GRADIENT } from './brand'
+import { useCreatorStore } from '../../features/creators/model/creator-store'
+import { initials, monogram } from '../lib/format'
+import { Avatar, Brand, Button, ThemeSwitch } from './ledger'
+import { NAV_SECTION_LABELS } from './nav-sections'
+import type { NavSection } from './nav-sections'
 
-export type NavSection = 'overview' | 'landing-pages' | 'products' | 'orders' | 'emails' | 'subscribers' | 'payouts' | 'settings'
+export type { NavSection } from './nav-sections'
 
 type SidebarProps = {
   slug: string
   activeSection: NavSection
+  /** Closes the mobile drawer; only the drawer's close button uses it. */
+  onCloseDrawer?: () => void
 }
 
-const navItems: { section: NavSection; label: string; icon: typeof LayoutDashboard; href: (slug: string) => string }[] = [
-  { section: 'overview',       label: 'Dashboard',      icon: LayoutDashboard, href: (s) => `/app/${s}` },
-  { section: 'landing-pages',  label: 'Landing Pages',  icon: Layers,          href: (s) => `/app/${s}/landing-pages` },
-  { section: 'products',       label: 'Products',       icon: Package,         href: (s) => `/app/${s}/products` },
-  { section: 'orders',         label: 'Orders',         icon: ShoppingBag,     href: (s) => `/app/${s}/orders` },
-  { section: 'emails',         label: 'Email Marketing', icon: Mail,           href: (s) => `/app/${s}/emails` },
-  { section: 'subscribers',    label: 'Subscribers',    icon: Users,           href: (s) => `/app/${s}/subscribers` },
-  { section: 'payouts',        label: 'Payouts',        icon: Banknote,        href: (s) => `/app/${s}/payouts` },
-  { section: 'settings',       label: 'Settings',       icon: Settings,        href: (s) => `/app/${s}/settings` },
+type NavItem = { section: NavSection | 'admin-payouts'; label: string; icon: LucideIcon; href: (slug: string) => string }
+type NavGroup = { id: string; label?: string; items: NavItem[] }
+
+const NAV_GROUPS: NavGroup[] = [
+  { id: 'main', items: [{ section: 'overview', label: NAV_SECTION_LABELS['overview'], icon: LayoutDashboard, href: (s) => `/app/${s}` }] },
+  {
+    id: 'sell',
+    label: 'Sell',
+    items: [
+      { section: 'landing-pages', label: NAV_SECTION_LABELS['landing-pages'], icon: PanelsTopLeft, href: (s) => `/app/${s}/landing-pages` },
+      { section: 'products', label: NAV_SECTION_LABELS['products'], icon: Package, href: (s) => `/app/${s}/products` },
+      { section: 'orders', label: NAV_SECTION_LABELS['orders'], icon: Receipt, href: (s) => `/app/${s}/orders` },
+    ],
+  },
+  {
+    id: 'audience',
+    label: 'Audience',
+    items: [
+      { section: 'emails', label: NAV_SECTION_LABELS['emails'], icon: Mail, href: (s) => `/app/${s}/emails` },
+      { section: 'subscribers', label: NAV_SECTION_LABELS['subscribers'], icon: Users, href: (s) => `/app/${s}/subscribers` },
+    ],
+  },
+  {
+    id: 'account',
+    label: 'Account',
+    items: [
+      { section: 'payouts', label: NAV_SECTION_LABELS['payouts'], icon: Landmark, href: (s) => `/app/${s}/payouts` },
+      { section: 'settings', label: NAV_SECTION_LABELS['settings'], icon: Settings, href: (s) => `/app/${s}/settings` },
+    ],
+  },
 ]
 
-export function Sidebar({ slug, activeSection }: SidebarProps) {
-  const navigate = useNavigate()
+const ADMIN_GROUP: NavGroup = {
+  id: 'admin',
+  label: 'Admin',
+  items: [{ section: 'admin-payouts', label: 'Payouts', icon: ShieldCheck, href: () => '/admin/payouts' }],
+}
+
+function NavGroupList({ group, slug, active }: { group: NavGroup; slug: string; active: string }) {
+  const labelId = `nav-label-${group.id}`
+  return (
+    <div className="nav__group">
+      {group.label && (
+        <p className="nav__label eyebrow" id={labelId}>
+          {group.label}
+        </p>
+      )}
+      <ul className="nav__list" role="list" aria-labelledby={group.label ? labelId : undefined}>
+        {group.items.map(({ section, label, icon: Icon, href }) => (
+          <li key={section}>
+            <Link className="nav__link" to={href(slug)} aria-current={section === active ? 'page' : undefined}>
+              <Icon />
+              <span>{label}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+export function Sidebar({ slug, activeSection, onCloseDrawer }: SidebarProps) {
   const user = useAuthStore((s) => s.currentUser)
   const logout = useAuthStore((s) => s.logout)
-  const logoutStatus = useAuthStore((s) => s.logoutStatus)
-  const isLoggingOut = logoutStatus === 'submitting'
+  const isLoggingOut = useAuthStore((s) => s.logoutStatus === 'submitting')
+  const creator = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator : null))
+  const settings = useCreatorStore((s) => (s.creatorSettings?.slug === slug ? s.creatorSettings : null))
 
-  const initials = user
-    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || '?'
-    : '?'
-
-  const fullName = user
-    ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email
-    : ''
+  const fullName = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email : ''
+  const brandName = settings?.brandName || creator?.name || ''
+  const isAdmin = Boolean(user?.roles?.includes('platform_admin'))
 
   return (
-    <aside
-      className="w-56 shrink-0 flex flex-col h-screen sticky top-0"
-      style={{ backgroundColor: 'var(--color-sidebar)', borderRight: '1px solid var(--color-sidebar-border)' }}
-    >
-      {/* Logo */}
-      <div className="px-5 py-5 shrink-0">
-        <span
-          className="text-xl font-black tracking-tight"
-          style={{
-            fontFamily: 'Barlow Condensed, sans-serif',
-            background: LOGO_GRADIENT,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
-          LAUNCHKIT
+    <div className="sidebar">
+      <div className="sidebar__head">
+        <Brand to={`/app/${slug}`} />
+        <Button variant="ghost" iconOnly icon={X} className="sidebar__close" aria-label="Close menu" onClick={onCloseDrawer} />
+      </div>
+      <div className="workspace-card">
+        <span className="workspace-card__logo" aria-hidden="true">
+          {brandName ? monogram(brandName) : ''}
+        </span>
+        <span className="workspace-card__text">
+          <span className="workspace-card__name">{creator?.name ?? ''}</span>
+          <span className="workspace-card__url">{`${window.location.host}/p/${slug}`}</span>
         </span>
       </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-        {navItems.map(({ section, label, icon, href }) => {
-          const Icon = icon
-          const active = activeSection === section
-          return (
-            <button key={section} onClick={() => navigate(href(slug))}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all relative"
-              style={{
-                backgroundColor: active ? 'color-mix(in srgb, var(--color-chart-1) 9.4%, transparent)' : 'transparent',
-                color: active ? 'var(--color-chart-1)' : 'var(--color-muted-foreground)',
-              }}>
-              {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full" style={{ backgroundColor: 'var(--color-chart-1)' }} />}
-              <Icon size={15} />
-              <span>{label}</span>
-            </button>
-          );
-        })}
-
-        {user?.roles?.includes('platform_admin') && (
-          <>
-            <div className="my-3 mx-2" style={{ borderTop: '1px solid var(--color-sidebar-border)' }} />
-            <button onClick={() => navigate('/admin/payouts')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all relative"
-              style={{ color: 'var(--color-muted-foreground)' }}>
-              <ShieldCheck size={15} />
-              <span>Admin: Payouts</span>
-            </button>
-          </>
-        )}
+      <nav className="nav" aria-label="Main">
+        {NAV_GROUPS.map((group) => (
+          <NavGroupList key={group.id} group={group} slug={slug} active={activeSection} />
+        ))}
+        {isAdmin && <NavGroupList group={ADMIN_GROUP} slug={slug} active="" />}
       </nav>
-
-      {/* Footer */}
-      <div className="shrink-0 px-3 pb-4 space-y-2">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-            style={{ backgroundColor: 'color-mix(in srgb, var(--color-chart-1) 18.8%, transparent)', color: 'var(--color-chart-1)' }}
-          >
-            {initials}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold truncate text-white">{fullName}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{user?.email ?? ''}</p>
-          </div>
-          <button
-            type="button"
-            disabled={isLoggingOut}
+      <div className="sidebar__foot">
+        <ThemeSwitch />
+        <div className="user-block">
+          <Avatar>{fullName ? initials(fullName) : ''}</Avatar>
+          <span className="user-block__text">
+            <span className="user-block__name">{fullName}</span>
+            <span className="user-block__plan">{creator?.planName ? `${creator.planName} plan` : ''}</span>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon={LogOut}
+            aria-label="Log out"
+            data-tooltip="Log out"
+            loading={isLoggingOut}
             onClick={() => void logout()}
-            className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
-          >
-            {isLoggingOut ? <Loader2 className="animate-spin" size={13} /> : <LogOut size={13} />}
-          </button>
+          />
         </div>
       </div>
-    </aside>
+    </div>
   )
 }

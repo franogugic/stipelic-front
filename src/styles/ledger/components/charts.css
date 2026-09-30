@@ -1,0 +1,65 @@
+/* Bar chart (pure CSS, data from mock-data.js) */
+.bars {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  align-items: end;
+  gap: var(--space-2);
+  height: 200px;
+}
+
+.bars__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  height: 100%;
+  min-width: 0;
+}
+
+.bars__bar {
+  width: 100%;
+  max-width: 36px;
+  height: var(--h);
+  min-height: 2px;
+  border-radius: 6px 6px 2px 2px;
+  background: var(--color-surface-3);
+}
+
+.bars__col--hi .bars__bar {
+  background: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent-strong);
+}
+
+.bars__label {
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+}
+
+/* Horizontal share bars */
+.hbar {
+  display: grid;
+  gap: var(--space-1-5);
+}
+
+.hbar__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.hbar__track {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-3);
+  overflow: hidden;
+}
+
+.hbar__fill {
+  width: var(--w);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--c, var(--chart-1));
+}

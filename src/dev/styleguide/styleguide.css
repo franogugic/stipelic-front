@@ -1,0 +1,419 @@
+/* ==========================================================================
+   Dev styleguide — the page and section layout rules below are copied verbatim from
+   section 4 of the prototype's components.css (App shell). Unit 3 ships the real shell
+   stylesheet; delete this block then. The sidebar is an empty stand-in, and the mobile
+   block keeps only what the page needs (no topbar or drawer).
+   ========================================================================== */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  background: var(--color-bg);
+}
+
+.app-canvas {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: var(--canvas-inset) var(--canvas-inset) var(--canvas-inset) 0;
+  border-radius: var(--radius-xl);
+  background: var(--color-canvas);
+  box-shadow: var(--shadow-canvas);
+}
+
+.page {
+  width: 100%;
+  max-width: calc(var(--content-max) + 2 * var(--page-gutter));
+  margin: 0 auto;
+  padding: var(--space-10) var(--page-gutter) var(--space-20);
+  flex: 1;
+}
+
+.page:focus {
+  outline: none;
+}
+
+.page--narrow {
+  max-width: calc(var(--content-narrow) + 2 * var(--page-gutter));
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.page-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.page-header__subtitle {
+  max-width: 62ch;
+  color: var(--color-text-secondary);
+}
+
+.page-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.section + .section {
+  margin-top: var(--space-12);
+}
+
+.section__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.section__header p {
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 1023px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: var(--z-sidebar);
+    width: min(300px, 86vw);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(-102%);
+    visibility: hidden;
+    transition: transform var(--duration-slow) var(--ease-out), visibility 0s linear var(--duration-slow);
+  }
+
+  .app-canvas {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100dvh;
+  }
+
+  .page {
+    padding-top: var(--space-8);
+  }
+}
+
+/* ==========================================================================
+   Design system page — specimen layouts only (swatches, type scale, shape).
+   ========================================================================== */
+
+.sg-toc {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  gap: var(--space-1);
+  margin: 0 calc(var(--space-2) * -1) var(--space-10);
+  padding: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: color-mix(in srgb, var(--color-canvas) 88%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sg-toc::-webkit-scrollbar {
+  display: none;
+}
+
+.sg-toc a {
+  flex-shrink: 0;
+  padding: var(--space-1-5) var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  transition: background-color var(--duration-fast), color var(--duration-fast);
+}
+
+.sg-toc a:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+@media (max-width: 1023px) {
+  .sg-toc {
+    top: 56px;
+  }
+}
+
+/* Principles */
+.sg-principle__index {
+  font-family: var(--font-display);
+  font-size: var(--display-sm);
+  font-style: italic;
+  line-height: 1;
+  color: var(--color-accent-strong);
+}
+
+.sg-principle__title {
+  font-size: var(--text-xl);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Swatches */
+.sg-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.sg-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.sg-swatch__chip {
+  height: 64px;
+  margin-bottom: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+.sg-swatch__name {
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sg-swatch__value {
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+}
+
+/* Type specimens */
+.sg-type__row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-6);
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.sg-type__row:last-child {
+  border-bottom: 0;
+}
+
+.sg-type__meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.sg-type__display-xl {
+  font-size: var(--display-xl);
+}
+
+.sg-type__display-sm {
+  font-size: var(--display-sm);
+}
+
+@media (max-width: 767px) {
+  .sg-type__row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+}
+
+/* Spacing, radius, elevation */
+.sg-spacing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+}
+
+.sg-spacing__item {
+  display: grid;
+  grid-template-columns: 72px 1fr 40px;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sg-spacing__bar {
+  width: var(--size);
+  height: 10px;
+  border-radius: 3px;
+  background: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent-strong);
+}
+
+.sg-radii {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.sg-radius {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sg-radius__box {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 72px;
+  border: 1.5px solid var(--color-text);
+  border-radius: var(--radius);
+  background: var(--color-surface-2);
+}
+
+.sg-shadows {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.sg-shadow {
+  display: grid;
+  place-items: end start;
+  height: 72px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow), 0 0 0 1px var(--color-divider);
+}
+
+/* Rows with a label column */
+.sg-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.sg-row__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 639px) {
+  .sg-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+}
+
+.sg-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+/* Data display */
+.sg-metrics {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.sg-metrics__hero {
+  grid-row: span 2;
+}
+
+.sg-metrics__hero .card__body {
+  justify-content: space-between;
+}
+
+.sg-metrics__hero .sparkline {
+  --sparkline-height: 120px;
+}
+
+.sg-metrics__plan {
+  grid-column: span 2;
+}
+
+@media (max-width: 1023px) {
+  .sg-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sg-metrics__hero,
+  .sg-metrics__plan {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 639px) {
+  .sg-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sg-badges {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sg-badges__row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+@media (max-width: 639px) {
+  .sg-badges__row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+}
+
+.sg-tabs {
+  border-bottom: 0;
+}
+
+.sg-banners {
+  overflow: hidden;
+}
+
+.sg-banners .banner:last-child {
+  border-bottom: 0;
+}

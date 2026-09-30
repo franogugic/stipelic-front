@@ -1,0 +1,185 @@
+/* --------------------------------------------------------------------------
+   15. Screen states: skeleton, empty, error, plan limit
+   -------------------------------------------------------------------------- */
+.skeleton {
+  display: block;
+  height: var(--skeleton-height, 12px);
+  width: var(--skeleton-width, 100%);
+  border-radius: var(--radius-xs);
+  background: linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-shine) 50%, var(--skeleton-base) 75%);
+  background-size: 300% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.skeleton--title { --skeleton-height: 28px; --skeleton-width: 45%; border-radius: var(--radius-sm); }
+.skeleton--metric { --skeleton-height: 36px; --skeleton-width: 60%; border-radius: var(--radius-sm); }
+.skeleton--block { --skeleton-height: 180px; border-radius: var(--radius-md); }
+.skeleton--circle { --skeleton-height: 32px; --skeleton-width: 32px; border-radius: 50%; }
+.skeleton--short { --skeleton-width: 40%; }
+.skeleton--mid { --skeleton-width: 65%; }
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.skeleton-row:last-child {
+  border-bottom: 0;
+}
+
+.skeleton-row > .stack {
+  flex: 1;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-16) var(--space-6);
+  text-align: center;
+}
+
+.state__art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--space-3);
+  border-radius: 22px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text);
+}
+
+.state__art svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.5;
+}
+
+/* Concentric guide rings behind the icon */
+.state__art::before,
+.state__art::after {
+  content: "";
+  position: absolute;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.state__art::before { inset: -22px; opacity: 0.8; }
+.state__art::after { inset: -46px; opacity: 0.4; }
+
+.state__badge {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: 0 0 0 3px var(--color-canvas);
+}
+
+.state__badge svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+
+.state--error .state__badge {
+  background: var(--color-danger-solid);
+  color: var(--color-on-danger);
+}
+
+.state__title {
+  font-family: var(--font-display);
+  font-size: var(--display-sm);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-display);
+  line-height: 1.15;
+}
+
+.state__text {
+  max-width: 44ch;
+  color: var(--color-text-secondary);
+}
+
+.state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.state--compact {
+  padding: var(--space-10) var(--space-5);
+}
+
+.limit {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(90deg, var(--color-accent-soft), transparent 70%),
+    var(--color-surface);
+}
+
+.limit__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.limit__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.limit__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.limit__title {
+  font-weight: var(--weight-semibold);
+}
+
+.limit__text {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.limit .meter {
+  max-width: 360px;
+}
+
+@media (max-width: 639px) {
+  .limit {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .limit > .btn {
+    grid-column: 1 / -1;
+  }
+}

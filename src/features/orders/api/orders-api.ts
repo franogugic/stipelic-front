@@ -7,6 +7,7 @@ export async function listOrders(
   slug: string,
   options: {
     productId?: string
+    landingPageId?: string
     status?: string
     afterCreatedAt?: string
     afterId?: string
@@ -15,6 +16,7 @@ export async function listOrders(
 ): Promise<OrdersPage> {
   const params = new URLSearchParams()
   if (options.productId) params.set('productId', options.productId)
+  if (options.landingPageId) params.set('landingPageId', options.landingPageId)
   if (options.status) params.set('status', options.status)
   if (options.afterCreatedAt) params.set('afterCreatedAt', options.afterCreatedAt)
   if (options.afterId) params.set('afterId', options.afterId)

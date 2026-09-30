@@ -20,7 +20,6 @@ export function QuickStatsColumn({ avgOrderValueCents, totalPlatformFeeCents, cu
         color="var(--color-chart-4)"
         label="Platform Fee"
         value={formatCurrency(totalPlatformFeeCents, currency)}
-        sub="Total collected"
       />
     </div>
   )

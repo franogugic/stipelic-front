@@ -1,11 +1,10 @@
 import { apiRequest } from '../../../shared/api/http-client'
 import type {
-  AudiencePreview,
-  AudienceRecipientsPage,
-  CampaignAudienceType,
+  CampaignAudiences,
   CampaignDetail,
   CampaignListItem,
   FailedRecipient,
+  OpenRateTrend,
   ResendFailedResult,
   SendCampaignRequest,
 } from '../model/types'
@@ -21,41 +20,21 @@ function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
   return response.data
 }
 
-export function getAudiencePreview(
-  slug: string,
-  audienceType: CampaignAudienceType,
-  targetPublicId: string,
-) {
-  const params = new URLSearchParams({ audienceType, targetPublicId })
-  return apiRequest<ApiResponse<AudiencePreview>>(
-    `/api/creators/${encodeURIComponent(slug)}/campaigns/audience-preview?${params.toString()}`,
+export function getCampaignAudiences(slug: string) {
+  return apiRequest<ApiResponse<CampaignAudiences>>(
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/audiences`,
   ).then(unwrapApiResponse)
 }
 
-export function getAudienceRecipients(
-  slug: string,
-  audienceType: CampaignAudienceType,
-  targetPublicId: string,
-  options: { afterEmail?: string; limit?: number } = {},
-) {
-  const params = new URLSearchParams({ audienceType, targetPublicId })
-  if (options.afterEmail) params.set('afterEmail', options.afterEmail)
-  if (options.limit) params.set('limit', String(options.limit))
-
-  return apiRequest<ApiResponse<AudienceRecipientsPage>>(
-    `/api/creators/${encodeURIComponent(slug)}/campaigns/audience-preview/recipients?${params.toString()}`,
+export function getOpenRateTrend(slug: string, months = 6) {
+  return apiRequest<ApiResponse<OpenRateTrend>>(
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/open-rate-trend?months=${months}`,
   ).then(unwrapApiResponse)
 }
 
 export function listCampaigns(slug: string) {
   return apiRequest<ApiResponse<CampaignListItem[]>>(
     `/api/creators/${encodeURIComponent(slug)}/campaigns`,
-  ).then(unwrapApiResponse)
-}
-
-export function getCampaign(slug: string, campaignPublicId: string) {
-  return apiRequest<ApiResponse<CampaignDetail>>(
-    `/api/creators/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignPublicId)}`,
   ).then(unwrapApiResponse)
 }
 

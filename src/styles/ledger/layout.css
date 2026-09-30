@@ -1,0 +1,60 @@
+/* --------------------------------------------------------------------------
+   3. Layout primitives
+   -------------------------------------------------------------------------- */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack-gap, var(--space-4));
+}
+
+.stack--xs { --stack-gap: var(--space-1); }
+.stack--sm { --stack-gap: var(--space-2); }
+.stack--md { --stack-gap: var(--space-3); }
+.stack--lg { --stack-gap: var(--space-6); }
+.stack--xl { --stack-gap: var(--space-10); }
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cluster-gap, var(--space-2));
+}
+
+.cluster--sm { --cluster-gap: var(--space-1-5); }
+.cluster--lg { --cluster-gap: var(--space-4); }
+.cluster--between { justify-content: space-between; }
+.cluster--end { justify-content: flex-end; }
+.cluster--nowrap { flex-wrap: nowrap; }
+
+.grid {
+  display: grid;
+  gap: var(--grid-gap, var(--space-4));
+  grid-template-columns: repeat(var(--grid-cols, 1), minmax(0, 1fr));
+}
+
+.grid--2 { --grid-cols: 2; }
+.grid--3 { --grid-cols: 3; }
+.grid--4 { --grid-cols: 4; }
+.grid--gap-lg { --grid-gap: var(--space-6); }
+
+@media (max-width: 1279px) {
+  .grid--4 { --grid-cols: 2; }
+}
+
+@media (max-width: 1023px) {
+  .grid--3 { --grid-cols: 2; }
+}
+
+@media (max-width: 639px) {
+  .grid--2,
+  .grid--3,
+  .grid--4 { --grid-cols: 1; }
+}
+
+.divider {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: var(--color-divider);
+}
+
