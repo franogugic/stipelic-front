@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, MouseEvent, ReactNode } from 'react'
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, MouseEvent, ReactNode, Ref } from 'react'
 import { Link } from 'react-router-dom'
 import type { LinkProps } from 'react-router-dom'
 
@@ -19,6 +19,8 @@ type Shared = {
    */
   disabledReason?: string
   className?: string
+  /** React 19 passes `ref` as a prop; it lands on the rendered element. */
+  ref?: Ref<HTMLButtonElement>
   children?: ReactNode
 }
 
