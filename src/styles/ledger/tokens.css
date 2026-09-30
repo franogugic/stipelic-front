@@ -1,0 +1,327 @@
+/* ==========================================================================
+   Luma — design tokens ("Ledger")
+   --------------------------------------------------------------------------
+   Every visual decision lives here. Components never use raw values.
+   Light theme is the :root default; dark overrides under [data-theme="dark"].
+   components.js sets data-theme on <html> before first paint (stored choice,
+   falling back to the OS preference), so both themes are always explicit.
+   ========================================================================== */
+
+:root {
+  /* ---- Typography ------------------------------------------------------ */
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-2xs: 0.6875rem;   /* 11px — micro labels */
+  --text-xs: 0.75rem;      /* 12px — captions, table heads */
+  --text-sm: 0.8125rem;    /* 13px — secondary UI */
+  --text-md: 0.875rem;     /* 14px — base UI */
+  --text-lg: 1rem;         /* 16px — lead text, mobile inputs */
+  --text-xl: 1.125rem;     /* 18px — card headlines */
+  --text-2xl: 1.375rem;    /* 22px — section titles */
+
+  --display-sm: 1.75rem;   /* 28px — card hero numbers */
+  --display-md: 2.5rem;    /* 40px — page titles */
+  --display-lg: 3.5rem;    /* 56px — hero metrics */
+  --display-xl: 4.5rem;    /* 72px — marketing / public pages */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --tracking-display: -0.015em;
+  --tracking-tight: -0.01em;
+  --tracking-caps: 0.06em;
+
+  /* ---- Spacing (4px grid) ---------------------------------------------- */
+  --space-0-5: 0.125rem;   /* 2  */
+  --space-1: 0.25rem;      /* 4  */
+  --space-1-5: 0.375rem;   /* 6  */
+  --space-2: 0.5rem;       /* 8  */
+  --space-2-5: 0.625rem;   /* 10 */
+  --space-3: 0.75rem;      /* 12 */
+  --space-4: 1rem;         /* 16 */
+  --space-5: 1.25rem;      /* 20 */
+  --space-6: 1.5rem;       /* 24 */
+  --space-8: 2rem;         /* 32 */
+  --space-10: 2.5rem;      /* 40 */
+  --space-12: 3rem;        /* 48 */
+  --space-16: 4rem;        /* 64 */
+  --space-20: 5rem;        /* 80 */
+  --space-24: 6rem;        /* 96 */
+
+  /* ---- Radii ----------------------------------------------------------- */
+  --radius-xs: 6px;        /* badges, small chips */
+  --radius-sm: 8px;        /* nav items, menu items */
+  --radius-md: 10px;       /* buttons, inputs */
+  --radius-lg: 16px;       /* cards */
+  --radius-xl: 20px;       /* modals, canvas */
+  --radius-2xl: 28px;      /* marketing blocks */
+  --radius-pill: 999px;
+
+  /* ---- Sizing ---------------------------------------------------------- */
+  --control-sm: 2rem;      /* 32 */
+  --control-md: 2.25rem;   /* 36 */
+  --control-lg: 2.75rem;   /* 44 — also min touch target */
+  --icon-sm: 14px;
+  --icon-md: 16px;
+  --icon-lg: 20px;
+
+  --sidebar-width: 256px;
+  --content-max: 1240px;
+  --content-narrow: 760px;
+  --canvas-inset: var(--space-2);
+  --page-gutter: var(--space-10);
+
+  /* ---- Motion ---------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 360ms;
+
+  /* ---- Layers ---------------------------------------------------------- */
+  --z-sticky: 10;
+  --z-sidebar: 40;
+  --z-dropdown: 60;
+  --z-toast: 90;
+
+  /* ======================================================================
+     LIGHT THEME (default)
+     Warm paper neutrals, ink as the primary action colour, "volt" lime as
+     the signature accent reserved for money & publish moments.
+     ====================================================================== */
+  color-scheme: light;
+
+  /* Surfaces: chrome → canvas → surface (each step lifts toward the user) */
+  --color-bg: #ECEBE4;
+  --color-canvas: #F7F6F2;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F4F3EE;
+  --color-surface-3: #EAE9E2;
+  --color-surface-inverse: #17160F;
+  --color-overlay: rgba(23, 22, 15, 0.42);
+
+  /* Lines */
+  --color-border: #E4E2D9;
+  --color-border-strong: #CFCCC1;
+  --color-divider: #EDEBE4;
+
+  /* Text */
+  --color-text: #17160F;
+  --color-text-secondary: #55534A;
+  --color-text-muted: #6B695F;
+  --color-text-inverse: #FAFAF6;
+  --color-text-disabled: #A3A197;
+
+  /* Primary action (ink) */
+  --color-primary: #17160F;
+  --color-primary-hover: #2F2E26;
+  --color-on-primary: #FAFAF6;
+
+  /* Signature accent (volt) */
+  --color-accent: #CDF24B;
+  --color-accent-hover: #BFE834;
+  --color-on-accent: #17160F;
+  --color-accent-strong: #4A6A05;     /* accent as text / lines on light surfaces */
+  --color-accent-soft: #EEF8CC;
+
+  /* Semantic */
+  --color-success: #18733C;
+  --color-success-soft: #E4F3E8;
+  --color-success-solid: #22A052;
+  --color-warning: #9A5606;
+  --color-warning-soft: #FBF0DA;
+  --color-warning-solid: #F2A93B;
+  --color-danger: #BF352D;
+  --color-danger-soft: #FBE7E4;
+  --color-danger-solid: #D63C33;
+  --color-danger-hover: #A92B24;
+  --color-on-danger: #FFFFFF;
+  --color-info: #2750C4;
+  --color-info-soft: #E6EDFC;
+  --color-info-solid: #3E6BF0;
+  --color-neutral-soft: #EFEEE8;
+
+  --color-hover: rgba(23, 22, 15, 0.045);
+  --color-pressed: rgba(23, 22, 15, 0.08);
+
+  /* Feature surface — the one "hero" card per screen (e.g. total revenue) */
+  --color-feature-bg: #17160F;
+  --color-feature-text: #F7F6F2;
+  --color-feature-muted: #A9A79C;
+  --color-feature-border: #2B2A23;
+  --color-feature-glow: rgba(205, 242, 75, 0.14);
+  --color-feature-spark-fill: rgba(205, 242, 75, 0.18);
+
+  /* Toasts — inverse surface so feedback never blends into content */
+  --color-toast-bg: #17160F;
+  --color-toast-text: #FAFAF6;
+  --color-toast-muted: #B9B7AD;
+  --color-toast-border: transparent;
+  --color-toast-success: #CDF24B;
+  --color-toast-danger: #FF8C82;
+  --color-toast-info: #A9C0FF;
+  --color-toast-hover: rgba(255, 255, 255, 0.08);
+
+  --color-focus: #4A6A05;
+  --focus-ring: 0 0 0 3px rgba(74, 106, 5, 0.22);
+  --selection: rgba(205, 242, 75, 0.55);
+
+  /* Elevation — soft, warm, layered */
+  --shadow-xs: 0 1px 1px rgba(23, 22, 15, 0.04);
+  --shadow-sm: 0 1px 2px rgba(23, 22, 15, 0.06), 0 1px 1px rgba(23, 22, 15, 0.03);
+  --shadow-md: 0 4px 12px -2px rgba(23, 22, 15, 0.08), 0 2px 4px -2px rgba(23, 22, 15, 0.05);
+  --shadow-lg: 0 24px 48px -12px rgba(23, 22, 15, 0.18), 0 8px 16px -8px rgba(23, 22, 15, 0.08);
+  --shadow-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --shadow-inset-accent: inset 0 -1px 0 rgba(23, 22, 15, 0.1);
+  --shadow-canvas: 0 0 0 1px var(--color-border), 0 1px 3px rgba(23, 22, 15, 0.04);
+
+  /* Skeleton shimmer */
+  --skeleton-base: #EDEBE4;
+  --skeleton-shine: #F7F6F2;
+
+  /* Data visualisation — ordered categorical palette + chart chrome */
+  --chart-1: #17160F;   /* primary series (ink) */
+  --chart-1-fill: rgba(205, 242, 75, 0.45);
+  --chart-2: #8FB31C;   /* volt (darkened for light bg) */
+  --chart-3: #D9733A;   /* clay */
+  --chart-4: #4F74D9;   /* adriatic */
+  --chart-5: #B29A72;   /* sand */
+  --chart-6: #9466C4;   /* plum */
+  --chart-muted: #B7B4A8; /* comparison / secondary series (e.g. views) */
+  --chart-grid: #ECEAE3;
+  --chart-axis: #6B695F;
+  --chart-tooltip-bg: #17160F;
+  --chart-tooltip-text: #FAFAF6;
+}
+
+/* ==========================================================================
+   DARK THEME
+   Warm near-black, hairline borders instead of shadows, volt glows.
+   ========================================================================== */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg: #0A0A09;
+  --color-canvas: #111110;
+  --color-surface: #181816;
+  --color-surface-2: #201F1C;
+  --color-surface-3: #2A2925;
+  --color-surface-inverse: #F2F1EB;
+  --color-overlay: rgba(0, 0, 0, 0.62);
+
+  --color-border: #282723;
+  --color-border-strong: #3A3934;
+  --color-divider: #22211E;
+
+  --color-text: #F2F1EB;
+  --color-text-secondary: #BDBBB1;
+  --color-text-muted: #939187;
+  --color-text-inverse: #0A0A09;
+  --color-text-disabled: #5E5C55;
+
+  --color-primary: #F2F1EB;
+  --color-primary-hover: #FFFFFF;
+  --color-on-primary: #0A0A09;
+
+  --color-accent: #D4FA5A;
+  --color-accent-hover: #E0FF7A;
+  --color-on-accent: #0A0A09;
+  --color-accent-strong: #D4FA5A;
+  --color-accent-soft: #222A0E;
+
+  --color-success: #62D68D;
+  --color-success-soft: #15271B;
+  --color-success-solid: #3FBF6E;
+  --color-warning: #F2B544;
+  --color-warning-soft: #2A2112;
+  --color-warning-solid: #F2A93B;
+  --color-danger: #F7766E;
+  --color-danger-soft: #2D1715;
+  --color-danger-solid: #D63C33;
+  --color-danger-hover: #E4483F;
+  --color-on-danger: #FFFFFF;
+  --color-info: #8AABFF;
+  --color-info-soft: #161E33;
+  --color-info-solid: #5B84FF;
+  --color-neutral-soft: #23221F;
+
+  --color-hover: rgba(255, 255, 255, 0.05);
+  --color-pressed: rgba(255, 255, 255, 0.09);
+
+  --color-feature-bg: #15170D;
+  --color-feature-text: #F2F1EB;
+  --color-feature-muted: #A4A294;
+  --color-feature-border: #2C3216;
+  --color-feature-glow: rgba(212, 250, 90, 0.10);
+  --color-feature-spark-fill: rgba(212, 250, 90, 0.14);
+
+  --color-toast-bg: #24231F;
+  --color-toast-text: #F2F1EB;
+  --color-toast-muted: #A9A79D;
+  --color-toast-border: #34332E;
+  --color-toast-success: #D4FA5A;
+  --color-toast-danger: #F7766E;
+  --color-toast-info: #8AABFF;
+  --color-toast-hover: rgba(255, 255, 255, 0.06);
+
+  --color-focus: #D4FA5A;
+  --focus-ring: 0 0 0 3px rgba(212, 250, 90, 0.2);
+  --selection: rgba(212, 250, 90, 0.3);
+
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --shadow-lg: 0 28px 56px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-inset-accent: inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  --shadow-canvas: 0 0 0 1px var(--color-border);
+
+  --skeleton-base: #1E1E1B;
+  --skeleton-shine: #292824;
+
+  --chart-1: #D4FA5A;
+  --chart-1-fill: rgba(212, 250, 90, 0.16);
+  --chart-2: #F2F1EB;
+  --chart-3: #F0925A;
+  --chart-4: #7FA0FF;
+  --chart-5: #CDB58C;
+  --chart-6: #BE95EA;
+  --chart-muted: #56544D;
+  --chart-grid: #22211E;
+  --chart-axis: #939187;
+  --chart-tooltip-bg: #F2F1EB;
+  --chart-tooltip-text: #0A0A09;
+}
+
+/* Small screens: tighter gutters, flush canvas */
+@media (max-width: 1023px) {
+  :root {
+    --page-gutter: var(--space-6);
+    --canvas-inset: 0px;
+  }
+}
+
+@media (max-width: 639px) {
+  :root {
+    --page-gutter: var(--space-4);
+    --display-md: 2.125rem;  /* 34px */
+    --display-lg: 2.75rem;   /* 44px */
+    --display-xl: 3.25rem;   /* 52px */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
