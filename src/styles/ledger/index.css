@@ -9,5 +9,6 @@
 @import "./components/cards.css";
 @import "./components/tabs.css";
 @import "./components/tables.css";
+@import "./components/menu-tooltip.css";
 @import "./motion.css";
 @import "./components/charts.css";
