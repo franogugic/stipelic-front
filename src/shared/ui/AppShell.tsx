@@ -24,21 +24,23 @@ const DESKTOP_QUERY = '(min-width: 1024px)'
 export function AppShell({ slug, activeSection, children }: AppShellProps) {
   const { pathname } = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerPath, setDrawerPath] = useState(pathname)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLElement>(null)
   const restoreFocus = useRef(false)
-
-  // The SPA has no page reload, so a route change has to close the drawer itself (no focus restore).
-  if (pathname !== drawerPath) {
-    setDrawerPath(pathname)
-    if (drawerOpen) setDrawerOpen(false)
-  }
 
   const closeDrawer = useCallback((restore = true) => {
     restoreFocus.current = restore
     setDrawerOpen(false)
   }, [])
+
+  // The SPA has no page reload, so a route change has to close the drawer itself — and never pulls
+  // focus back to the menu button, since the user has already moved on.
+  const lastPath = useRef(pathname)
+  useEffect(() => {
+    if (lastPath.current === pathname) return
+    lastPath.current = pathname
+    closeDrawer(false)
+  }, [pathname, closeDrawer])
 
   // Focus moves into the sidebar when the drawer opens, and back to the menu button when it closes.
   const wasOpen = useRef(false)
