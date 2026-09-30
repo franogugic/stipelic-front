@@ -10,5 +10,6 @@
 @import "./components/tabs.css";
 @import "./components/tables.css";
 @import "./components/menu-tooltip.css";
+@import "./components/modal.css";
 @import "./motion.css";
 @import "./components/charts.css";
