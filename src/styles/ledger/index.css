@@ -2,5 +2,6 @@
 @import "./base.css";
 @import "./typography.css";
 @import "./layout.css";
-@import "./motion.css";
+@import "./components/feedback-banners.css";
 @import "./components/buttons.css";
+@import "./motion.css";
