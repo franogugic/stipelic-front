@@ -82,6 +82,8 @@ type CreatorState = {
   reset: () => void
 }
 
+let pendingCurrentCreatorLoad: Promise<Creator | null> | null = null
+
 const initialCreatorState = {
   createdCreator: null,
   currentCreator: null,
@@ -127,22 +129,31 @@ export const useCreatorStore = create<CreatorState>((set) => ({
     }
   },
 
-  loadCurrentCreator: async () => {
+  loadCurrentCreator: () => {
+    // Several callers (a page and the app shell) can ask at once; they all share the one request in flight.
+    if (pendingCurrentCreatorLoad) return pendingCurrentCreatorLoad
+
     set({ currentCreatorStatus: 'loading' })
 
-    try {
-      const creator = await getCurrentCreator()
-      const currentCreator = creator ?? null
-      set({
-        currentCreator,
-        createdCreator: currentCreator,
-        currentCreatorStatus: 'success',
-      })
-      return currentCreator
-    } catch {
-      set({ currentCreator: null, currentCreatorStatus: 'error' })
-      return null
-    }
+    pendingCurrentCreatorLoad = (async () => {
+      try {
+        const creator = await getCurrentCreator()
+        const currentCreator = creator ?? null
+        set({
+          currentCreator,
+          createdCreator: currentCreator,
+          currentCreatorStatus: 'success',
+        })
+        return currentCreator
+      } catch {
+        set({ currentCreator: null, currentCreatorStatus: 'error' })
+        return null
+      } finally {
+        pendingCurrentCreatorLoad = null
+      }
+    })()
+
+    return pendingCurrentCreatorLoad
   },
 
   loadCreatorSettings: async (slug) => {
