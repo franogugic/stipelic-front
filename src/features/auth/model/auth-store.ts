@@ -27,6 +27,10 @@ type AuthState = {
   sessionStatus: SessionStatus
   loginStatus: AuthStatus
   loginError: string | null
+  /** The `ApiError.code` of the last failed login, e.g. `EMAIL_NOT_VERIFIED`. */
+  loginErrorCode: string | null
+  /** The submitted email when the login failed with `EMAIL_NOT_VERIFIED`, so the link can be resent. */
+  unverifiedEmail: string | null
   logoutStatus: AsyncStatus
   logoutError: string | null
   registerStatus: AuthStatus
@@ -48,7 +52,8 @@ type AuthState = {
   logout: () => Promise<void>
   loadCurrentUser: () => Promise<void>
   register: (values: RegisterFormValues) => Promise<AuthUser | null>
-  resendVerificationEmail: () => Promise<void>
+  /** Sends to `email`, or to the signed-in user's address when omitted. */
+  resendVerificationEmail: (email?: string) => Promise<void>
   verifyEmailToken: (token: string) => Promise<void>
   requestPasswordResetForEmail: (email: string) => Promise<void>
   resetPasswordWithToken: (token: string, newPassword: string) => Promise<boolean>
@@ -67,6 +72,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   sessionStatus: 'checking',
   loginStatus: 'idle',
   loginError: null,
+  loginErrorCode: null,
+  unverifiedEmail: null,
   logoutStatus: 'idle',
   logoutError: null,
   registerStatus: 'idle',
@@ -85,7 +92,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   resetPasswordMessage: null,
   resetPasswordError: null,
   login: async (values) => {
-    set({ loginStatus: 'submitting', loginError: null })
+    set({ loginStatus: 'submitting', loginError: null, loginErrorCode: null, unverifiedEmail: null })
 
     try {
       const user = await loginUser(values)
@@ -103,7 +110,14 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? error.message
           : 'We could not sign you in. Please try again.'
 
-      set({ loginStatus: 'error', loginError: message })
+      const code = error instanceof ApiError ? (error.code ?? null) : null
+
+      set({
+        loginStatus: 'error',
+        loginError: message,
+        loginErrorCode: code,
+        unverifiedEmail: code === 'EMAIL_NOT_VERIFIED' ? values.email.trim() : null,
+      })
       return null
     }
   },
@@ -120,6 +134,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         logoutError: null,
         loginStatus: 'idle',
         loginError: null,
+        loginErrorCode: null,
+        unverifiedEmail: null,
       })
       resetAllFeatureStores()
     } catch (error) {
@@ -178,9 +194,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       return null
     }
   },
-  resendVerificationEmail: async () => {
+  resendVerificationEmail: async (email) => {
     const { currentUser, resendAvailableAt } = useAuthStore.getState()
-    if (!currentUser) {
+    const recipient = email ?? currentUser?.email
+    if (!recipient) {
       return
     }
 
@@ -191,7 +208,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ resendStatus: 'submitting', resendMessage: null, resendError: null })
 
     try {
-      const response = await resendEmailVerification(currentUser.email)
+      const response = await resendEmailVerification(recipient)
       set({
         resendStatus: 'success',
         resendMessage: response.message,
@@ -285,7 +302,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
   resetLoginFeedback: () => {
-    set({ loginStatus: 'idle', loginError: null })
+    set({ loginStatus: 'idle', loginError: null, loginErrorCode: null, unverifiedEmail: null })
   },
   resetRegisterFeedback: () => {
     set({ registerStatus: 'idle', registerError: null })
@@ -313,6 +330,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       sessionStatus: 'unauthenticated',
       loginStatus: 'idle',
       loginError: null,
+      loginErrorCode: null,
+      unverifiedEmail: null,
       logoutStatus: 'idle',
       logoutError: null,
       registerStatus: 'idle',
