@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 
 export type FieldControlProps = {
   id: string
+  'aria-labelledby'?: string
   'aria-describedby'?: string
   'aria-invalid'?: true
 }
@@ -17,6 +18,7 @@ export function Field({
   hint,
   error,
   optional,
+  labelAction,
   id,
   className,
   children,
@@ -26,6 +28,12 @@ export function Field({
   error?: ReactNode
   /** Adds the muted "Optional" tag next to the label. */
   optional?: boolean
+  /**
+   * Shown at the end of the label row, e.g. a "Forgot password?" link. The row then becomes a
+   * `span.field__label` holding the label text in a `<span>` (prototype markup), and the control is
+   * named with `aria-labelledby` instead of a `<label>`, so the action never lands in its name.
+   */
+  labelAction?: ReactNode
   id?: string
   className?: string
   children: (control: FieldControlProps) => ReactNode
@@ -34,16 +42,28 @@ export function Field({
   const controlId = id ?? generatedId
   const hintId = `${controlId}-hint`
   const errorId = `${controlId}-error`
+  const labelId = `${controlId}-label`
   const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(' ')
 
   return (
     <div className={['field', className].filter(Boolean).join(' ')}>
-      <label className="field__label" htmlFor={controlId}>
-        {label}
-        {optional && <> <span className="field__optional">Optional</span></>}
-      </label>
+      {labelAction ? (
+        <span className="field__label">
+          <span id={labelId}>
+            {label}
+            {optional && <> <span className="field__optional">Optional</span></>}
+          </span>
+          {labelAction}
+        </span>
+      ) : (
+        <label className="field__label" htmlFor={controlId}>
+          {label}
+          {optional && <> <span className="field__optional">Optional</span></>}
+        </label>
+      )}
       {children({
         id: controlId,
+        'aria-labelledby': labelAction ? labelId : undefined,
         'aria-describedby': describedBy || undefined,
         'aria-invalid': error ? true : undefined,
       })}

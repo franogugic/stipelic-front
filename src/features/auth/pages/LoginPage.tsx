@@ -1,38 +1,113 @@
-import { CheckCircle2 } from 'lucide-react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { AuthLayout } from '../components/AuthLayout'
-import { AuthModeSwitch } from '../components/AuthModeSwitch'
-import { LoginForm } from '../components/LoginForm'
+import { CircleAlert, CircleCheck } from 'lucide-react'
+import type { FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { Alert, Button, Field, Input } from '../../../shared/ui/ledger'
+import { AuthSplitLayout } from '../components/AuthSplitLayout'
+import { useAuthStore } from '../model/auth-store'
+import { validateLoginForm } from '../model/login-validation'
+import type { LoginFieldName } from '../model/login-validation'
+import type { LoginFormValues } from '../model/types'
+
+const initialValues: LoginFormValues = { email: '', password: '' }
 
 export function LoginPage() {
-  const navigate = useNavigate()
   const location = useLocation()
-  const bannerMessage = (location.state as { message?: string } | null)?.message
+  const successMessage = (location.state as { message?: string } | null)?.message
+
+  const [values, setValues] = useState<LoginFormValues>(initialValues)
+  const [touchedFields, setTouchedFields] = useState<Partial<Record<LoginFieldName, boolean>>>({})
+
+  const login = useAuthStore((s) => s.login)
+  const loginStatus = useAuthStore((s) => s.loginStatus)
+  const loginError = useAuthStore((s) => s.loginError)
+  const resetLoginFeedback = useAuthStore((s) => s.resetLoginFeedback)
+
+  const validation = useMemo(() => validateLoginForm(values), [values])
+  const isSubmitting = loginStatus === 'submitting'
+
+  useEffect(() => {
+    document.title = 'Log in · Luma'
+  }, [])
+
+  const getVisibleError = (field: LoginFieldName) =>
+    touchedFields[field] ? validation.fieldErrors[field] : undefined
+
+  const updateField = (field: LoginFieldName, value: string) => {
+    resetLoginFeedback()
+    setValues((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const touchField = (field: LoginFieldName) =>
+    setTouchedFields((prev) => ({ ...prev, [field]: true }))
+
+  // The button stays active (as in the prototype); an invalid submit only reveals the errors.
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setTouchedFields({ email: true, password: true })
+    if (!validation.isValid || isSubmitting) return
+    await login(values)
+  }
 
   return (
-    <AuthLayout>
-      <div className="mb-6 text-center">
-        <p className="text-sm text-muted-foreground">Sign in to your creator workspace.</p>
+    <AuthSplitLayout>
+      <div className="stack stack--sm">
+        <h1 className="page-title">Welcome <em>back</em></h1>
+        <p className="text-secondary">Log in to your creator workspace.</p>
       </div>
 
-      {bannerMessage ? (
-        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
-          <CheckCircle2 className="mt-0.5 shrink-0" size={15} />
-          <span>{bannerMessage}</span>
-        </div>
+      {loginError ? (
+        <Alert tone="danger" icon={CircleAlert}>
+          <p>{loginError}</p>
+        </Alert>
+      ) : successMessage ? (
+        <Alert tone="success" icon={CircleCheck}>
+          <p>{successMessage}</p>
+        </Alert>
       ) : null}
 
-      <div className="rounded-xl border border-border bg-card p-7">
-        <AuthModeSwitch mode="login" />
-        <LoginForm />
-      </div>
+      <form className="form" onSubmit={handleSubmit} noValidate>
+        <Field label="Email" error={getVisibleError('email')}>
+          {(control) => (
+            <Input
+              {...control}
+              type="email"
+              name="email"
+              autoComplete="email"
+              inputMode="email"
+              value={values.email}
+              onBlur={() => touchField('email')}
+              onChange={(e) => updateField('email', e.target.value)}
+            />
+          )}
+        </Field>
 
-      <p className="mt-6 text-center text-xs text-muted-foreground">
-        No account?{' '}
-        <button type="button" className="font-semibold text-accent hover:opacity-85" onClick={() => navigate('/register')}>
-          Register free
-        </button>
+        <Field
+          label="Password"
+          labelAction={<Link className="link text-sm" to="/forgot-password">Forgot password?</Link>}
+          error={getVisibleError('password')}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              value={values.password}
+              onBlur={() => touchField('password')}
+              onChange={(e) => updateField('password', e.target.value)}
+            />
+          )}
+        </Field>
+
+        <Button variant="primary" size="lg" block type="submit" loading={isSubmitting}>
+          Log in
+        </Button>
+      </form>
+
+      <p className="text-sm text-secondary">
+        New here? <Link className="link" to="/register">Create an account</Link>
       </p>
-    </AuthLayout>
+    </AuthSplitLayout>
   )
 }
