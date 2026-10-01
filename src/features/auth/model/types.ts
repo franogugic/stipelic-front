@@ -46,7 +46,15 @@ export type VerifyEmailRequest = {
 
 export type VerifyEmailResponse = {
   message: string
+  outcome: 'Verified' | 'Expired'
+  /** Set for `Verified`. */
+  firstName?: string | null
+  /** Set for `Expired`: the address the link was sent to. */
+  email?: string | null
 }
+
+/** What a verification link turned out to be; `invalid` covers a missing, unknown or rejected token. */
+export type VerifyEmailOutcome = 'verified' | 'expired' | 'invalid'
 
 export type LogoutResponse = {
   message: string

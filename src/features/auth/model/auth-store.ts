@@ -11,7 +11,7 @@ import {
   resetPassword,
   verifyEmail,
 } from '../api/auth-api'
-import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues } from './types'
+import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues, VerifyEmailOutcome } from './types'
 
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
 type AsyncStatus = 'idle' | 'submitting' | 'success' | 'error'
@@ -95,6 +95,13 @@ type AuthState = {
   verifyEmailStatus: AsyncStatus
   verifyEmailMessage: string | null
   verifyEmailError: string | null
+  verifyEmailOutcome: VerifyEmailOutcome | null
+  /** The token the current outcome belongs to, so a page never shows another link's result. */
+  verifyEmailCheckedToken: string | null
+  /** From a `verified` outcome, to greet the user. */
+  verifiedFirstName: string | null
+  /** From an `expired` outcome: where a new link can be sent. */
+  expiredEmail: string | null
   requestPasswordResetStatus: AsyncStatus
   requestPasswordResetMessage: string | null
   requestPasswordResetError: string | null
@@ -105,7 +112,10 @@ type AuthState = {
   logout: () => Promise<void>
   loadCurrentUser: () => Promise<void>
   register: (values: RegisterFormValues) => Promise<AuthUser | null>
-  /** Sends to `email`, or to the signed-in user's address when omitted. */
+  /**
+   * Sends to `email`, or to the signed-in user's address when omitted. Without a session the given email
+   * becomes the pending verification, so the check-inbox screen can show it.
+   */
   resendVerificationEmail: (email?: string) => Promise<void>
   verifyEmailToken: (token: string) => Promise<void>
   requestPasswordResetForEmail: (email: string) => Promise<void>
@@ -139,6 +149,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   verifyEmailStatus: 'idle',
   verifyEmailMessage: null,
   verifyEmailError: null,
+  verifyEmailOutcome: null,
+  verifyEmailCheckedToken: null,
+  verifiedFirstName: null,
+  expiredEmail: null,
   requestPasswordResetStatus: 'idle',
   requestPasswordResetMessage: null,
   requestPasswordResetError: null,
@@ -262,7 +276,15 @@ export const useAuthStore = create<AuthState>((set) => ({
       return
     }
 
+    // Signed out (e.g. from an expired link opened on another device), the address is only known here.
+    const rememberRecipient = () => {
+      if (currentUser) return
+      storePendingVerificationEmail(recipient)
+      set({ pendingVerificationEmail: recipient })
+    }
+
     if (resendAvailableAt && resendAvailableAt > Date.now()) {
+      rememberRecipient()
       return
     }
 
@@ -270,6 +292,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const response = await resendEmailVerification(recipient)
+      rememberRecipient()
       set({
         resendStatus: 'success',
         resendMessage: response.message,
@@ -291,21 +314,48 @@ export const useAuthStore = create<AuthState>((set) => ({
         verifyEmailStatus: 'error',
         verifyEmailMessage: null,
         verifyEmailError: 'Verification link is missing a token.',
+        verifyEmailOutcome: 'invalid',
+        verifyEmailCheckedToken: token,
+        verifiedFirstName: null,
+        expiredEmail: null,
       })
       return
     }
 
-    set({ verifyEmailStatus: 'submitting', verifyEmailMessage: null, verifyEmailError: null })
+    set({
+      verifyEmailStatus: 'submitting',
+      verifyEmailMessage: null,
+      verifyEmailError: null,
+      verifyEmailOutcome: null,
+      verifyEmailCheckedToken: token,
+      verifiedFirstName: null,
+      expiredEmail: null,
+    })
 
     try {
       const response = await verifyEmail(token)
+
+      if (response.outcome === 'Expired') {
+        set({
+          verifyEmailStatus: 'success',
+          verifyEmailMessage: response.message,
+          verifyEmailOutcome: 'expired',
+          expiredEmail: response.email ?? null,
+        })
+        return
+      }
+
       forgetPendingVerification()
+      const { currentUser } = useAuthStore.getState()
       set({
         ...noPendingVerification,
+        currentUser: currentUser ? { ...currentUser, isEmailVerified: true } : null,
         accountStatus: 'active',
         verifyEmailStatus: 'success',
         verifyEmailMessage: response.message,
         verifyEmailError: null,
+        verifyEmailOutcome: 'verified',
+        verifiedFirstName: response.firstName ?? null,
       })
     } catch (error) {
       const message =
@@ -313,7 +363,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? error.message
           : 'We could not verify your email. Please request a new verification link.'
 
-      set({ verifyEmailStatus: 'error', verifyEmailMessage: null, verifyEmailError: message })
+      set({ verifyEmailStatus: 'error', verifyEmailMessage: null, verifyEmailError: message, verifyEmailOutcome: 'invalid' })
     }
   },
   requestPasswordResetForEmail: async (email) => {
@@ -374,7 +424,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ resendStatus: 'idle', resendMessage: null, resendError: null })
   },
   resetVerifyEmailFeedback: () => {
-    set({ verifyEmailStatus: 'idle', verifyEmailMessage: null, verifyEmailError: null })
+    set({
+      verifyEmailStatus: 'idle',
+      verifyEmailMessage: null,
+      verifyEmailError: null,
+      verifyEmailOutcome: null,
+      verifyEmailCheckedToken: null,
+      verifiedFirstName: null,
+      expiredEmail: null,
+    })
   },
   resetRequestPasswordResetFeedback: () => {
     set({
@@ -408,6 +466,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       verifyEmailStatus: 'idle',
       verifyEmailMessage: null,
       verifyEmailError: null,
+      verifyEmailOutcome: null,
+      verifyEmailCheckedToken: null,
+      verifiedFirstName: null,
+      expiredEmail: null,
       requestPasswordResetStatus: 'idle',
       requestPasswordResetMessage: null,
       requestPasswordResetError: null,
