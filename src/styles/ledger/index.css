@@ -19,4 +19,5 @@
 @import "./components/charts.css";
 @import "./app-layout.css";
 @import "./screens/auth.css";
+@import "./screens/solo.css";
 @import "./additions.css";
