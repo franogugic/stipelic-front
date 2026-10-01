@@ -140,7 +140,7 @@ export function HomePage() {
                 <button
                   type="button"
                   disabled={isResending || isResendCoolingDown}
-                  onClick={resendVerificationEmail}
+                  onClick={() => void resendVerificationEmail()}
                   className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {isResending ? (
