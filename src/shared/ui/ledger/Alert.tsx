@@ -9,6 +9,7 @@ export function Alert({
   icon: Icon,
   title,
   action,
+  live,
   className,
   children,
 }: {
@@ -17,11 +18,19 @@ export function Alert({
   title?: ReactNode
   /** Rendered after the text inside the body, e.g. a `<a className="link">`. */
   action?: ReactNode
+  /**
+   * Announces the alert to screen readers when it appears: `role="alert"` for danger and warning,
+   * `role="status"` for success and info. Without it the markup has no role.
+   */
+  live?: boolean
   className?: string
   children?: ReactNode
 }) {
   return (
-    <div className={['alert', `alert--${tone}`, className].filter(Boolean).join(' ')}>
+    <div
+      className={['alert', `alert--${tone}`, className].filter(Boolean).join(' ')}
+      role={live ? (tone === 'danger' || tone === 'warning' ? 'alert' : 'status') : undefined}
+    >
       <Icon />
       <div className="alert__body">
         {title && <p className="alert__title">{title}</p>}

@@ -17,6 +17,7 @@ export function LoginAlert({ successMessage }: { successMessage?: string }) {
       <Alert
         tone="warning"
         icon={MailWarning}
+        live
         title="Please verify your email"
         action={<ResendVerificationButton email={unverifiedEmail} />}
       >
@@ -27,7 +28,7 @@ export function LoginAlert({ successMessage }: { successMessage?: string }) {
 
   if (loginError) {
     return (
-      <Alert tone="danger" icon={CircleAlert}>
+      <Alert tone="danger" icon={CircleAlert} live>
         <p>{loginError}</p>
       </Alert>
     )
@@ -35,7 +36,7 @@ export function LoginAlert({ successMessage }: { successMessage?: string }) {
 
   if (successMessage) {
     return (
-      <Alert tone="success" icon={CircleCheck}>
+      <Alert tone="success" icon={CircleCheck} live>
         <p>{successMessage}</p>
       </Alert>
     )
