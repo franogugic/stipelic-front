@@ -18,26 +18,56 @@ type AsyncStatus = 'idle' | 'submitting' | 'success' | 'error'
 type SessionStatus = 'checking' | 'authenticated' | 'unauthenticated'
 export const resendCooldownMs = 60_000
 
-// The email of an account that still has to be verified. Registering creates no session, so the
-// check-inbox screen only knows the address from here; sessionStorage keeps it across a refresh.
+// A pending verification: the email of an account that still has to be verified, and when the next
+// resend is allowed. Registering creates no session, so the check-inbox screen only knows these from
+// here; sessionStorage keeps both across a refresh.
 const pendingVerificationEmailKey = 'luma.pendingVerificationEmail'
+const resendAvailableAtKey = 'luma.resendAvailableAt'
 
-function readPendingVerificationEmail(): string | null {
+function readSession(key: string): string | null {
   try {
-    return window.sessionStorage.getItem(pendingVerificationEmailKey)
+    return window.sessionStorage.getItem(key)
   } catch {
     return null
   }
 }
 
-function storePendingVerificationEmail(email: string | null) {
+function writeSession(key: string, value: string | null) {
   try {
-    if (email) window.sessionStorage.setItem(pendingVerificationEmailKey, email)
-    else window.sessionStorage.removeItem(pendingVerificationEmailKey)
+    if (value) window.sessionStorage.setItem(key, value)
+    else window.sessionStorage.removeItem(key)
   } catch {
     // Storage can be unavailable (private mode, blocked site data); the in-memory value still works.
   }
 }
+
+function readResendAvailableAt(): number | null {
+  const availableAt = Number(readSession(resendAvailableAtKey))
+  const now = Date.now()
+  // Only a running cooldown counts: ignore a missing or garbled value, one that is over, and one longer
+  // than a single cooldown.
+  return Number.isFinite(availableAt) && availableAt > now && availableAt <= now + resendCooldownMs
+    ? availableAt
+    : null
+}
+
+function startResendCooldown() {
+  const resendAvailableAt = Date.now() + resendCooldownMs
+  writeSession(resendAvailableAtKey, String(resendAvailableAt))
+  return resendAvailableAt
+}
+
+function storePendingVerificationEmail(email: string | null) {
+  writeSession(pendingVerificationEmailKey, email)
+}
+
+/** Forgets the pending verification (email and resend cooldown) in storage; pair with `noPendingVerification`. */
+function forgetPendingVerification() {
+  writeSession(pendingVerificationEmailKey, null)
+  writeSession(resendAvailableAtKey, null)
+}
+
+const noPendingVerification = { pendingVerificationEmail: null, resendAvailableAt: null }
 
 const getAccountStatus = (user: AuthUser): AccountStatus =>
   user.isEmailVerified === false ? 'pendingVerification' : 'active'
@@ -104,8 +134,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   resendStatus: 'idle',
   resendMessage: null,
   resendError: null,
-  resendAvailableAt: null,
-  pendingVerificationEmail: readPendingVerificationEmail(),
+  resendAvailableAt: readResendAvailableAt(),
+  pendingVerificationEmail: readSession(pendingVerificationEmailKey),
   verifyEmailStatus: 'idle',
   verifyEmailMessage: null,
   verifyEmailError: null,
@@ -120,14 +150,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const user = await loginUser(values)
-      if (user.isEmailVerified) storePendingVerificationEmail(null)
+      if (user.isEmailVerified) forgetPendingVerification()
       set({
         currentUser: user,
         accountStatus: getAccountStatus(user),
         sessionStatus: 'authenticated',
         loginStatus: 'success',
         loginError: null,
-        ...(user.isEmailVerified ? { pendingVerificationEmail: null } : {}),
+        ...(user.isEmailVerified ? noPendingVerification : {}),
       })
       return user
     } catch (error) {
@@ -162,9 +192,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         loginError: null,
         loginErrorCode: null,
         unverifiedEmail: null,
-        pendingVerificationEmail: null,
+        ...noPendingVerification,
       })
-      storePendingVerificationEmail(null)
+      forgetPendingVerification()
       resetAllFeatureStores()
     } catch (error) {
       const message =
@@ -212,7 +242,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         sessionStatus: 'unauthenticated',
         registerStatus: 'success',
         registerError: null,
-        resendAvailableAt: Date.now() + resendCooldownMs,
+        resendAvailableAt: startResendCooldown(),
       })
       return user
     } catch (error) {
@@ -244,7 +274,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         resendStatus: 'success',
         resendMessage: response.message,
         resendError: null,
-        resendAvailableAt: Date.now() + resendCooldownMs,
+        resendAvailableAt: startResendCooldown(),
       })
     } catch (error) {
       const message =
@@ -269,9 +299,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const response = await verifyEmail(token)
-      storePendingVerificationEmail(null)
+      forgetPendingVerification()
       set({
-        pendingVerificationEmail: null,
+        ...noPendingVerification,
         accountStatus: 'active',
         verifyEmailStatus: 'success',
         verifyEmailMessage: response.message,
@@ -357,7 +387,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ resetPasswordStatus: 'idle', resetPasswordMessage: null, resetPasswordError: null })
   },
   resetAuth: () => {
-    storePendingVerificationEmail(null)
+    forgetPendingVerification()
     set({
       currentUser: null,
       accountStatus: null,
