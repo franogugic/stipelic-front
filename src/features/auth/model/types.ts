@@ -3,6 +3,8 @@ export type RegisterFormValues = {
   lastName: string
   email: string
   password: string
+  /** The Terms and Privacy Policy checkbox; the backend refuses registration without it. */
+  acceptTerms: boolean
 }
 
 export type LoginFormValues = {

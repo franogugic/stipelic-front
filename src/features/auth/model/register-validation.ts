@@ -46,6 +46,10 @@ export function validateRegisterForm(values: RegisterFormValues): RegisterValida
     fieldErrors.password = 'Password does not meet all requirements.'
   }
 
+  if (!values.acceptTerms) {
+    fieldErrors.acceptTerms = 'You must accept the Terms and Privacy Policy.'
+  }
+
   return {
     fieldErrors,
     passwordChecks,

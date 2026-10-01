@@ -19,6 +19,7 @@ export function registerUser(request: RegisterUserRequest) {
       lastName: request.lastName.trim(),
       email: request.email.trim().toLowerCase(),
       password: request.password,
+      acceptTerms: request.acceptTerms,
     },
   })
 }
