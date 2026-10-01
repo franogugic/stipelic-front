@@ -1,9 +1,9 @@
-import { CircleAlert, CircleCheck } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Alert, Button, Field, Input } from '../../../shared/ui/ledger'
+import { Button, Field, Input } from '../../../shared/ui/ledger'
 import { AuthSplitLayout } from '../components/AuthSplitLayout'
+import { LoginAlert } from '../components/LoginAlert'
 import { useAuthStore } from '../model/auth-store'
 import { validateLoginForm } from '../model/login-validation'
 import type { LoginFieldName } from '../model/login-validation'
@@ -20,7 +20,6 @@ export function LoginPage() {
 
   const login = useAuthStore((s) => s.login)
   const loginStatus = useAuthStore((s) => s.loginStatus)
-  const loginError = useAuthStore((s) => s.loginError)
   const resetLoginFeedback = useAuthStore((s) => s.resetLoginFeedback)
 
   const validation = useMemo(() => validateLoginForm(values), [values])
@@ -56,15 +55,7 @@ export function LoginPage() {
         <p className="text-secondary">Log in to your creator workspace.</p>
       </div>
 
-      {loginError ? (
-        <Alert tone="danger" icon={CircleAlert}>
-          <p>{loginError}</p>
-        </Alert>
-      ) : successMessage ? (
-        <Alert tone="success" icon={CircleCheck}>
-          <p>{successMessage}</p>
-        </Alert>
-      ) : null}
+      <LoginAlert successMessage={successMessage} />
 
       <form className="form" onSubmit={handleSubmit} noValidate>
         <Field label="Email" error={getVisibleError('email')}>
