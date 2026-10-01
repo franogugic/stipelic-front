@@ -95,6 +95,8 @@ type AuthState = {
   verifyEmailStatus: AsyncStatus
   verifyEmailMessage: string | null
   verifyEmailError: string | null
+  /** HTTP status of a `failed` check (null for a network error), e.g. 429. */
+  verifyEmailErrorStatus: number | null
   verifyEmailOutcome: VerifyEmailOutcome | null
   /** The token the current outcome belongs to, so a page never shows another link's result. */
   verifyEmailCheckedToken: string | null
@@ -149,6 +151,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   verifyEmailStatus: 'idle',
   verifyEmailMessage: null,
   verifyEmailError: null,
+  verifyEmailErrorStatus: null,
   verifyEmailOutcome: null,
   verifyEmailCheckedToken: null,
   verifiedFirstName: null,
@@ -314,6 +317,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         verifyEmailStatus: 'error',
         verifyEmailMessage: null,
         verifyEmailError: 'Verification link is missing a token.',
+        verifyEmailErrorStatus: null,
         verifyEmailOutcome: 'invalid',
         verifyEmailCheckedToken: token,
         verifiedFirstName: null,
@@ -326,6 +330,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       verifyEmailStatus: 'submitting',
       verifyEmailMessage: null,
       verifyEmailError: null,
+      verifyEmailErrorStatus: null,
       verifyEmailOutcome: null,
       verifyEmailCheckedToken: token,
       verifiedFirstName: null,
@@ -363,7 +368,15 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? error.message
           : 'We could not verify your email. Please request a new verification link.'
 
-      set({ verifyEmailStatus: 'error', verifyEmailMessage: null, verifyEmailError: message, verifyEmailOutcome: 'invalid' })
+      // Only a rejected token is an invalid link; anything else means the check could not be made.
+      const isRejectedToken = error instanceof ApiError && error.status === 400
+      set({
+        verifyEmailStatus: 'error',
+        verifyEmailMessage: null,
+        verifyEmailError: message,
+        verifyEmailErrorStatus: error instanceof ApiError ? error.status : null,
+        verifyEmailOutcome: isRejectedToken ? 'invalid' : 'failed',
+      })
     }
   },
   requestPasswordResetForEmail: async (email) => {
@@ -428,6 +441,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       verifyEmailStatus: 'idle',
       verifyEmailMessage: null,
       verifyEmailError: null,
+      verifyEmailErrorStatus: null,
       verifyEmailOutcome: null,
       verifyEmailCheckedToken: null,
       verifiedFirstName: null,
@@ -466,6 +480,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       verifyEmailStatus: 'idle',
       verifyEmailMessage: null,
       verifyEmailError: null,
+      verifyEmailErrorStatus: null,
       verifyEmailOutcome: null,
       verifyEmailCheckedToken: null,
       verifiedFirstName: null,

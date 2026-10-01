@@ -1,6 +1,6 @@
-import { ArrowRight, Check, Link2Off, Mail, MailCheck, Send, X } from 'lucide-react'
+import { ArrowRight, Check, CloudOff, Link2Off, Mail, MailCheck, RotateCw, Send, X } from 'lucide-react'
 import type { MouseEvent } from 'react'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { SoloLayout } from '../../../shared/ui/SoloLayout'
@@ -22,6 +22,8 @@ export function VerifyEmailPage() {
   const verifyEmailStatus = useAuthStore((s) => s.verifyEmailStatus)
   const verifyEmailOutcome = useAuthStore((s) => s.verifyEmailOutcome)
   const verifyEmailCheckedToken = useAuthStore((s) => s.verifyEmailCheckedToken)
+  const verifyEmailError = useAuthStore((s) => s.verifyEmailError)
+  const verifyEmailErrorStatus = useAuthStore((s) => s.verifyEmailErrorStatus)
   const verifiedFirstName = useAuthStore((s) => s.verifiedFirstName)
   const expiredEmail = useAuthStore((s) => s.expiredEmail)
   const verifyEmailToken = useAuthStore((s) => s.verifyEmailToken)
@@ -77,11 +79,41 @@ export function VerifyEmailPage() {
     navigate('/check-inbox', { replace: true })
   }
 
+  // A rate limit has a message worth showing; anything else is most likely the connection.
+  const failedText =
+    verifyEmailErrorStatus === 429 && verifyEmailError
+      ? verifyEmailError
+      : 'We couldn’t check your link. Check your connection and try again.'
+
+  // While a retry runs the failed screen stays up (with a busy button) instead of the verifying screen.
+  const [retryingText, setRetryingText] = useState<string | null>(null)
+  const retry = async () => {
+    setRetryingText(failedText)
+    await verifyEmailToken(normalizedToken)
+    setRetryingText(null)
+  }
+
   const backToLoginButton = (
     <Button variant="ghost" to="/login" onClick={(event) => void backToLogin(event)}>
       Back to log in
     </Button>
   )
+
+  if (retryingText !== null || (verifyEmailOutcome === 'failed' && verifyEmailCheckedToken === normalizedToken)) {
+    return (
+      <SoloLayout user={hasSession}>
+        <StateArt icon={CloudOff} badge={X} tone="state--error" />
+        <h1 className="solo__title">Something went <em>wrong</em></h1>
+        <p className="solo__text">{retryingText ?? failedText}</p>
+        <div className="cluster cluster--center">
+          <Button variant="secondary" icon={RotateCw} loading={retryingText !== null} onClick={() => void retry()}>
+            Try again
+          </Button>
+          {backToLoginButton}
+        </div>
+      </SoloLayout>
+    )
+  }
 
   if (isVerifying) {
     return (

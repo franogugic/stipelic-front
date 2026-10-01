@@ -53,8 +53,11 @@ export type VerifyEmailResponse = {
   email?: string | null
 }
 
-/** What a verification link turned out to be; `invalid` covers a missing, unknown or rejected token. */
-export type VerifyEmailOutcome = 'verified' | 'expired' | 'invalid'
+/**
+ * What a verification link turned out to be. `invalid`: missing or rejected (400) token. `failed`: the check
+ * itself did not complete (rate limit, server or network error), so the link may still be fine.
+ */
+export type VerifyEmailOutcome = 'verified' | 'expired' | 'invalid' | 'failed'
 
 export type LogoutResponse = {
   message: string
