@@ -64,3 +64,15 @@
   .auth { grid-template-columns: 1fr; }
   .auth__art { display: none; }
 }
+
+.rules {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1-5) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.rules li { display: flex; gap: 6px; align-items: center; }
+.rules .ok { color: var(--color-success); }
+.rules svg { width: 13px; height: 13px; }
