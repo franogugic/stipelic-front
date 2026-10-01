@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
+import { useDocumentTitle } from '../lib/use-document-title'
 import { Brand, Button, ThemeToggleButton } from './ledger'
 import { NAV_SECTION_LABELS } from './nav-sections'
 import type { NavSection } from './nav-sections'
@@ -81,9 +82,7 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
     return () => query.removeEventListener('change', onChange)
   }, [closeDrawer])
 
-  useEffect(() => {
-    document.title = `${NAV_SECTION_LABELS[activeSection]} · Luma`
-  }, [activeSection])
+  useDocumentTitle(`${NAV_SECTION_LABELS[activeSection]} · Luma`)
 
   return (
     <>

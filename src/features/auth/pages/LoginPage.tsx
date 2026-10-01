@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { Button, Field, Input } from '../../../shared/ui/ledger'
 import { AuthSplitLayout } from '../components/AuthSplitLayout'
 import { LoginAlert } from '../components/LoginAlert'
@@ -25,9 +26,7 @@ export function LoginPage() {
   const validation = useMemo(() => validateLoginForm(values), [values])
   const isSubmitting = loginStatus === 'submitting'
 
-  useEffect(() => {
-    document.title = 'Log in · Luma'
-  }, [])
+  useDocumentTitle('Log in · Luma')
 
   const getVisibleError = (field: LoginFieldName) =>
     touchedFields[field] ? validation.fieldErrors[field] : undefined
