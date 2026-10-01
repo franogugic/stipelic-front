@@ -110,6 +110,8 @@ type AuthState = {
   resetPasswordStatus: AsyncStatus
   resetPasswordMessage: string | null
   resetPasswordError: string | null
+  /** HTTP status of a failed reset (null for a network error); 400 means the link died meanwhile. */
+  resetPasswordErrorStatus: number | null
   login: (values: LoginFormValues) => Promise<AuthUser | null>
   logout: () => Promise<void>
   loadCurrentUser: () => Promise<void>
@@ -162,6 +164,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   resetPasswordStatus: 'idle',
   resetPasswordMessage: null,
   resetPasswordError: null,
+  resetPasswordErrorStatus: null,
   login: async (values) => {
     set({ loginStatus: 'submitting', loginError: null, loginErrorCode: null, unverifiedEmail: null })
 
@@ -407,7 +410,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
   resetPasswordWithToken: async (token, newPassword) => {
-    set({ resetPasswordStatus: 'submitting', resetPasswordMessage: null, resetPasswordError: null })
+    set({
+      resetPasswordStatus: 'submitting',
+      resetPasswordMessage: null,
+      resetPasswordError: null,
+      resetPasswordErrorStatus: null,
+    })
 
     try {
       const response = await resetPassword(token, newPassword)
@@ -423,7 +431,12 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? error.message
           : 'We could not reset your password. Please try again.'
 
-      set({ resetPasswordStatus: 'error', resetPasswordMessage: null, resetPasswordError: message })
+      set({
+        resetPasswordStatus: 'error',
+        resetPasswordMessage: null,
+        resetPasswordError: message,
+        resetPasswordErrorStatus: error instanceof ApiError ? error.status : null,
+      })
       return false
     }
   },
@@ -456,7 +469,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     })
   },
   resetResetPasswordFeedback: () => {
-    set({ resetPasswordStatus: 'idle', resetPasswordMessage: null, resetPasswordError: null })
+    set({ resetPasswordStatus: 'idle', resetPasswordMessage: null, resetPasswordError: null, resetPasswordErrorStatus: null })
   },
   resetAuth: () => {
     forgetPendingVerification()
@@ -491,6 +504,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       resetPasswordStatus: 'idle',
       resetPasswordMessage: null,
       resetPasswordError: null,
+      resetPasswordErrorStatus: null,
     })
   },
 }))

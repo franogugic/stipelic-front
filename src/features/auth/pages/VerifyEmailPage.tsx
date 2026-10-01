@@ -1,12 +1,14 @@
-import { ArrowRight, Check, CloudOff, Link2Off, Mail, MailCheck, RotateCw, Send, X } from 'lucide-react'
-import type { MouseEvent } from 'react'
+import { ArrowRight, Check, Link2Off, Mail, MailCheck, Send, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { SoloLayout } from '../../../shared/ui/SoloLayout'
 import { StateArt } from '../../../shared/ui/StateArt'
 import { Button, useToast } from '../../../shared/ui/ledger'
+import { BackToLoginButton, SoloChecking, SoloRequestFailed } from '../components/SoloStates'
 import { useAuthStore } from '../model/auth-store'
+import { requestFailedText } from '../model/request-failed-text'
+import { useHasSession } from '../model/use-has-session'
 
 /** Opened from the verification email: verified, expired (with a new link) or invalid. */
 export function VerifyEmailPage() {
@@ -15,7 +17,6 @@ export function VerifyEmailPage() {
   const [searchParams] = useSearchParams()
   const verifiedTokenRef = useRef<string | null>(null)
 
-  const currentUser = useAuthStore((s) => s.currentUser)
   const sessionStatus = useAuthStore((s) => s.sessionStatus)
   const accountStatus = useAuthStore((s) => s.accountStatus)
   const loadCurrentUser = useAuthStore((s) => s.loadCurrentUser)
@@ -30,7 +31,6 @@ export function VerifyEmailPage() {
   const resetVerifyEmailFeedback = useAuthStore((s) => s.resetVerifyEmailFeedback)
   const resendStatus = useAuthStore((s) => s.resendStatus)
   const resendVerificationEmail = useAuthStore((s) => s.resendVerificationEmail)
-  const logout = useAuthStore((s) => s.logout)
 
   const token = searchParams.get('token')
   const normalizedToken = useMemo(() => token?.trim() ?? '', [token])
@@ -55,18 +55,10 @@ export function VerifyEmailPage() {
     void loadCurrentUser()
   }, [verifyEmailOutcome, sessionStatus, accountStatus, loadCurrentUser])
 
-  const hasSession = sessionStatus === 'authenticated' && currentUser !== null
+  const hasSession = useHasSession()
   // An outcome left over from another link (or none yet) counts as still verifying.
   const isVerifying =
     verifyEmailCheckedToken !== normalizedToken || verifyEmailStatus === 'idle' || verifyEmailStatus === 'submitting'
-
-  // With a session, /login would bounce straight back, so sign out first.
-  const backToLogin = async (event: MouseEvent) => {
-    if (!hasSession) return
-    event.preventDefault()
-    await logout()
-    navigate('/login', { replace: true })
-  }
 
   const sendNewLink = async () => {
     if (!expiredEmail || resendStatus === 'submitting') return
@@ -79,11 +71,7 @@ export function VerifyEmailPage() {
     navigate('/check-inbox', { replace: true })
   }
 
-  // A rate limit has a message worth showing; anything else is most likely the connection.
-  const failedText =
-    verifyEmailErrorStatus === 429 && verifyEmailError
-      ? verifyEmailError
-      : 'We couldn’t check your link. Check your connection and try again.'
+  const failedText = requestFailedText(verifyEmailErrorStatus, verifyEmailError)
 
   // While a retry runs the failed screen stays up (with a busy button) instead of the verifying screen.
   const [retryingText, setRetryingText] = useState<string | null>(null)
@@ -93,37 +81,12 @@ export function VerifyEmailPage() {
     setRetryingText(null)
   }
 
-  const backToLoginButton = (
-    <Button variant="ghost" to="/login" onClick={(event) => void backToLogin(event)}>
-      Back to log in
-    </Button>
-  )
-
   if (retryingText !== null || (verifyEmailOutcome === 'failed' && verifyEmailCheckedToken === normalizedToken)) {
-    return (
-      <SoloLayout user={hasSession}>
-        <StateArt icon={CloudOff} badge={X} tone="state--error" />
-        <h1 className="solo__title">Something went <em>wrong</em></h1>
-        <p className="solo__text">{retryingText ?? failedText}</p>
-        <div className="cluster cluster--center">
-          <Button variant="secondary" icon={RotateCw} loading={retryingText !== null} onClick={() => void retry()}>
-            Try again
-          </Button>
-          {backToLoginButton}
-        </div>
-      </SoloLayout>
-    )
+    return <SoloRequestFailed text={retryingText ?? failedText} retrying={retryingText !== null} onRetry={() => void retry()} />
   }
 
   if (isVerifying) {
-    return (
-      <SoloLayout user={hasSession}>
-        <div aria-busy="true">
-          <StateArt icon={Mail} />
-          <span className="sr-only" role="status">Verifying your email…</span>
-        </div>
-      </SoloLayout>
-    )
+    return <SoloChecking icon={Mail} label="Verifying your email…" />
   }
 
   if (verifyEmailOutcome === 'verified') {
@@ -156,7 +119,7 @@ export function VerifyEmailPage() {
           <Button variant="primary" icon={Send} loading={resendStatus === 'submitting'} onClick={() => void sendNewLink()}>
             Send a new link
           </Button>
-          {backToLoginButton}
+          <BackToLoginButton />
         </div>
       </SoloLayout>
     )
@@ -168,7 +131,7 @@ export function VerifyEmailPage() {
       <StateArt icon={Link2Off} badge={X} tone="state--error" />
       <h1 className="solo__title">This link isn't <em>valid</em></h1>
       <p className="solo__text">Open the newest verification email we sent you, or log in to request a new link.</p>
-      <div className="cluster cluster--center">{backToLoginButton}</div>
+      <div className="cluster cluster--center"><BackToLoginButton /></div>
     </SoloLayout>
   )
 }

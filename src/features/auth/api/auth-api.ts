@@ -1,5 +1,6 @@
 import { apiRequest } from '../../../shared/api/http-client'
 import type {
+  InspectResetTokenResponse,
   LogoutResponse,
   LoginUserRequest,
   LoginUserResponse,
@@ -67,6 +68,15 @@ export function requestPasswordReset(email: string) {
     method: 'POST',
     body: {
       email: email.trim().toLowerCase(),
+    },
+  })
+}
+
+export function inspectResetToken(token: string) {
+  return apiRequest<InspectResetTokenResponse>('/api/auth/reset-password/inspect', {
+    method: 'POST',
+    body: {
+      token: token.trim(),
     },
   })
 }

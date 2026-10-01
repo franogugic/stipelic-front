@@ -79,3 +79,6 @@ export type ResetPasswordRequest = {
 export type ResetPasswordResponse = {
   message: string
 }
+
+/** `POST /api/auth/reset-password/inspect`: whether a reset link can still be used, and for which address. */
+export type InspectResetTokenResponse = { status: 'Valid'; email: string } | { status: 'Expired' }
