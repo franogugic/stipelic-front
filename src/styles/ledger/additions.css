@@ -1,0 +1,15 @@
+/*
+ * Luma additions — the ONLY place for CSS that is not copied from designer-prototype/.
+ * Every rule here exists because the app needs markup the prototype does not have.
+ * Keep this file imported last in the aggregator.
+ */
+
+/* A <button class="link"> (an action, not navigation) renders exactly like the prototype's <a class="link">. */
+button.link {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: start;
+  text-rendering: inherit;
+}
