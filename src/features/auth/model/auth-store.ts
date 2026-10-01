@@ -16,7 +16,28 @@ import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues } fro
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
 type AsyncStatus = 'idle' | 'submitting' | 'success' | 'error'
 type SessionStatus = 'checking' | 'authenticated' | 'unauthenticated'
-const resendCooldownMs = 60_000
+export const resendCooldownMs = 60_000
+
+// The email of an account that still has to be verified. Registering creates no session, so the
+// check-inbox screen only knows the address from here; sessionStorage keeps it across a refresh.
+const pendingVerificationEmailKey = 'luma.pendingVerificationEmail'
+
+function readPendingVerificationEmail(): string | null {
+  try {
+    return window.sessionStorage.getItem(pendingVerificationEmailKey)
+  } catch {
+    return null
+  }
+}
+
+function storePendingVerificationEmail(email: string | null) {
+  try {
+    if (email) window.sessionStorage.setItem(pendingVerificationEmailKey, email)
+    else window.sessionStorage.removeItem(pendingVerificationEmailKey)
+  } catch {
+    // Storage can be unavailable (private mode, blocked site data); the in-memory value still works.
+  }
+}
 
 const getAccountStatus = (user: AuthUser): AccountStatus =>
   user.isEmailVerified === false ? 'pendingVerification' : 'active'
@@ -39,6 +60,8 @@ type AuthState = {
   resendMessage: string | null
   resendError: string | null
   resendAvailableAt: number | null
+  /** Set after registering (no session yet), cleared once verified, on logout and on a verified login. */
+  pendingVerificationEmail: string | null
   verifyEmailStatus: AsyncStatus
   verifyEmailMessage: string | null
   verifyEmailError: string | null
@@ -82,6 +105,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   resendMessage: null,
   resendError: null,
   resendAvailableAt: null,
+  pendingVerificationEmail: readPendingVerificationEmail(),
   verifyEmailStatus: 'idle',
   verifyEmailMessage: null,
   verifyEmailError: null,
@@ -96,12 +120,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const user = await loginUser(values)
+      if (user.isEmailVerified) storePendingVerificationEmail(null)
       set({
         currentUser: user,
         accountStatus: getAccountStatus(user),
         sessionStatus: 'authenticated',
         loginStatus: 'success',
         loginError: null,
+        ...(user.isEmailVerified ? { pendingVerificationEmail: null } : {}),
       })
       return user
     } catch (error) {
@@ -136,7 +162,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         loginError: null,
         loginErrorCode: null,
         unverifiedEmail: null,
+        pendingVerificationEmail: null,
       })
+      storePendingVerificationEmail(null)
       resetAllFeatureStores()
     } catch (error) {
       const message =
@@ -175,8 +203,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const user = await registerUser(values)
+      const pendingVerificationEmail = values.email.trim().toLowerCase()
+      storePendingVerificationEmail(pendingVerificationEmail)
       set({
         currentUser: null,
+        pendingVerificationEmail,
         accountStatus: 'pendingVerification',
         sessionStatus: 'unauthenticated',
         registerStatus: 'success',
@@ -238,7 +269,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const response = await verifyEmail(token)
+      storePendingVerificationEmail(null)
       set({
+        pendingVerificationEmail: null,
         accountStatus: 'active',
         verifyEmailStatus: 'success',
         verifyEmailMessage: response.message,
@@ -324,6 +357,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ resetPasswordStatus: 'idle', resetPasswordMessage: null, resetPasswordError: null })
   },
   resetAuth: () => {
+    storePendingVerificationEmail(null)
     set({
       currentUser: null,
       accountStatus: null,
@@ -340,6 +374,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       resendMessage: null,
       resendError: null,
       resendAvailableAt: null,
+      pendingVerificationEmail: null,
       verifyEmailStatus: 'idle',
       verifyEmailMessage: null,
       verifyEmailError: null,
