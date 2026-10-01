@@ -54,7 +54,7 @@ export function RegisterPage() {
     setTouchedFields({ firstName: true, lastName: true, email: true, password: true, acceptTerms: true })
     if (!validation.isValid || isSubmitting) return
     const user = await register(values)
-    if (user) navigate('/login', { replace: true })
+    if (user) navigate('/check-inbox', { replace: true })
   }
 
   const termsError = getVisibleError('acceptTerms')
