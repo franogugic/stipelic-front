@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import { CloudOff, RotateCw, X } from 'lucide-react'
-import type { MouseEvent } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SoloLayout } from '../../../shared/ui/SoloLayout'
 import { StateArt } from '../../../shared/ui/StateArt'
@@ -49,10 +49,13 @@ export function SoloRequestFailed({
   text,
   retrying,
   onRetry,
+  secondaryAction = <BackToLoginButton />,
 }: {
   text: string
   retrying: boolean
   onRetry: () => void
+  /** Next to "Try again"; "Back to log in" unless given. */
+  secondaryAction?: ReactNode
 }) {
   const hasSession = useHasSession()
   return (
@@ -64,7 +67,7 @@ export function SoloRequestFailed({
         <Button variant="secondary" icon={RotateCw} loading={retrying} onClick={onRetry}>
           Try again
         </Button>
-        <BackToLoginButton />
+        {secondaryAction}
       </div>
     </SoloLayout>
   )

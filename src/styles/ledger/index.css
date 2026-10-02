@@ -21,4 +21,5 @@
 @import "./screens/auth.css";
 @import "./screens/solo.css";
 @import "./screens/welcome.css";
+@import "./screens/payment.css";
 @import "./additions.css";
