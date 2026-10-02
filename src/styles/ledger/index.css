@@ -20,4 +20,5 @@
 @import "./app-layout.css";
 @import "./screens/auth.css";
 @import "./screens/solo.css";
+@import "./screens/welcome.css";
 @import "./additions.css";

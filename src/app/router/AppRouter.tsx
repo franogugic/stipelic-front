@@ -13,6 +13,7 @@ import { CreatorPayoutsPage } from '../../features/creators/pages/CreatorPayouts
 import { CreatorSettingsPage } from '../../features/creators/pages/CreatorSettingsPage'
 import { CreatorWorkspacePage } from '../../features/creators/pages/CreatorWorkspacePage'
 import { PaymentStatusPage } from '../../features/creators/pages/PaymentStatusPage'
+import { WelcomePage } from '../../features/creators/pages/WelcomePage'
 import { LandingPageAnalyticsPage } from '../../features/landing-pages/pages/LandingPageAnalyticsPage'
 import { LandingPageEditorPage } from '../../features/landing-pages/pages/LandingPageEditorPage'
 import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPagesPage'
@@ -70,6 +71,7 @@ export function AppRouter() {
           <Route path="/app/:slug/subscribers" element={<SubscribersPage />} />
           <Route path="/app/:slug/payouts" element={<CreatorPayoutsPage />} />
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />
+          <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/creators/new" element={<CreateCreatorPage />} />
         </Route>
 

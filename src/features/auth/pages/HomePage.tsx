@@ -25,7 +25,7 @@ export function HomePage() {
   // Redirect once creator state is known
   if (!isCreatorLoading) {
     if (currentCreator) return <Navigate to={`/app/${currentCreator.slug}`} replace />
-    return <Navigate to="/creators/new" replace />
+    return <Navigate to="/welcome" replace />
   }
 
   return (
