@@ -19,7 +19,6 @@ export type CreateCreatorResult = {
   creator: Creator
   requiresPayment: boolean
   paymentStatus: string
-  checkoutUrl: string | null
 }
 
 export type CreatorSubscriptionCheckoutResult = {

@@ -2,9 +2,10 @@ import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
 import {
   cancelCreatorSubscription,
+  continueOnFreePlan as requestContinueOnFreePlan,
   createCreator,
-  getCreatorBillingPortalUrl,
   deleteCurrentCreator,
+  getCreatorBillingPortalUrl,
   getCreatorSettings,
   getCurrentCreator,
   listCreatorPlans,
@@ -48,8 +49,8 @@ type CreatorState = {
   updateSettingsError: string | null
   createStatus: CreatorCreateStatus
   createError: string | null
-  /** HTTP status of a failed create (null for a network error); 409 is a taken URL or an existing workspace. */
-  createErrorStatus: number | null
+  /** API code of a failed create, e.g. `CREATOR_SLUG_TAKEN` or `CREATOR_ALREADY_EXISTS`. */
+  createErrorCode: string | null
   checkoutResult: CreatorSubscriptionCheckoutResult | null
   checkoutStatus: CreatorCheckoutStatus
   checkoutError: string | null
@@ -71,6 +72,7 @@ type CreatorState = {
   ) => Promise<CreatorSettings | null>
   createCreatorProfile: (values: CreateCreatorFormValues) => Promise<CreateCreatorResult | null>
   startCreatorCheckout: () => Promise<CreatorSubscriptionCheckoutResult | null>
+  continueOnFreePlan: () => Promise<ContinueOnFreeResult>
   deleteCreatorProfile: () => Promise<boolean>
   openBillingPortal: () => Promise<void>
   cancelSubscription: () => Promise<boolean>
@@ -83,6 +85,15 @@ type CreatorState = {
   resetPollActivation: () => void
   reset: () => void
 }
+
+/** The backend's 409 message when Stripe confirmed the payment before "Continue on Free" ran. */
+const PAYMENT_ALREADY_COMPLETED_MESSAGE = 'Payment already completed.'
+
+export type ContinueOnFreeResult =
+  | { outcome: 'free'; creator: Creator }
+  | { outcome: 'paid' }
+  | { outcome: 'not-pending' }
+  | { outcome: 'error'; message: string }
 
 let pendingCurrentCreatorLoad: Promise<Creator | null> | null = null
 
@@ -100,7 +111,7 @@ const initialCreatorState = {
   updateSettingsError: null,
   createStatus: 'idle' as CreatorCreateStatus,
   createError: null,
-  createErrorStatus: null,
+  createErrorCode: null,
   checkoutResult: null,
   checkoutStatus: 'idle' as CreatorCheckoutStatus,
   checkoutError: null,
@@ -235,7 +246,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
 
   createCreatorProfile: async (values) => {
-    set({ createStatus: 'submitting', createError: null, createErrorStatus: null })
+    set({ createStatus: 'submitting', createError: null, createErrorCode: null })
 
     try {
       const result = await createCreator(values)
@@ -244,13 +255,8 @@ export const useCreatorStore = create<CreatorState>((set) => ({
         createdCreator: creator,
         currentCreator: creator,
         currentCreatorStatus: 'success',
-        checkoutResult: result.requiresPayment
-          ? {
-              requiresPayment: result.requiresPayment,
-              paymentStatus: result.paymentStatus,
-              checkoutUrl: result.checkoutUrl,
-            }
-          : null,
+        // A paid plan's checkout is started separately (startCreatorCheckout).
+        checkoutResult: null,
         createStatus: 'success',
         createError: null,
       })
@@ -264,9 +270,26 @@ export const useCreatorStore = create<CreatorState>((set) => ({
       set({
         createStatus: 'error',
         createError: message,
-        createErrorStatus: error instanceof ApiError ? error.status : null,
+        createErrorCode: error instanceof ApiError ? (error.code ?? null) : null,
       })
       return null
+    }
+  },
+
+  continueOnFreePlan: async () => {
+    try {
+      const creator = await requestContinueOnFreePlan()
+      set({ currentCreator: creator, createdCreator: creator, currentCreatorStatus: 'success' })
+      return { outcome: 'free', creator }
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        // The customer paid in the meantime, or the workspace was not waiting for payment at all.
+        return { outcome: error.message === PAYMENT_ALREADY_COMPLETED_MESSAGE ? 'paid' : 'not-pending' }
+      }
+      return {
+        outcome: 'error',
+        message: error instanceof ApiError ? error.message : 'We could not switch you to the Free plan. Please try again.',
+      }
     }
   },
 
@@ -382,7 +405,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
 
   resetCreateCreatorFeedback: () => {
-    set({ createStatus: 'idle', createError: null, createErrorStatus: null })
+    set({ createStatus: 'idle', createError: null, createErrorCode: null })
   },
   resetCreatorCheckoutFeedback: () => {
     set({ checkoutStatus: 'idle', checkoutError: null })

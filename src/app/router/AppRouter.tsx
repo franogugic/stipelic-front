@@ -12,7 +12,7 @@ import { CreateCreatorPage } from '../../features/creators/pages/CreateCreatorPa
 import { CreatorPayoutsPage } from '../../features/creators/pages/CreatorPayoutsPage'
 import { CreatorSettingsPage } from '../../features/creators/pages/CreatorSettingsPage'
 import { CreatorWorkspacePage } from '../../features/creators/pages/CreatorWorkspacePage'
-import { PaymentStatusPage } from '../../features/creators/pages/PaymentStatusPage'
+import { PaymentCancelledPage } from '../../features/creators/pages/PaymentCancelledPage'
 import { PaymentSuccessPage } from '../../features/creators/pages/PaymentSuccessPage'
 import { WelcomePage } from '../../features/creators/pages/WelcomePage'
 import { LandingPageAnalyticsPage } from '../../features/landing-pages/pages/LandingPageAnalyticsPage'
@@ -53,7 +53,7 @@ export function AppRouter() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/payment/success" element={<PaymentSuccessPage />} />
-        <Route path="/payment/cancel" element={<PaymentStatusPage />} />
+        <Route path="/payment/cancel" element={<PaymentCancelledPage />} />
 
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />

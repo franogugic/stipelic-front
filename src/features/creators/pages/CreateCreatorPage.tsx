@@ -37,7 +37,8 @@ const STEP_FIELDS: Record<Step, CreateCreatorFieldName[]> = {
   3: ['supportEmail', 'brandName', 'primaryColor', 'defaultCurrency'],
 }
 
-const SLUG_TAKEN_MESSAGE = 'This creator URL is already taken.'
+/** The API's code for a create that failed because the address is taken. */
+const SLUG_TAKEN_CODE = 'CREATOR_SLUG_TAKEN'
 
 const regionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' })
 
@@ -168,9 +169,9 @@ export function CreateCreatorPage() {
 
     const result = await createCreatorProfile(payload)
     if (!result) {
-      const { createErrorStatus, createError: message } = useCreatorStore.getState()
+      const { createErrorCode, createError: message } = useCreatorStore.getState()
       // A taken address goes back to where it can be fixed.
-      if (createErrorStatus === 409 && message === SLUG_TAKEN_MESSAGE) {
+      if (createErrorCode === SLUG_TAKEN_CODE) {
         resetCreateCreatorFeedback()
         setSlugTakenError(message)
         setTouched((current) => ({ ...current, slug: true }))
@@ -186,7 +187,7 @@ export function CreateCreatorPage() {
 
     // A paid plan pays first; the workspace stays pending until Stripe confirms.
     setIsRedirecting(true)
-    const checkoutUrl = result.checkoutUrl ?? (await startCreatorCheckout())?.checkoutUrl
+    const checkoutUrl = (await startCreatorCheckout())?.checkoutUrl
     if (checkoutUrl) {
       window.location.assign(checkoutUrl)
       return

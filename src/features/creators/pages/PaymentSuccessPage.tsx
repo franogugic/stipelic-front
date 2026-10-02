@@ -22,7 +22,7 @@ export function PaymentSuccessPage() {
   const pollCreatorActivation = useCreatorStore((s) => s.pollCreatorActivation)
   const resetPollActivation = useCreatorStore((s) => s.resetPollActivation)
 
-  useDocumentTitle('Payment received · Luma')
+  useDocumentTitle('Payment successful · Luma')
 
   useEffect(() => {
     if (hasStartedPolling.current) return

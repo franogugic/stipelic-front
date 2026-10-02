@@ -94,6 +94,13 @@ export function startCreatorSubscriptionCheckout() {
   ).then(unwrapApiResponse)
 }
 
+/** Leaves the unpaid plan of a pending workspace and activates it on Free. */
+export function continueOnFreePlan() {
+  return apiRequest<ApiResponse<Creator>>('/api/creators/current/subscription/continue-free', {
+    method: 'POST',
+  }).then(unwrapApiResponse)
+}
+
 export function getCreatorBillingPortalUrl() {
   return apiRequest<ApiResponse<string>>('/api/creators/current/billing-portal', {
     method: 'POST',
