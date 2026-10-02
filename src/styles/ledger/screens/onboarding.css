@@ -1,0 +1,49 @@
+/* Onboarding stepper */
+.stepper {
+  display: flex;
+  gap: var(--space-2);
+  counter-reset: step;
+}
+
+.stepper__step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.stepper__step::before {
+  content: "";
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-surface-3);
+}
+
+.stepper__step--done::before { background: var(--color-text); }
+.stepper__step--current::before { background: var(--color-accent-strong); }
+.stepper__step--current { color: var(--color-text); font-weight: var(--weight-medium); }
+
+.plans {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 899px) {
+  .plans { grid-template-columns: 1fr 1fr; }
+}
+
+.plan__price {
+  font-family: var(--font-display);
+  font-size: var(--display-sm);
+  line-height: 1;
+}
+
+.plan__list {
+  display: grid;
+  gap: var(--space-1-5);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}

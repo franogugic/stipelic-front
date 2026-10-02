@@ -48,6 +48,8 @@ type CreatorState = {
   updateSettingsError: string | null
   createStatus: CreatorCreateStatus
   createError: string | null
+  /** HTTP status of a failed create (null for a network error); 409 is a taken URL or an existing workspace. */
+  createErrorStatus: number | null
   checkoutResult: CreatorSubscriptionCheckoutResult | null
   checkoutStatus: CreatorCheckoutStatus
   checkoutError: string | null
@@ -98,6 +100,7 @@ const initialCreatorState = {
   updateSettingsError: null,
   createStatus: 'idle' as CreatorCreateStatus,
   createError: null,
+  createErrorStatus: null,
   checkoutResult: null,
   checkoutStatus: 'idle' as CreatorCheckoutStatus,
   checkoutError: null,
@@ -232,7 +235,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
 
   createCreatorProfile: async (values) => {
-    set({ createStatus: 'submitting', createError: null })
+    set({ createStatus: 'submitting', createError: null, createErrorStatus: null })
 
     try {
       const result = await createCreator(values)
@@ -258,7 +261,11 @@ export const useCreatorStore = create<CreatorState>((set) => ({
           ? error.message
           : 'We could not create this creator profile. Please try again.'
 
-      set({ createStatus: 'error', createError: message })
+      set({
+        createStatus: 'error',
+        createError: message,
+        createErrorStatus: error instanceof ApiError ? error.status : null,
+      })
       return null
     }
   },
@@ -375,7 +382,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
 
   resetCreateCreatorFeedback: () => {
-    set({ createStatus: 'idle', createError: null })
+    set({ createStatus: 'idle', createError: null, createErrorStatus: null })
   },
   resetCreatorCheckoutFeedback: () => {
     set({ checkoutStatus: 'idle', checkoutError: null })

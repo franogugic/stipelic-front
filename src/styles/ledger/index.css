@@ -22,4 +22,6 @@
 @import "./screens/solo.css";
 @import "./screens/welcome.css";
 @import "./screens/payment.css";
+@import "./screens/center-card.css";
+@import "./screens/onboarding.css";
 @import "./additions.css";
