@@ -47,5 +47,6 @@ export { SkeletonRows, SkeletonCards, SkeletonBlock, EmptyState, ErrorState, Pla
 export type { StateAction } from './States'
 export { Uploader } from './Uploader'
 export { Brand } from './Brand'
+export { PageHeader } from './PageHeader'
 export { ThemeSwitch } from './ThemeSwitch'
 export { ThemeToggleButton } from './ThemeToggleButton'
