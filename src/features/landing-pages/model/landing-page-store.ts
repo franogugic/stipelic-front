@@ -230,7 +230,19 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
     try {
       const restored = await restoreLandingPage(slug, pageId)
       set((s) => ({
-        pages: s.pages.map((p) => (p.publicId === pageId ? restored : p)),
+        // The restore response carries no stats (views, sales, emails); keep the ones the list loaded.
+        pages: s.pages.map((p) =>
+          p.publicId === pageId
+            ? {
+                ...restored,
+                totalViews: p.totalViews,
+                uniqueVisitors: p.uniqueVisitors,
+                purchaseCount: p.purchaseCount,
+                totalRevenueCents: p.totalRevenueCents,
+                captureCount: p.captureCount,
+              }
+            : p,
+        ),
         mutateStatus: 'success',
       }))
       return true
