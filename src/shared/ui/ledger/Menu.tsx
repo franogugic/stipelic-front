@@ -50,8 +50,10 @@ export function Menu({
 
   const visibleItems = items.filter((item): item is MenuItem => Boolean(item))
 
-  const enabledItems = useCallback(
-    () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])') ?? []),
+  // Disabled items stay in the arrow-key order (like disabled buttons) so their tooltip can explain why;
+  // they never act, because the click guard in renderItem swallows Enter / Space activation.
+  const menuItems = useCallback(
+    () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []),
     [],
   )
 
@@ -68,10 +70,12 @@ export function Menu({
   useLayoutEffect(() => {
     if (!open || !menuRef.current || !triggerRef.current) return
     positionFloating(menuRef.current, triggerRef.current, { align })
-    const targets = enabledItems()
-    const target = initialFocus.current === 'last' ? targets[targets.length - 1] : targets[0]
+    const targets = menuItems()
+    const actionable = targets.filter((item) => item.getAttribute('aria-disabled') !== 'true')
+    const pool = actionable.length > 0 ? actionable : targets
+    const target = initialFocus.current === 'last' ? pool[pool.length - 1] : pool[0]
     target?.focus()
-  }, [open, align, enabledItems])
+  }, [open, align, menuItems])
 
   useEffect(() => {
     if (!open) return
@@ -99,7 +103,7 @@ export function Menu({
   }
 
   const onMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const targets = enabledItems()
+    const targets = menuItems()
     const index = targets.indexOf(document.activeElement as HTMLElement)
     const move = (next: number) => {
       event.preventDefault()
