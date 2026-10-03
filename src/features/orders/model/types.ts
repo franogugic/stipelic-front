@@ -24,6 +24,11 @@ export interface OrderSummary {
   paidOrderCount: number
   totalPaidAmountCents: number
   currency: string | null
+  totalPlatformFeeCents: number
+  netAmountCents: number
+  refundedOrderCount: number
+  /** Every order of the workspace, whatever its status (no filter applies). */
+  totalOrderCount: number
 }
 
 export interface HomeSummary {

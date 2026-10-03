@@ -1,23 +1,35 @@
+import { downloadFile } from '../../../shared/api/download'
 import { apiRequest } from '../../../shared/api/http-client'
 import type { DashboardTrendRange, DashboardTrends, HomeSummary, OrdersPage, OrderSummary } from '../model/types'
 
 type ApiResponse<T> = { statusCode: number; message: string; code: string; data: T }
 
+export type OrderFilters = {
+  productId?: string
+  landingPageId?: string
+  status?: string
+  /** Customer name or email. */
+  search?: string
+}
+
+function filterParams(filters: OrderFilters) {
+  const params = new URLSearchParams()
+  if (filters.productId) params.set('productId', filters.productId)
+  if (filters.landingPageId) params.set('landingPageId', filters.landingPageId)
+  if (filters.status) params.set('status', filters.status)
+  if (filters.search) params.set('search', filters.search)
+  return params
+}
+
 export async function listOrders(
   slug: string,
-  options: {
-    productId?: string
-    landingPageId?: string
-    status?: string
+  options: OrderFilters & {
     afterCreatedAt?: string
     afterId?: string
     limit?: number
   } = {},
 ): Promise<OrdersPage> {
-  const params = new URLSearchParams()
-  if (options.productId) params.set('productId', options.productId)
-  if (options.landingPageId) params.set('landingPageId', options.landingPageId)
-  if (options.status) params.set('status', options.status)
+  const params = filterParams(options)
   if (options.afterCreatedAt) params.set('afterCreatedAt', options.afterCreatedAt)
   if (options.afterId) params.set('afterId', options.afterId)
   if (options.limit) params.set('limit', String(options.limit))
@@ -27,6 +39,12 @@ export async function listOrders(
     `/api/creators/${slug}/orders${query ? `?${query}` : ''}`,
   )
   return res.data
+}
+
+/** Saves the orders matching the filters as a CSV (the file name comes from the server). */
+export function exportOrders(slug: string, filters: OrderFilters): Promise<void> {
+  const query = filterParams(filters).toString()
+  return downloadFile(`/api/creators/${slug}/orders/export${query ? `?${query}` : ''}`, `orders-${slug}.csv`)
 }
 
 export async function getOrderSummary(slug: string): Promise<OrderSummary> {
