@@ -44,6 +44,15 @@ export function moneyParts(amountCents: number, currency = 'EUR') {
   }
 }
 
+/** "€" / "$" — the symbol of a currency code, for input addons. */
+export function currencySymbol(currency = 'EUR') {
+  const code = normalizeCurrency(currency)
+  const symbol = new Intl.NumberFormat(CURRENCY_LOCALE[code] || 'en-IE', { style: 'currency', currency: code })
+    .formatToParts(0)
+    .find((part) => part.type === 'currency')
+  return symbol?.value ?? code
+}
+
 export function number(value: number) {
   return numberFormatter.format(value)
 }
