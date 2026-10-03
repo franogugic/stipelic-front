@@ -22,6 +22,7 @@ import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSucces
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
 import { EmailsPage } from '../../features/marketing/pages/EmailsPage'
 import { SubscribersPage } from '../../features/marketing/pages/SubscribersPage'
+import { ProductDetailPage } from '../../features/products/pages/ProductDetailPage'
 import { ProductFormPage } from '../../features/products/pages/ProductFormPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { OrdersPage } from '../../features/orders/pages/OrdersPage'
@@ -66,6 +67,7 @@ export function AppRouter() {
           <Route path="/app/:slug" element={<CreatorWorkspacePage />} />
           <Route path="/app/:slug/products" element={<ProductsPage />} />
           <Route path="/app/:slug/products/new" element={<ProductFormPage />} />
+          <Route path="/app/:slug/products/:productId" element={<ProductDetailPage />} />
           <Route path="/app/:slug/products/:productId/edit" element={<ProductFormPage />} />
           <Route path="/app/:slug/orders" element={<OrdersPage />} />
           <Route path="/app/:slug/landing-pages" element={<LandingPagesPage />} />

@@ -8,7 +8,7 @@ import type { Product } from '../model/types'
 
 /**
  * Products in the prototype's `SCREENS.products` table. Rows stack into labelled blocks on narrow screens
- * (`table--stack`). The name and "Details" lead to the edit page until the product detail screen exists.
+ * (`table--stack`).
  */
 export function ProductsTable({
   products,
@@ -53,12 +53,13 @@ export function ProductsTable({
         </thead>
         <tbody>
           {products.map((product) => {
-            const editPath = `/app/${creatorSlug}/products/${product.publicId}/edit`
+            const detailPath = `/app/${creatorSlug}/products/${product.publicId}`
+            const editPath = `${detailPath}/edit`
             const archived = product.status === 'Archived'
             const busy = busyProductId === product.publicId
             const thumb = cover(product.publicId, product.thumbnailUrl)
             const items: MenuItem[] = [
-              { label: 'Details', icon: ChartColumn, to: editPath },
+              { label: 'Details', icon: ChartColumn, to: detailPath },
               {
                 label: 'Edit',
                 icon: Pencil,
@@ -76,7 +77,7 @@ export function ProductsTable({
                   <div className="table__main">
                     <span className={`${thumb.className} cover--thumb`} style={thumb.style} />
                     <div>
-                      <Link className="table__primary" to={editPath}>
+                      <Link className="table__primary" to={detailPath}>
                         {product.name}
                       </Link>
                       <span className="table__secondary">Updated {date(product.updatedAt)}</span>
