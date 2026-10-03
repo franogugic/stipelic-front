@@ -16,7 +16,7 @@ export type Product = {
   paidOrderCount: number
 }
 
-export type CreateProductRequest = {
+type ProductFields = {
   name: string
   description: string
   priceCents: number
@@ -25,6 +25,9 @@ export type CreateProductRequest = {
   thumbnailUrl: string
 }
 
-export type UpdateProductRequest = CreateProductRequest & {
-  status: ProductStatus
-}
+/** Active or Draft; omitted, the API keeps the current status (Draft on create). Archiving has its own endpoint. */
+export type WritableProductStatus = Exclude<ProductStatus, 'Archived'>
+
+export type CreateProductRequest = ProductFields & { status?: WritableProductStatus }
+
+export type UpdateProductRequest = ProductFields & { status?: WritableProductStatus }

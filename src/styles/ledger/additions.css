@@ -38,3 +38,11 @@ button.link {
 .bars__label {
   white-space: nowrap;
 }
+
+/* A <fieldset disabled> that only switches a whole form off (a read-only product); it must not look like a fieldset. */
+.form-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
