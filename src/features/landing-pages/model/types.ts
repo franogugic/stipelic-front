@@ -58,6 +58,11 @@ export type SectionTemplate = {
 export type PeriodStats = {
   totalViews: number
   uniqueVisitors: number
+  /** Paid orders, by the time they were paid. */
+  purchaseCount: number
+  /** Email captures, by the time they were captured. */
+  captureCount: number
+  revenueCents: number
 }
 
 export type EmailCaptureItem = {

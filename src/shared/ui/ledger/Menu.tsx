@@ -15,6 +15,8 @@ export type MenuItem =
       icon?: LucideIcon
       tone?: 'danger'
       disabled?: boolean
+      /** Disables the item and explains why in its tooltip (the Button `disabledReason` pattern). */
+      disabledReason?: string
     } & ({ onSelect: () => void; to?: undefined; href?: undefined } | { to: string; onSelect?: undefined; href?: undefined } | { href: string; external?: boolean; onSelect?: undefined; to?: undefined })
 
 /**
@@ -144,9 +146,11 @@ export function Menu({
         <span>{item.label}</span>
       </>
     )
-    const ariaDisabled = item.disabled ? true : undefined
+    const disabled = item.disabled || Boolean(item.disabledReason)
+    const ariaDisabled = disabled ? true : undefined
+    const tooltip = item.disabledReason ? { 'data-tooltip': item.disabledReason } : {}
     const guard = (event: MouseEvent) => {
-      if (item.disabled) {
+      if (disabled) {
         event.preventDefault()
         event.stopPropagation()
         return false
@@ -155,7 +159,7 @@ export function Menu({
     }
     if (item.to !== undefined) {
       return (
-        <Link className={className} role="menuitem" tabIndex={-1} to={item.to} aria-disabled={ariaDisabled} key={index}
+        <Link className={className} role="menuitem" tabIndex={-1} to={item.to} aria-disabled={ariaDisabled} {...tooltip} key={index}
           onClick={(event) => { if (guard(event)) close() }}>
           {content}
         </Link>
@@ -163,7 +167,7 @@ export function Menu({
     }
     if (item.href !== undefined) {
       return (
-        <a className={className} role="menuitem" tabIndex={-1} href={item.href} aria-disabled={ariaDisabled} key={index}
+        <a className={className} role="menuitem" tabIndex={-1} href={item.href} aria-disabled={ariaDisabled} {...tooltip} key={index}
           {...(item.external ? { target: '_blank', rel: 'noopener' } : {})}
           onClick={(event) => { if (guard(event)) close() }}>
           {content}
@@ -171,7 +175,7 @@ export function Menu({
       )
     }
     return (
-      <button className={className} type="button" role="menuitem" tabIndex={-1} aria-disabled={ariaDisabled} key={index}
+      <button className={className} type="button" role="menuitem" tabIndex={-1} aria-disabled={ariaDisabled} {...tooltip} key={index}
         onClick={(event) => {
           if (!guard(event)) return
           close(true)

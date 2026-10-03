@@ -1,7 +1,7 @@
 import { Archive, PanelsTopLeft, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { plural } from '../../../shared/lib/format'
+import { number } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
   Button,
@@ -80,7 +80,9 @@ export function LandingPagesPage() {
   const atLimit = maxPages !== undefined && maxPages >= 0 && activePageCount >= maxPages
   const limitReason =
     atLimit && creator
-      ? `You’ve used all ${plural(maxPages, 'landing page')} on the ${creator.planName} plan.`
+      ? maxPages === 1
+        ? `You’ve used your 1 landing page on the ${creator.planName} plan.`
+        : `You’ve used all ${number(maxPages)} landing pages on the ${creator.planName} plan.`
       : undefined
 
   const openCreate = () => {

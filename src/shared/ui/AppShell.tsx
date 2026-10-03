@@ -14,6 +14,9 @@ type AppShellProps = {
   slug: string
   activeSection: NavSection
   children: ReactNode
+  /** Tab title for a page below a section (e.g. one landing page); defaults to "{Section} · Luma". Set here because
+   * the shell's own title effect runs after its children's and would override theirs. */
+  documentTitle?: string
 }
 
 const DESKTOP_QUERY = '(min-width: 1024px)'
@@ -23,7 +26,7 @@ const DESKTOP_QUERY = '(min-width: 1024px)'
  * Below 1024 px the sidebar is a drawer: opening it makes the canvas inert and focuses the current link;
  * Esc, the backdrop, the close button, a route change and growing past 1024 px close it.
  */
-export function AppShell({ slug, activeSection, children }: AppShellProps) {
+export function AppShell({ slug, activeSection, documentTitle, children }: AppShellProps) {
   const { pathname } = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -82,7 +85,7 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
     return () => query.removeEventListener('change', onChange)
   }, [closeDrawer])
 
-  useDocumentTitle(`${NAV_SECTION_LABELS[activeSection]} · Luma`)
+  useDocumentTitle(documentTitle ?? `${NAV_SECTION_LABELS[activeSection]} · Luma`)
 
   return (
     <>

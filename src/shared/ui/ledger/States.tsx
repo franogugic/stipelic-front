@@ -112,16 +112,18 @@ export function EmptyState({
   )
 }
 
-/** A failed load, with a retry button. */
+/** A failed load, with a retry button — or `action` instead, when retrying can't help (e.g. not found). */
 export function ErrorState({
   title = 'Something went wrong',
   text = 'We couldn’t load this data. Check your connection and try again.',
   onRetry,
+  action,
   compact,
 }: {
   title?: ReactNode
   text?: ReactNode
   onRetry?: () => void
+  action?: StateAction
   compact?: boolean
 }) {
   return (
@@ -135,9 +137,13 @@ export function ErrorState({
       <h2 className="state__title">{title}</h2>
       <p className="state__text">{text}</p>
       <div className="state__actions">
-        <Button variant="secondary" icon={RotateCw} onClick={onRetry}>
-          Try again
-        </Button>
+        {action ? (
+          <ActionButton action={{ variant: 'secondary', ...action }} />
+        ) : (
+          <Button variant="secondary" icon={RotateCw} onClick={onRetry}>
+            Try again
+          </Button>
+        )}
       </div>
     </div>
   )

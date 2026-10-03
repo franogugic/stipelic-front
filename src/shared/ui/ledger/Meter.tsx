@@ -7,7 +7,8 @@ import { number } from '../../lib/format'
  */
 export function Meter({ label, used, limit }: { label: string; used: number; limit: number | null | undefined }) {
   const unlimited = limit === null || limit === undefined || limit < 0
-  const ratio = unlimited ? 0 : Math.min(1, used / limit)
+  // A limit of 0 is full as soon as anything is used (and empty, not NaN, when nothing is).
+  const ratio = unlimited ? 0 : limit > 0 ? Math.min(1, used / limit) : used > 0 ? 1 : 0
   const tone = ratio >= 1 ? 'meter--danger' : ratio >= 0.85 ? 'meter--warning' : ''
   return (
     <div className={['meter', tone].filter(Boolean).join(' ')}>

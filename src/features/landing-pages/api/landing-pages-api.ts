@@ -78,7 +78,10 @@ export async function getLandingPageTimeSeries(
   return res.data
 }
 
-export async function listEmailCaptures(slug: string, pageId: string): Promise<EmailCaptureItem[]> {
-  const res = await apiRequest<ApiResponse<EmailCaptureItem[]>>(`/api/creators/${slug}/landing-pages/${pageId}/captures`)
+/** The newest captures of the page, newest first. The API caps `limit` at 100 (default 20). */
+export async function listEmailCaptures(slug: string, pageId: string, limit: number): Promise<EmailCaptureItem[]> {
+  const res = await apiRequest<ApiResponse<EmailCaptureItem[]>>(
+    `/api/creators/${slug}/landing-pages/${pageId}/captures?limit=${limit}`,
+  )
   return res.data
 }

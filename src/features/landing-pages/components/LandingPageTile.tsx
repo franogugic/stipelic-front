@@ -35,7 +35,13 @@ export function LandingPageTile({
   const items: MenuItem[] = [
     { label: 'Edit', icon: Pencil, to: `${analyticsUrl}/edit` },
     { label: 'Analytics', icon: ChartColumn, to: analyticsUrl },
-    { label: 'Open public page', icon: ExternalLink, href: publicPath, external: true },
+    {
+      label: 'Open public page',
+      icon: ExternalLink,
+      href: publicPath,
+      external: true,
+      disabledReason: page.status === 'Published' ? undefined : 'Publish the page to open it.',
+    },
     { label: 'Copy link', icon: LinkIcon, onSelect: onCopyLink },
     'separator',
     ...(archived

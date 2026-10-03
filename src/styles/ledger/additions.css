@@ -32,3 +32,9 @@ button.link {
 .modal {
   margin: auto;
 }
+
+/* Real date labels ("3 Sep") are wider than the prototype's day numbers and would wrap in narrow columns. Only
+   every few columns carry a label, so a label may spread into its blank neighbours. */
+.bars__label {
+  white-space: nowrap;
+}
