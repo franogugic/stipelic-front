@@ -107,7 +107,7 @@ export function BankTransferPayouts({ slug, creator }: { slug: string; creator: 
         : undefined
 
   const amountText = amountInput ?? formatPriceInput(available)
-  const parsed = parsePriceInput(amountText)
+  const parsed = parsePriceInput(amountText, 'Enter the amount to pay out.')
   const amountError = !parsed.ok
     ? parsed.error
     : parsed.cents < minimum

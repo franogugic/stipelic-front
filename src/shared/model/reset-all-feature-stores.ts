@@ -1,4 +1,3 @@
-import { useAdminPayoutsStore } from '../../features/admin/model/admin-payouts-store'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { usePayoutStore } from '../../features/creators/model/payout-store'
 import { useLandingPageStore } from '../../features/landing-pages/model/landing-page-store'
@@ -17,5 +16,4 @@ export function resetAllFeatureStores(): void {
   useLandingPageStore.getState().reset()
   useCampaignStore.getState().reset()
   useTemplateStore.getState().reset()
-  useAdminPayoutsStore.getState().reset()
 }

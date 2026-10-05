@@ -7,9 +7,9 @@ const MAX_CENTS = 2_147_483_647
 export type PriceParse = { ok: true; cents: number } | { ok: false; error: string }
 
 /** "29", "29.5", "29,50", ".5" → cents. Rejects empty input, anything but digits and one separator, and more than two decimals. */
-export function parsePriceInput(input: string): PriceParse {
+export function parsePriceInput(input: string, emptyMessage = 'Enter a price — use 0 for a free product.'): PriceParse {
   const text = input.trim()
-  if (!text) return { ok: false, error: 'Enter a price — use 0 for a free product.' }
+  if (!text) return { ok: false, error: emptyMessage }
   const match = /^(\d*)(?:[.,](\d*))?$/.exec(text)
   if (!match || (match[1] === '' && !match[2])) return { ok: false, error: 'Enter a valid price, like 29.00.' }
   const decimals = match[2] ?? ''

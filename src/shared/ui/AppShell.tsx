@@ -109,7 +109,7 @@ export function AppShell({ slug, activeSection, documentTitle, children }: AppSh
               aria-label="Open menu"
               onClick={() => setDrawerOpen(true)}
             />
-            <Brand to={`/app/${slug}`} />
+            <Brand to={slug ? `/app/${slug}` : '/'} />
             <div className="app-topbar__end">
               <ThemeToggleButton />
             </div>
