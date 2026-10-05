@@ -6,11 +6,10 @@ export function Brand({ to }: { to: string }) {
     <Link className="brand" to={to} aria-label="Luma home">
       <svg className="brand__mark" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
         <rect className="brand__mark-bg" width="28" height="28" rx="8" />
-        <g className="brand__mark-fg" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="14" cy="8.2" r="2.3" />
-          <path d="M14 10.5v11" />
-          <path d="M7.4 15.6a6.6 6.6 0 0 0 13.2 0" />
-          <path d="M10.6 13.4h6.8" />
+        <g className="brand__mark-fg">
+          <path d="M6.5 16.6a7.5 7.5 0 0 1 15 0z" />
+          <rect x="4.5" y="18.4" width="19" height="2.1" rx="1.05" />
+          <rect x="8.5" y="22" width="11" height="2.1" rx="1.05" />
         </g>
       </svg>
       <span className="brand__word">Luma</span>
