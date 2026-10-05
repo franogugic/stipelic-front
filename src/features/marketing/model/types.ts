@@ -112,15 +112,34 @@ export type ResendFailedResult = {
   requeuedCount: number
 }
 
+export type ContactSource = {
+  landingPagePublicId: string
+  title: string
+}
+
 export type Contact = {
   email: string
   firstCapturedAt: string
   sourcesCount: number
-  sources: string
+  /** The landing pages the contact signed up on. */
+  sourceList: ContactSource[]
   isUnsubscribed: boolean
 }
 
 export type ContactsPage = {
   contacts: Contact[]
   hasMore: boolean
+}
+
+/** `GET …/contacts/stats` — all-time and unfiltered. */
+export type ContactStats = {
+  total: number
+  active: number
+  newThisMonth: number
+  /** Opt-outs on record; can exceed `total - active` because opt-outs outlive a deleted contact. */
+  unsubscribed: number
+  /** The last 12 UTC months, oldest first, current month last; `total` is cumulative. `month` is "yyyy-MM". */
+  growth: Array<{ month: string; total: number }>
+  /** Landing pages (archived included) with at least one contact, most contacts first. */
+  sources: Array<{ landingPagePublicId: string; title: string; count: number }>
 }

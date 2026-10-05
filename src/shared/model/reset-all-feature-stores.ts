@@ -3,7 +3,6 @@ import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { usePayoutStore } from '../../features/creators/model/payout-store'
 import { useLandingPageStore } from '../../features/landing-pages/model/landing-page-store'
 import { useCampaignStore } from '../../features/marketing/model/campaign-store'
-import { useContactsStore } from '../../features/marketing/model/contacts-store'
 import { useTemplateStore } from '../../features/marketing/model/template-store'
 import { useProductStore } from '../../features/products/model/product-store'
 
@@ -17,7 +16,6 @@ export function resetAllFeatureStores(): void {
   useProductStore.getState().reset()
   useLandingPageStore.getState().reset()
   useCampaignStore.getState().reset()
-  useContactsStore.getState().reset()
   useTemplateStore.getState().reset()
   useAdminPayoutsStore.getState().reset()
 }
