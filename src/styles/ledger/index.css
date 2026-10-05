@@ -20,6 +20,7 @@
 @import "./app-layout.css";
 @import "./screens/auth.css";
 @import "./screens/solo.css";
+@import "./screens/not-found.css";
 @import "./screens/welcome.css";
 @import "./screens/payment.css";
 @import "./screens/center-card.css";

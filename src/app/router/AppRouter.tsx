@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { AdminPayoutsPage } from '../../features/admin/pages/AdminPayoutsPage'
 import { ForgotPasswordPage } from '../../features/auth/pages/ForgotPasswordPage'
 import { HomePage } from '../../features/auth/pages/HomePage'
@@ -26,6 +26,7 @@ import { ProductDetailPage } from '../../features/products/pages/ProductDetailPa
 import { ProductFormPage } from '../../features/products/pages/ProductFormPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { OrdersPage } from '../../features/orders/pages/OrdersPage'
+import { NotFoundPage } from '../../shared/ui/NotFoundPage'
 import { AdminRoute } from './AdminRoute'
 import { AuthBootstrap } from './AuthBootstrap'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -85,7 +86,7 @@ export function AppRouter() {
           <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   )
