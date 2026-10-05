@@ -15,6 +15,7 @@
 @import "./components/toasts.css";
 @import "./components/states.css";
 @import "./components/uploader.css";
+@import "./components/editing.css";
 @import "./motion.css";
 @import "./components/charts.css";
 @import "./app-layout.css";
@@ -27,4 +28,7 @@
 @import "./screens/onboarding.css";
 @import "./screens/dashboard.css";
 @import "./screens/landing-pages.css";
+@import "./screens/public-landing.css";
+@import "./screens/email-preview.css";
+@import "./screens/settings.css";
 @import "./additions.css";

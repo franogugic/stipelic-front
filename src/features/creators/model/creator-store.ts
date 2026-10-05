@@ -56,6 +56,8 @@ type CreatorState = {
   checkoutError: string | null
   deleteStatus: CreatorDeleteStatus
   deleteError: string | null
+  /** The API's error code of a failed delete, e.g. WORKSPACE_HAS_BALANCE. */
+  deleteErrorCode: string | null
   cancelSubscriptionStatus: CreatorCancelSubscriptionStatus
   cancelSubscriptionError: string | null
   pollActivationStatus: PollActivationStatus
@@ -74,7 +76,8 @@ type CreatorState = {
   startCreatorCheckout: () => Promise<CreatorSubscriptionCheckoutResult | null>
   continueOnFreePlan: () => Promise<ContinueOnFreeResult>
   deleteCreatorProfile: () => Promise<boolean>
-  openBillingPortal: () => Promise<void>
+  /** Opens the Stripe billing portal; resolves with an error message when it could not (otherwise the page navigates away). */
+  openBillingPortal: () => Promise<string | null>
   cancelSubscription: () => Promise<boolean>
   pollCreatorActivation: () => Promise<Creator | null>
   resetCreateCreatorFeedback: () => void
@@ -117,6 +120,7 @@ const initialCreatorState = {
   checkoutError: null,
   deleteStatus: 'idle' as CreatorDeleteStatus,
   deleteError: null,
+  deleteErrorCode: null,
   cancelSubscriptionStatus: 'idle' as CreatorCancelSubscriptionStatus,
   cancelSubscriptionError: null,
   pollActivationStatus: 'idle' as PollActivationStatus,
@@ -316,7 +320,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
 
   deleteCreatorProfile: async () => {
-    set({ deleteStatus: 'submitting', deleteError: null })
+    set({ deleteStatus: 'submitting', deleteError: null, deleteErrorCode: null })
 
     try {
       await deleteCurrentCreator()
@@ -332,6 +336,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
         currentCreatorStatus: 'success',
         deleteStatus: 'success',
         deleteError: null,
+        deleteErrorCode: null,
       })
       return true
     } catch (error) {
@@ -340,7 +345,11 @@ export const useCreatorStore = create<CreatorState>((set) => ({
           ? error.message
           : 'We could not delete this creator profile. Please try again.'
 
-      set({ deleteStatus: 'error', deleteError: message })
+      set({
+        deleteStatus: 'error',
+        deleteError: message,
+        deleteErrorCode: error instanceof ApiError ? (error.code ?? null) : null,
+      })
       return false
     }
   },
@@ -349,12 +358,9 @@ export const useCreatorStore = create<CreatorState>((set) => ({
     try {
       const url = await getCreatorBillingPortalUrl()
       window.location.assign(url)
+      return null
     } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? error.message
-          : 'Could not open billing portal. Please try again.'
-      console.error(message)
+      return error instanceof ApiError ? error.message : 'Could not open billing portal. Please try again.'
     }
   },
 
@@ -411,7 +417,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
     set({ checkoutStatus: 'idle', checkoutError: null })
   },
   resetDeleteCreatorFeedback: () => {
-    set({ deleteStatus: 'idle', deleteError: null })
+    set({ deleteStatus: 'idle', deleteError: null, deleteErrorCode: null })
   },
   resetUpdateCreatorSettingsFeedback: () => {
     set({ updateSettingsStatus: 'idle', updateSettingsError: null })

@@ -115,6 +115,8 @@ type AuthState = {
   login: (values: LoginFormValues) => Promise<AuthUser | null>
   logout: () => Promise<void>
   loadCurrentUser: () => Promise<void>
+  /** Replaces the signed-in user with a fresh copy from the API (e.g. after a profile update). */
+  applyCurrentUser: (user: AuthUser) => void
   register: (values: RegisterFormValues) => Promise<AuthUser | null>
   /**
    * Sends to `email`, or to the signed-in user's address when omitted. Without a session the given email
@@ -224,6 +226,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       set({ logoutStatus: 'error', logoutError: message })
     }
+  },
+  applyCurrentUser: (user) => {
+    set({ currentUser: user, accountStatus: getAccountStatus(user) })
   },
   loadCurrentUser: async () => {
     set({ sessionStatus: 'checking' })

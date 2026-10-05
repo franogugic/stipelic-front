@@ -46,3 +46,8 @@ button.link {
   padding: 0;
   border: 0;
 }
+
+/* An Alert placed under the typed-confirmation field of a ConfirmDialog (the prototype's blocked delete state). */
+.modal__alert {
+  margin-top: var(--space-4);
+}

@@ -82,3 +82,25 @@ export type ResetPasswordResponse = {
 
 /** `POST /api/auth/reset-password/inspect`: whether a reset link can still be used, and for which address. */
 export type InspectResetTokenResponse = { status: 'Valid'; email: string } | { status: 'Expired' }
+
+export type UpdateProfileRequest = {
+  firstName: string
+  lastName: string
+}
+
+export type RequestEmailChangeRequest = {
+  newEmail: string
+  currentPassword: string
+}
+
+/** The signed-in user's unconfirmed email change. */
+export type PendingEmailChange = {
+  newEmail: string
+  expiresAt: string
+}
+
+export type ConfirmEmailChangeResponse = {
+  message: string
+  /** The new address the account now uses. */
+  email: string
+}

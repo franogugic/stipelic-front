@@ -1,0 +1,315 @@
+/* Settings, payouts, shared bits — copied verbatim from designer-prototype/app/css/app.css (to the end of the file). */
+/* ==========================================================================
+   Settings, payouts, shared bits
+   ========================================================================== */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.form-group > legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+
+.span-full {
+  grid-column: 1 / -1;
+}
+
+.link--button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.settings__tabs {
+  margin-bottom: var(--space-6);
+}
+
+.settings__tabs .tab svg {
+  width: 15px;
+  height: 15px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.settings-grid--brand {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+}
+
+@media (max-width: 1023px) {
+  .settings-grid,
+  .settings-grid--brand {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.email-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+
+.email-row__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  box-shadow: var(--shadow-xs);
+}
+
+.email-row__icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.email-row__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.email-row__text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.brand-preview__page {
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.brand-preview__page .lp-nav {
+  padding: 14px 20px;
+}
+
+.brand-preview__links {
+  color: var(--lp-muted);
+  font-size: 0.75rem;
+}
+
+.brand-preview__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 20px 28px;
+}
+
+.brand-preview__hero .lp__title {
+  font-size: 2.25rem;
+}
+
+.brand-preview__hero .lp__cta {
+  height: 40px;
+  padding: 0 18px;
+  font-size: 0.875rem;
+}
+
+.billing__cancel {
+  --btn-fg: var(--color-feature-muted);
+}
+
+.billing__cancel:hover {
+  --btn-bg: color-mix(in srgb, var(--color-feature-text) 8%, transparent);
+  --btn-fg: var(--color-feature-text);
+}
+
+.plan-compare {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.plan-compare__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.plan-compare__item.is-current {
+  border-color: var(--color-text);
+  box-shadow: inset 0 0 0 1px var(--color-text);
+}
+
+.plan-compare__note {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 899px) {
+  .plan-compare { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 479px) {
+  .plan-compare { grid-template-columns: minmax(0, 1fr); }
+}
+
+.danger-zone {
+  max-width: 760px;
+  border-color: color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
+}
+
+.danger-zone__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.danger-zone__list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2-5) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-soft);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.danger-zone__list strong {
+  color: var(--color-text);
+}
+
+.danger-zone__list svg {
+  width: 14px;
+  height: 14px;
+  color: var(--color-danger);
+}
+
+.payout-hero__title {
+  font-size: var(--display-md);
+}
+
+.payout-step__num {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-style: italic;
+  line-height: 1;
+}
+
+.checklist__item--waiting .checklist__dot {
+  border-style: dashed;
+  color: var(--color-warning);
+}
+
+/* Selected gallery image details (editor) */
+.media-detail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.media-detail__thumb {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.danger-zone__money {
+  margin: var(--space-1) 0;
+}
+
+/* Creator-branded result pages (purchase success, unsubscribe) */
+.lp-done {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.lp-done__brand,
+.lp-done__foot {
+  padding: 20px 6%;
+}
+
+.lp-done__foot {
+  color: var(--lp-faint);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.lp-done__box {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  width: min(480px, 100% - 32px);
+  margin: 0 auto;
+  padding: 24px 0 48px;
+  text-align: center;
+}
+
+.lp-done__box .lp__sub {
+  margin: 0;
+}
+
+.lp-done__title {
+  font-size: clamp(2.5rem, 7cqi, 3.25rem);
+}
+
+.lp-done__art {
+  padding: 24px 0 8px;
+}
+
+.lp-receipt {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 24px;
+  width: 100%;
+  margin: 0;
+  padding: 20px 24px;
+  border: 1px solid var(--lp-line);
+  border-radius: 20px;
+  background: var(--lp-surface);
+  text-align: left;
+}
+
+.lp-receipt dt {
+  color: var(--lp-faint);
+}
+
+.lp-receipt dd {
+  margin: 0;
+  font-weight: var(--weight-medium);
+  text-align: right;
+  overflow-wrap: anywhere;
+}

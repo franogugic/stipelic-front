@@ -1,14 +1,18 @@
 import { apiRequest } from '../../../shared/api/http-client'
 import type {
+  ConfirmEmailChangeResponse,
   InspectResetTokenResponse,
   LogoutResponse,
   LoginUserRequest,
   LoginUserResponse,
+  PendingEmailChange,
+  RequestEmailChangeRequest,
   RegisterUserRequest,
   RegisterUserResponse,
   RequestPasswordResetResponse,
   ResendEmailVerificationResponse,
   ResetPasswordResponse,
+  UpdateProfileRequest,
   VerifyEmailResponse,
 } from '../model/types'
 
@@ -88,5 +92,41 @@ export function resetPassword(token: string, newPassword: string) {
       token: token.trim(),
       newPassword,
     },
+  })
+}
+
+export function updateProfile(request: UpdateProfileRequest) {
+  return apiRequest<LoginUserResponse>('/api/auth/me/profile', {
+    method: 'PUT',
+    body: { firstName: request.firstName.trim(), lastName: request.lastName.trim() },
+  })
+}
+
+/** Needs the current password; always answers 202, whether or not the new address is taken. */
+export function requestEmailChange(request: RequestEmailChangeRequest) {
+  return apiRequest<{ message: string }>('/api/auth/me/email-change', {
+    method: 'POST',
+    body: { newEmail: request.newEmail.trim().toLowerCase(), currentPassword: request.currentPassword },
+  })
+}
+
+/** The user's newest unused, unexpired email change, or null. */
+export async function getPendingEmailChange(): Promise<PendingEmailChange | null> {
+  const pending = await apiRequest<PendingEmailChange | null | undefined>('/api/auth/me/email-change')
+  return pending ?? null
+}
+
+export function resendEmailChange() {
+  return apiRequest<unknown>('/api/auth/me/email-change/resend', { method: 'POST' })
+}
+
+export function cancelEmailChange() {
+  return apiRequest<unknown>('/api/auth/me/email-change', { method: 'DELETE' })
+}
+
+export function confirmEmailChange(token: string) {
+  return apiRequest<ConfirmEmailChangeResponse>('/api/auth/email-change/confirm', {
+    method: 'POST',
+    body: { token },
   })
 }
