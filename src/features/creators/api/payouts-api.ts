@@ -1,5 +1,11 @@
 import { apiRequest } from '../../../shared/api/http-client'
-import type { Payout, PayoutProfile, PayoutSummary, UpdatePayoutProfileRequest } from '../model/types'
+import type {
+  ConnectPayoutDetails,
+  Payout,
+  PayoutProfile,
+  PayoutSummary,
+  UpdatePayoutProfileRequest,
+} from '../model/types'
 
 type ApiResponse<TData> = {
   statusCode: number
@@ -15,6 +21,12 @@ function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
 export function getPayoutSummary(slug: string) {
   return apiRequest<ApiResponse<PayoutSummary | null>>(
     `/api/creators/${encodeURIComponent(slug)}/payouts/summary`,
+  ).then(unwrapApiResponse)
+}
+
+export function getConnectPayoutDetails(slug: string) {
+  return apiRequest<ApiResponse<ConnectPayoutDetails>>(
+    `/api/creators/${encodeURIComponent(slug)}/payouts/connect`,
   ).then(unwrapApiResponse)
 }
 

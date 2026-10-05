@@ -92,11 +92,36 @@ export type UpdateCreatorSettingsRequest = {
 
 export type PayoutStatus = 'Pending' | 'Paid' | 'Failed' | 'Cancelled'
 
+export type PendingPayoutRequest = {
+  publicId: string
+  amountCents: number
+  requestedAt: string
+}
+
 export type PayoutSummary = {
   currency: string
+  /** What can be requested now (open requests are already taken out). */
   balanceCents: number
   pendingPayoutCents: number
   minPayoutCents: number
+  totalPaidOutCents: number
+  /** The open request (at most one), or null. */
+  pendingRequest: PendingPayoutRequest | null
+}
+
+export type PayoutSchedule = {
+  interval: 'manual' | 'daily' | 'weekly' | 'monthly' | string
+  delayDays: number
+  weeklyAnchor: string | null
+  monthlyAnchor: number | null
+}
+
+/** `GET …/payouts/connect`: nulls until onboarding has progressed (or Stripe can't be reached). */
+export type ConnectPayoutDetails = {
+  accountId: string | null
+  detailsSubmittedAt: string | null
+  payoutsEnabledAt: string | null
+  payoutSchedule: PayoutSchedule | null
 }
 
 export type Payout = {
