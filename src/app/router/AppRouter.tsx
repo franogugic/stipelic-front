@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { AdminPayoutsPage } from '../../features/admin/pages/AdminPayoutsPage'
+import { ConfirmEmailChangePage } from '../../features/auth/pages/ConfirmEmailChangePage'
 import { ForgotPasswordPage } from '../../features/auth/pages/ForgotPasswordPage'
 import { HomePage } from '../../features/auth/pages/HomePage'
 import { CheckInboxPage } from '../../features/auth/pages/CheckInboxPage'
@@ -52,6 +53,7 @@ export function AppRouter() {
         <Route path="/p/:creatorSlug/:pageSlug/success" element={<OrderSuccessPage />} />
         <Route path="/p/:creatorSlug/:pageSlug" element={<PublicLandingPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/confirm-email-change" element={<ConfirmEmailChangePage />} />
         <Route path="/check-inbox" element={<CheckInboxPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
