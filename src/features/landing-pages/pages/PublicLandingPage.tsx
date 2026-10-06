@@ -11,14 +11,11 @@ import type {
   FooterContent,
   GalleryContent,
   HeroContent,
-  LandingPageSection,
-  LandingPageType,
-  LandingPageWithSections,
   NavbarContent,
   ProductDetailsContent,
-  SectionType,
   TestimonialsContent,
-} from '../model/types'
+} from '../model/section-content'
+import type { LandingPageSection, LandingPageType, LandingPageWithSections, SectionType } from '../model/types'
 
 export function PublicLandingPage() {
   const { creatorSlug, pageSlug } = useParams<{ creatorSlug: string; pageSlug: string }>()
@@ -96,7 +93,7 @@ function PublicSection({
     case 'Navbar': {
       const c = content as Partial<NavbarContent>
       return (
-        <nav style={{ backgroundColor: section.backgroundColor }} className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+        <nav style={{ backgroundColor: section.backgroundColor ?? undefined }} className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
           <p className="font-bold text-neutral-950">{c.brandName || 'My Brand'}</p>
           {c.links && c.links.length > 0 ? (
             <div className="flex gap-6">
@@ -111,7 +108,7 @@ function PublicSection({
     case 'Footer': {
       const c = content as Partial<FooterContent>
       return (
-        <footer style={{ backgroundColor: section.backgroundColor }} className="px-6 py-10 text-center border-t border-neutral-100">
+        <footer style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-10 text-center border-t border-neutral-100">
           <p className="text-sm text-neutral-400">{c.copyright || '© 2025 My Brand'}</p>
         </footer>
       )
@@ -119,7 +116,7 @@ function PublicSection({
     case 'Hero': {
       const c = content as Partial<HeroContent>
       return (
-        <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-24 text-center">
+        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-24 text-center">
           <div className="mx-auto max-w-3xl">
             {c.imageUrl ? (
               <img src={c.imageUrl} alt="" className="mx-auto mb-8 max-h-96 w-full rounded-2xl object-cover" />
@@ -142,7 +139,7 @@ function PublicSection({
       const c = content as Partial<FeaturesContent>
       const items = c.items ?? []
       return (
-        <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-20">
+        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-20">
           <div className="mx-auto max-w-5xl">
             {c.heading ? (
               <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
@@ -163,7 +160,7 @@ function PublicSection({
     case 'ProductDetails': {
       const c = content as Partial<ProductDetailsContent>
       return (
-        <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-20">
+        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-20">
           <div className="mx-auto max-w-3xl">
             {c.imageUrl ? (
               <img src={c.imageUrl} alt="" className="mb-8 max-h-96 w-full rounded-2xl object-cover" />
@@ -203,7 +200,7 @@ function PublicSection({
       const c = content as Partial<TestimonialsContent>
       const items = c.items ?? []
       return (
-        <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-20">
+        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-20">
           <div className="mx-auto max-w-5xl">
             {c.heading ? (
               <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
@@ -226,7 +223,7 @@ function PublicSection({
       const c = content as Partial<FaqContent>
       const items = c.items ?? []
       return (
-        <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-20">
+        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-20">
           <div className="mx-auto max-w-3xl">
             {c.heading ? (
               <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
@@ -248,7 +245,7 @@ function PublicSection({
       const c = content as Partial<GalleryContent>
       const imageUrls = c.imageUrls ?? []
       return (
-        <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-20">
+        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-20">
           <div className="mx-auto max-w-5xl">
             {c.heading ? (
               <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
@@ -268,7 +265,7 @@ function PublicSection({
     case 'Cta': {
       const c = content as Partial<CtaContent>
       return (
-        <section style={{ backgroundColor: section.backgroundColor }} className="px-6 py-24 text-center">
+        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-24 text-center">
           <div className="mx-auto max-w-2xl">
             <h2 className="text-3xl font-bold text-neutral-950 sm:text-4xl">{c.heading}</h2>
             {c.subheading ? (

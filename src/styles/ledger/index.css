@@ -29,6 +29,7 @@
 @import "./screens/dashboard.css";
 @import "./screens/landing-pages.css";
 @import "./screens/public-landing.css";
+@import "./screens/landing-page-editor.css";
 @import "./screens/email-preview.css";
 @import "./screens/settings.css";
 @import "./additions.css";
