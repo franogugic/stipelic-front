@@ -26,7 +26,7 @@ import { useCreatorStore } from '../../model/creator-store'
 import { usePayoutStore } from '../../model/payout-store'
 import type { Creator } from '../../model/types'
 import { BankDetailsModal } from './BankDetailsModal'
-import { countryName } from './payout-format'
+import { countryName, formatMaskedIban } from './payout-format'
 
 /** Payouts for a bank-transfer workspace: the balance, a payout request, the bank account and the history. */
 export function BankTransferPayouts({ slug, creator }: { slug: string; creator: Creator }) {
@@ -230,7 +230,7 @@ export function BankTransferPayouts({ slug, creator }: { slug: string; creator: 
       <div className="stack stack--lg reveal">
         {justRequested !== null && profile && (
           <Alert tone="success" icon={CircleCheck} title="Payout requested" live>
-            {money(justRequested, currency)} is on its way to {profile.maskedIban}. Transfers usually arrive within two
+            {money(justRequested, currency)} is on its way to {formatMaskedIban(profile.maskedIban)}. Transfers usually arrive within two
             to three business days.
           </Alert>
         )}
@@ -295,7 +295,7 @@ export function BankTransferPayouts({ slug, creator }: { slug: string; creator: 
                 <dt>Account holder</dt>
                 <dd>{profile.accountHolderName}</dd>
                 <dt>IBAN</dt>
-                <dd className="mono">{profile.maskedIban}</dd>
+                <dd className="mono">{formatMaskedIban(profile.maskedIban)}</dd>
                 <dt>Bank country</dt>
                 <dd>{countryName(profile.bankCountryCode)}</dd>
               </dl>
@@ -364,7 +364,7 @@ export function BankTransferPayouts({ slug, creator }: { slug: string; creator: 
             setBankOpen(false)
             // The shell's "payouts aren’t set up" banner follows the workspace's payout-profile flag.
             void useCreatorStore.getState().loadCurrentCreator()
-            toast({ tone: 'success', title: 'Bank details saved', message: `Payouts go to ${saved.maskedIban}.` })
+            toast({ tone: 'success', title: 'Bank details saved', message: `Payouts go to ${formatMaskedIban(saved.maskedIban)}.` })
           }}
         />
       )}
@@ -372,7 +372,7 @@ export function BankTransferPayouts({ slug, creator }: { slug: string; creator: 
       <ConfirmDialog
         open={confirmCents !== null}
         title={`Request a payout of ${confirmCents !== null ? money(confirmCents, currency) : ''}?`}
-        text={`We’ll transfer it to ${profile?.maskedIban ?? 'your bank account'}. Transfers usually arrive within two to three business days.`}
+        text={`We’ll transfer it to ${(profile ? formatMaskedIban(profile.maskedIban) : null) ?? 'your bank account'}. Transfers usually arrive within two to three business days.`}
         confirmLabel="Request payout"
         tone="warning"
         icon={Banknote}

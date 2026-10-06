@@ -75,6 +75,7 @@ export function OrderSuccessPage() {
 
   const { receipt, pollsLeft } = state
   const pending = receipt.status === 'Pending'
+  const inactive = receipt.status === 'Refunded' || receipt.status === 'Failed'
   const brand = { name: receipt.creator.name, color: receipt.creator.brandColor, logoUrl: receipt.creator.logoUrl }
 
   if (pending) {
@@ -103,30 +104,41 @@ export function OrderSuccessPage() {
     <CreatorResultPage brand={brand}>
       <div className="state__art">
         <PartyPopper />
-        <span className="state__badge">
-          <Check />
-        </span>
+        {!inactive && (
+          <span className="state__badge">
+            <Check />
+          </span>
+        )}
       </div>
       <h1 className="lp__title lp-done__title">
         Thank you{receipt.buyerFirstName ? ', ' : ''}
         <em>{receipt.buyerFirstName ? `${receipt.buyerFirstName}!` : '!'}</em>
       </h1>
-      <p className="lp__sub">
-        Your order of <strong>{receipt.productName}</strong> is confirmed. We’ve sent the download link to{' '}
-        <strong>{receipt.buyerEmail}</strong> — it usually arrives within a minute.
-      </p>
-      <dl className="lp-receipt">
-        <dt>Order</dt>
-        <dd>#{receipt.orderNumber}</dd>
-        <dt>Paid</dt>
-        <dd>{money(receipt.amountCents, receipt.currency)}</dd>
-        {receipt.creator.supportEmail && (
-          <>
-            <dt>Questions?</dt>
-            <dd>{receipt.creator.supportEmail}</dd>
-          </>
-        )}
-      </dl>
+      {inactive ? (
+        <p className="lp__sub">
+          This order isn’t active anymore.
+          {receipt.creator.supportEmail && ` Questions? Write to ${receipt.creator.supportEmail}.`}
+        </p>
+      ) : (
+        <p className="lp__sub">
+          Your order of <strong>{receipt.productName}</strong> is confirmed. We’ve sent the download link to{' '}
+          <strong>{receipt.buyerEmail}</strong> — it usually arrives within a minute.
+        </p>
+      )}
+      {!inactive && (
+        <dl className="lp-receipt">
+          <dt>Order</dt>
+          <dd>#{receipt.orderNumber}</dd>
+          <dt>Paid</dt>
+          <dd>{money(receipt.amountCents, receipt.currency)}</dd>
+          {receipt.creator.supportEmail && (
+            <>
+              <dt>Questions?</dt>
+              <dd>{receipt.creator.supportEmail}</dd>
+            </>
+          )}
+        </dl>
+      )}
       <Link className="lp__cta" to={`/p/${creatorSlug}/${pageSlug}`}>
         Back to {receipt.creator.name}
       </Link>

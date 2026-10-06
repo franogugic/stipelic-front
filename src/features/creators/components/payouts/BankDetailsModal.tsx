@@ -4,7 +4,7 @@ import type { FormEvent } from 'react'
 import { Alert, Button, Field, Input, Modal, Select } from '../../../../shared/ui/ledger'
 import { usePayoutStore } from '../../model/payout-store'
 import type { PayoutProfile } from '../../model/types'
-import { countryName, isPlausibleIban } from './payout-format'
+import { countryName, formatMaskedIban, isPlausibleIban } from './payout-format'
 
 const FORM_ID = 'bank-form'
 
@@ -95,7 +95,7 @@ export function BankDetailsModal({
         </Field>
         <Field
           label="IBAN"
-          hint={profile ? `Now ${profile.maskedIban}. Enter the full IBAN to change anything; after saving, only the last four digits are shown.` : 'After saving, only the last four digits are shown.'}
+          hint={profile ? `Now ${formatMaskedIban(profile.maskedIban)}. Enter the full IBAN to change anything; after saving, only the last four digits are shown.` : 'After saving, only the last four digits are shown.'}
           error={errors.iban}
         >
           {(control) => (

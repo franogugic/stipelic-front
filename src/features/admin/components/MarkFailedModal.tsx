@@ -9,6 +9,7 @@ import { groupIban } from '../model/format'
 import type { AdminPayoutQueueItem } from '../model/types'
 
 const FORM_ID = 'failed-form'
+const REASON_REQUIRED = 'Add the reason — the creator sees it in their payout history.'
 
 /** Common reasons fill the textarea; "Other" clears it. */
 const REASONS: Array<[string, string]> = [
@@ -29,16 +30,26 @@ export function MarkFailedModal({
   onDone: () => void
 }) {
   const [reason, setReason] = useState('')
+  const [reasonError, setReasonError] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const pickReason = (text: string) => {
+    setReason(text)
+    setReasonError(null)
+  }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     if (!request || saving) return
+    if (!reason.trim()) {
+      setReasonError(REASON_REQUIRED)
+      return
+    }
     setRequestError(null)
     setSaving(true)
     try {
-      await markPayoutFailed(request.publicId, { note: reason })
+      await markPayoutFailed(request.publicId, { note: reason.trim() })
       onDone()
     } catch (caught) {
       setRequestError(caught instanceof ApiError ? caught.message : 'We could not mark this payout as failed. Please try again.')
@@ -84,14 +95,14 @@ export function MarkFailedModal({
             <span className="field__label">Common reasons</span>
             <div className="cluster cluster--sm">
               {REASONS.map(([label, text]) => (
-                <button className="chip" type="button" aria-pressed={reason === text} key={label} onClick={() => setReason(text)}>
+                <button className="chip" type="button" aria-pressed={reason === text} key={label} onClick={() => pickReason(text)}>
                   {label}
                 </button>
               ))}
             </div>
           </div>
-          <Field label="Reason" hint="The creator sees this reason.">
-            {(control) => <Textarea {...control} rows={3} value={reason} onChange={(event) => setReason(event.target.value)} />}
+          <Field label="Reason" hint="The creator sees this reason." error={reasonError ?? undefined}>
+            {(control) => <Textarea {...control} rows={3} value={reason} onChange={(event) => pickReason(event.target.value)} />}
           </Field>
         </form>
       )}

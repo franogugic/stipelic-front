@@ -217,6 +217,7 @@ export function AdminPayoutsPage() {
               <strong>{balance.name}</strong>
               <span className="table__secondary">{balance.slug}</span>
             </span>
+            {balance.workspaceStatus === 'Disabled' && <Badge tone="neutral">Deleted</Badge>}
             {!balance.hasPayoutProfile && <Badge tone="warning">No IBAN</Badge>}
             <span className="num">{money(balance.balanceCents, balance.currency)}</span>
           </div>

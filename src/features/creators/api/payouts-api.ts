@@ -72,3 +72,10 @@ export function cancelPayoutRequest(slug: string, payoutPublicId: string) {
     { method: 'DELETE' },
   ).then(unwrapApiResponse)
 }
+
+/** Single-use, short-lived Stripe Express sign-in link; never cached, so fetch it on click. */
+export function createConnectDashboardLink() {
+  return apiRequest<ApiResponse<{ url: string }>>('/api/creators/current/payouts/connect/login-link', {
+    method: 'POST',
+  }).then(unwrapApiResponse)
+}

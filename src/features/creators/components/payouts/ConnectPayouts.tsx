@@ -2,13 +2,11 @@ import { ArrowUpRight, BadgeCheck, Check, ExternalLink, Hourglass, Landmark } fr
 import { useEffect, useState } from 'react'
 import { date } from '../../../../shared/lib/format'
 import { Button, Card, ErrorState, PageHeader, StatusBadge, useToast, connectStatusKey } from '../../../../shared/ui/ledger'
-import { getConnectPayoutDetails } from '../../api/payouts-api'
+import { ApiError } from '../../../../shared/api/http-client'
+import { createConnectDashboardLink, getConnectPayoutDetails } from '../../api/payouts-api'
 import { usePayoutStore } from '../../model/payout-store'
 import type { ConnectPayoutDetails, Creator, PayoutSchedule } from '../../model/types'
 import { HowItWorks } from './HowItWorks'
-
-// Stripe's sign-in page for connected (Express) accounts; there is no per-account login link endpoint yet.
-const STRIPE_EXPRESS_DASHBOARD_URL = 'https://connect.stripe.com/express_login'
 
 const WEEKDAYS: Record<string, string> = {
   monday: 'Monday',
@@ -45,6 +43,7 @@ export function ConnectPayouts({ slug, creator }: { slug: string; creator: Creat
   const [details, setDetails] = useState<ConnectPayoutDetails | null>(null)
   const [detailsFailed, setDetailsFailed] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [openingDashboard, setOpeningDashboard] = useState(false)
   const status = connectStatusKey({
     payoutsEnabled: creator.stripeConnectPayoutsEnabled,
     detailsSubmitted: creator.stripeConnectDetailsSubmitted,
@@ -74,6 +73,30 @@ export function ConnectPayouts({ slug, creator }: { slug: string; creator: Creat
       tone: 'danger',
       title: usePayoutStore.getState().connectOnboardingError ?? 'We could not start Stripe onboarding. Please try again.',
     })
+  }
+
+  /** The tab opens synchronously on the click (popup blockers allow that) and is pointed at the link once it exists. */
+  const openDashboard = async () => {
+    if (openingDashboard) return
+    const tab = window.open('', '_blank')
+    setOpeningDashboard(true)
+    try {
+      const { url } = await createConnectDashboardLink()
+      if (tab) {
+        tab.opener = null
+        tab.location.href = url
+      } else {
+        window.location.href = url
+      }
+    } catch (caught) {
+      tab?.close()
+      toast({
+        tone: 'danger',
+        title: caught instanceof ApiError ? caught.message : 'We could not open your Stripe dashboard. Please try again.',
+      })
+    } finally {
+      setOpeningDashboard(false)
+    }
   }
 
   if (status === 'not_started') {
@@ -197,7 +220,7 @@ export function ConnectPayouts({ slug, creator }: { slug: string; creator: Creat
         title={<em>Payouts</em>}
         subtitle="Your earnings go straight to your Stripe account."
         actions={
-          <Button variant="primary" icon={ExternalLink} href={STRIPE_EXPRESS_DASHBOARD_URL} target="_blank" rel="noopener">
+          <Button variant="primary" icon={ExternalLink} loading={openingDashboard} onClick={() => void openDashboard()}>
             Open Stripe dashboard
           </Button>
         }

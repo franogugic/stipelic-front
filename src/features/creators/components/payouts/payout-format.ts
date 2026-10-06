@@ -26,3 +26,10 @@ export function isPlausibleIban(value: string): boolean {
   }
   return remainder === 1
 }
+
+/** The API's "RS35 **** **** **** 1379" → "RS35 •••• 1379": the country/check prefix and the last four digits. */
+export function formatMaskedIban(masked: string) {
+  const groups = masked.trim().split(/\s+/)
+  if (groups.length < 3) return masked
+  return `${groups[0]} •••• ${groups[groups.length - 1]}`
+}
