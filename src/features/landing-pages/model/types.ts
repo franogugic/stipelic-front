@@ -14,10 +14,35 @@ export type SectionType =
 export type LandingPageSection = {
   publicId: string
   type: SectionType
+  /** The layout, one of the type's variants (see `SectionTemplate.variant`). */
+  variant: string
   sortOrder: number
-  backgroundColor: string
+  /** Hex colour, or null for the page default (follows the page's light / dark theme). */
+  backgroundColor: string | null
   contentJson: string
   isLocked: boolean
+}
+
+export type ProductType = 'Digital' | 'Service' | 'Course'
+
+/** The creator's brand as a visitor sees it (public page only). */
+export type PublicCreatorBrand = {
+  name: string
+  primaryColor: string | null
+  logoUrl: string | null
+}
+
+/** "More from {brand}" on a missing public page: the creator's published pages. */
+export type PublicCreatorPages = {
+  creator: PublicCreatorBrand
+  pages: Array<{
+    title: string
+    slug: string
+    type: LandingPageType
+    productPriceCents: number | null
+    currency: string | null
+    thumbnailUrl: string | null
+  }>
 }
 
 export type LandingPage = {
@@ -45,14 +70,23 @@ export type LandingPageWithSections = Omit<
 > & {
   sections: LandingPageSection[]
   productPriceCents: number | null
+  /** Public page only. */
+  creator?: PublicCreatorBrand
+  /** Public page only; absent when the page has no product. */
+  product?: { type: ProductType; currency: string }
 }
 
 export type SectionTemplate = {
   key: string
-  name: string
   type: SectionType
+  variant: string
+  name: string
+  description: string
   contentJson: string
-  defaultBackgroundColor: string
+  /** Null = the page default. */
+  defaultBackgroundColor: string | null
+  /** Navbar and Footer: always on the page, never added or removed. */
+  isLocked: boolean
 }
 
 export type PeriodStats = {
@@ -119,8 +153,9 @@ export type CreateLandingPageRequest = {
 export type SaveEditorSectionRequest = {
   publicId: string | null
   type: SectionType
+  variant: string
   sortOrder: number
-  backgroundColor: string
+  backgroundColor: string | null
   contentJson: string
 }
 
@@ -129,55 +164,4 @@ export type SaveEditorRequest = {
   slug: string
   type: LandingPageType
   sections: SaveEditorSectionRequest[]
-}
-
-// Content types per section
-export type HeroContent = {
-  heading: string
-  subheading: string
-  ctaText: string
-  imageUrl: string | null
-}
-
-export type FeaturesContent = {
-  heading: string
-  items: { title: string; description: string }[]
-}
-
-export type ProductDetailsContent = {
-  heading: string
-  description: string
-  showPrice: boolean
-  bullets: string[]
-  imageUrl: string | null
-}
-
-export type CtaContent = {
-  heading: string
-  subheading: string
-  buttonText: string
-}
-
-export type NavbarContent = {
-  brandName: string
-  links: { label: string; href: string }[]
-}
-
-export type FooterContent = {
-  copyright: string
-}
-
-export type TestimonialsContent = {
-  heading: string
-  items: { quote: string; author: string; role: string }[]
-}
-
-export type FaqContent = {
-  heading: string
-  items: { question: string; answer: string }[]
-}
-
-export type GalleryContent = {
-  heading: string
-  imageUrls: string[]
 }

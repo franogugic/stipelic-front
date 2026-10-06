@@ -1,1241 +1,593 @@
 import {
-  DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors,
-} from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
-import {
-  SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import {
-  AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Globe, GripVertical, HelpCircle, Images, Loader2, Lock,
-  MessageSquareQuote, Package, PanelLeftClose, PanelLeftOpen, Plus, Trash2, Type, Wrench, X, Zap,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Layers,
+  LoaderCircle,
+  Lock,
+  Monitor,
+  Pencil,
+  Rocket,
+  Save,
+  Smartphone,
+  X,
 } from 'lucide-react'
-import type { CSSProperties } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import type { LucideIcon } from 'lucide-react'
+import { useCallback, useEffect, useId, useLayoutEffect, useReducer, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ImageUploadField } from '../../../shared/ui/ImageUploadField'
+import { ApiError } from '../../../shared/api/http-client'
+import { AppShell } from '../../../shared/ui/AppShell'
+import { time } from '../../../shared/lib/format'
+import { Button, ErrorState, PageHeader, SkeletonBlock, UrlPill, useToast } from '../../../shared/ui/ledger'
+import { useCreatorStore } from '../../creators/model/creator-store'
+import { listProducts } from '../../products/api/products-api'
+import { getLandingPage, getSectionTemplates, publishLandingPage, saveEditor, unpublishLandingPage } from '../api/landing-pages-api'
+import { LandingDropMarker, LandingSection, LandingShell } from '../components/LandingSections'
+import type { LandingContext, RenderedSection } from '../components/LandingSections'
+import {
+  DeleteSectionDialog,
+  LeaveModal,
+  PublishBlockedModal,
+  PublishedModal,
+  SectionPickerModal,
+  UnpublishDialog,
+} from '../components/editor/EditorDialogs'
+import type { PublishBlock } from '../components/editor/EditorDialogs'
+import { NothingSelected, SectionForm } from '../components/editor/SectionForm'
+import type { EditorPageContext } from '../components/editor/SectionForm'
+import { SectionsCard } from '../components/editor/SectionsCard'
+import { useLeaveGuard } from '../lib/use-leave-guard'
+import { draftReducer, emptyDraft, hasUnsavedLinkTargets, toSaveRequest } from '../model/editor-draft'
+import type { Draft, DraftSection } from '../model/editor-draft'
 import { useLandingPageStore } from '../model/landing-page-store'
-import type {
-  CtaContent, FaqContent, FeaturesContent, FooterContent, GalleryContent, HeroContent,
-  LandingPageSection, LandingPageType, LandingPageWithSections,
-  NavbarContent, ProductDetailsContent,
-  SaveEditorRequest, SaveEditorSectionRequest,
-  SectionTemplate, SectionType, TestimonialsContent,
-} from '../model/types'
+import { DEFAULT_BRAND_COLOR, kindOf } from '../model/section-library'
+import type { LandingPageWithSections, ProductType, SectionTemplate } from '../model/types'
 
-type DraftSection = LandingPageSection & { isNew?: boolean }
+type Load =
+  | { status: 'loading' }
+  | { status: 'error'; notFound: boolean }
+  | { status: 'ready'; page: LandingPageWithSections; templates: SectionTemplate[] }
 
-const SECTION_LABELS: Record<SectionType, string> = {
-  Navbar: 'Navbar',
-  Hero: 'Hero',
-  Features: 'Features',
-  ProductDetails: 'Product details',
-  Cta: 'Call to action',
-  Footer: 'Footer',
-  Testimonials: 'Testimonials',
-  Faq: 'FAQ',
-  Gallery: 'Gallery',
+type Device = 'desktop' | 'mobile'
+type Panel = 'sections' | 'edit' | 'preview'
+
+/** A radio group of icon + label options (the prototype's `.segmented` with icons). */
+function IconSegmented<T extends string>({
+  label,
+  name,
+  className,
+  options,
+  value,
+  onChange,
+}: {
+  label: string
+  name: string
+  className: string
+  options: Array<{ value: T; label: string; icon: LucideIcon }>
+  value: T
+  onChange: (value: T) => void
+}) {
+  return (
+    <div className={`segmented ${className}`} role="radiogroup" aria-label={label}>
+      {options.map((option) => {
+        const Icon = option.icon
+        return (
+          <label className="segmented__option" key={option.value}>
+            <input type="radio" name={name} value={option.value} checked={option.value === value} onChange={() => onChange(option.value)} />
+            <span className="segmented__label">
+              <Icon />
+              {option.label}
+            </span>
+          </label>
+        )
+      })}
+    </div>
+  )
 }
 
-const LOCKED_TYPES: SectionType[] = ['Navbar', 'Footer']
-const REQUIRED_TYPES: SectionType[] = ['Hero', 'Cta']
+function SaveStatus({ saving, dirty, savedAt }: { saving: boolean; dirty: boolean; savedAt: string | null }) {
+  if (saving) {
+    return (
+      <span className="save-status save-status--saving" role="status">
+        <LoaderCircle />
+        Saving…
+      </span>
+    )
+  }
+  if (dirty) {
+    return (
+      <span className="save-status save-status--unsaved" role="status">
+        <span className="save-status__dot" />
+        Unsaved changes
+      </span>
+    )
+  }
+  return (
+    <span className="save-status save-status--saved" role="status">
+      <Check />
+      {savedAt ? `Saved at ${time(savedAt)}` : 'Saved'}
+    </span>
+  )
+}
+
+const publishBlockOf = (error: unknown): PublishBlock | null => {
+  if (!(error instanceof ApiError) || error.status !== 409) return null
+  if (error.code === 'SUBSCRIPTION_INACTIVE' || error.code === 'PAYOUTS_NOT_READY') return { code: error.code }
+  if (error.code === 'PLAN_LIMIT_REACHED') {
+    const details = (error.details ?? {}) as { used?: number; limit?: number }
+    return { code: 'PLAN_LIMIT_REACHED', used: details.used ?? 0, limit: details.limit ?? 0 }
+  }
+  return null
+}
+
+const titleWithEmphasis = (title: string) => {
+  const words = title.trim().split(/\s+/)
+  if (words.length < 2) return <em>{title}</em>
+  return (
+    <>
+      {words.slice(0, -1).join(' ')} <em>{words[words.length - 1]}</em>
+    </>
+  )
+}
 
 export function LandingPageEditorPage() {
+  const { slug = '' } = useParams<{ slug: string }>()
+  return (
+    <AppShell slug={slug} activeSection="landing-pages" documentTitle="Editor · Luma">
+      <EditorContent />
+    </AppShell>
+  )
+}
+
+function EditorContent() {
+  const { slug = '', pageId = '' } = useParams<{ slug: string; pageId: string }>()
   const navigate = useNavigate()
-  const { slug, pageId } = useParams<{ slug: string; pageId: string }>()
+  const toast = useToast()
+  const deviceName = useId()
 
-  const currentPage = useLandingPageStore((s) => s.currentPage)
-  const pageStatus = useLandingPageStore((s) => s.pageStatus)
-  const pageError = useLandingPageStore((s) => s.pageError)
-  const mutateStatus = useLandingPageStore((s) => s.mutateStatus)
-  const mutateError = useLandingPageStore((s) => s.mutateError)
-  const mutateErrorStatus = useLandingPageStore((s) => s.mutateErrorStatus)
-  const templates = useLandingPageStore((s) => s.templates)
-  const loadPage = useLandingPageStore((s) => s.loadPage)
-  const loadTemplates = useLandingPageStore((s) => s.loadTemplates)
-  const publishPage = useLandingPageStore((s) => s.publishPage)
-  const unpublishPage = useLandingPageStore((s) => s.unpublishPage)
-  const archivePage = useLandingPageStore((s) => s.archivePage)
-  const saveEditorFn = useLandingPageStore((s) => s.saveEditor)
-  const resetMutateFeedback = useLandingPageStore((s) => s.resetMutateFeedback)
+  const currentCreator = useCreatorStore((s) => s.currentCreator)
+  const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
+  const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
+  const creatorSettings = useCreatorStore((s) => s.creatorSettings)
+  const loadCreatorSettings = useCreatorStore((s) => s.loadCreatorSettings)
+  const creator = currentCreator?.slug === slug ? currentCreator : null
+  const settings = creatorSettings?.slug === slug ? creatorSettings : null
 
-  const [draftTitle, setDraftTitle] = useState('')
-  const [draftSlug, setDraftSlug] = useState('')
-  const [draftType, setDraftType] = useState<LandingPageType>('LeadGen')
-  const [draftSections, setDraftSections] = useState<DraftSection[]>([])
-  const [isDirty, setIsDirty] = useState(false)
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
-  const [sidebarMode, setSidebarMode] = useState<'page' | 'section'>('page')
-  const [syncedPage, setSyncedPage] = useState<LandingPageWithSections | null>(null)
-
-  // Re-seed the drafts whenever the store hands us a new page object (initial load, save —
-  // which swaps temp section ids for server-issued ones — publish/unpublish). Guarded setState
-  // during render instead of an effect, per react.dev "storing information from previous renders".
-  if (currentPage !== syncedPage) {
-    setSyncedPage(currentPage)
-    if (currentPage) {
-      setDraftTitle(currentPage.title)
-      setDraftSlug(currentPage.slug)
-      setDraftType(currentPage.type)
-      setDraftSections(currentPage.sections.map((s) => ({ ...s })))
-      setIsDirty(false)
-    }
-  }
-
-  const isLoading = pageStatus === 'idle' || pageStatus === 'loading'
-  const isSaving = mutateStatus === 'submitting'
-
-  const missingRequired = REQUIRED_TYPES.filter(
-    (t) => !draftSections.some((s) => s.type === t)
-  )
-
+  const [load, setLoad] = useState<Load>({ status: 'loading' })
+  const [productType, setProductType] = useState<ProductType | null>(null)
+  const [draft, dispatch] = useReducer(draftReducer, emptyDraft)
+  const draftRef = useRef<Draft>(draft)
   useEffect(() => {
-    if (slug && pageId) {
-      void loadPage(slug, pageId)
-      void loadTemplates(slug)
-    }
-  }, [slug, pageId, loadPage, loadTemplates])
-
-  const selectedSection = draftSections.find((s) => s.publicId === selectedSectionId) ?? null
-  const markDirty = () => setIsDirty(true)
-
-  const updateSectionContent = (id: string, contentJson: string) => {
-    setDraftSections((prev) => prev.map((s) => s.publicId === id ? { ...s, contentJson } : s))
-    markDirty()
-  }
-
-  const updateSectionColor = (id: string, color: string) => {
-    setDraftSections((prev) => prev.map((s) => s.publicId === id ? { ...s, backgroundColor: color } : s))
-    markDirty()
-  }
-
-  const handleAddSection = (template: SectionTemplate) => {
-    const tempId = `new-${crypto.randomUUID()}`
-    const type = template.type as SectionType
-    const newSection: DraftSection = {
-      publicId: tempId,
-      type,
-      sortOrder: 0,
-      backgroundColor: template.defaultBackgroundColor,
-      contentJson: template.contentJson,
-      isLocked: LOCKED_TYPES.includes(type),
-      isNew: true,
-    }
-
-    setDraftSections((prev) => {
-      const next = [...prev]
-
-      let insertIndex: number
-      if (type === 'Hero') {
-        // After Navbar
-        const navbarIdx = next.findIndex((s) => s.type === 'Navbar')
-        insertIndex = navbarIdx >= 0 ? navbarIdx + 1 : 1
-      } else if (type === 'Cta') {
-        // Before Footer
-        const footerIdx = next.findIndex((s) => s.type === 'Footer')
-        insertIndex = footerIdx >= 0 ? footerIdx : next.length - 1
-      } else {
-        // Before CTA if exists, else before Footer
-        const ctaIdx = next.findIndex((s) => s.type === 'Cta')
-        const footerIdx = next.findIndex((s) => s.type === 'Footer')
-        insertIndex = ctaIdx >= 0 ? ctaIdx : footerIdx >= 0 ? footerIdx : next.length - 1
-      }
-
-      next.splice(insertIndex, 0, newSection)
-      return next.map((s, i) => ({ ...s, sortOrder: i }))
-    })
-
-    setSelectedSectionId(tempId)
-    setSidebarMode('section')
-    markDirty()
-  }
-
-  const handleDeleteSection = (id: string) => {
-    setDraftSections((prev) =>
-      prev.filter((s) => s.publicId !== id).map((s, i) => ({ ...s, sortOrder: i }))
-    )
-    if (selectedSectionId === id) { setSelectedSectionId(null); setSidebarMode('page') }
-    markDirty()
-  }
-
-  const handleSave = async () => {
-    if (!slug || !pageId) return
-    const request: SaveEditorRequest = {
-      title: draftTitle,
-      slug: draftSlug,
-      type: draftType,
-      sections: draftSections.map((s, i): SaveEditorSectionRequest => ({
-        publicId: s.isNew ? null : s.publicId,
-        type: s.type,
-        sortOrder: i,
-        backgroundColor: s.backgroundColor,
-        contentJson: s.contentJson,
-      })),
-    }
-    const result = await saveEditorFn(slug, pageId, request)
-    if (result) { setIsDirty(false); resetMutateFeedback() }
-  }
-
-  const handlePublishToggle = async () => {
-    if (!slug || !pageId || !currentPage) return
-    if (currentPage.status === 'Published') await unpublishPage(slug, pageId)
-    else await publishPage(slug, pageId)
-  }
-
-  const handleArchive = async () => {
-    if (!slug || !pageId) return
-    const ok = await archivePage(slug, pageId)
-    if (ok) navigate(`/app/${slug}/landing-pages`)
-  }
-
-  const [isPanelOpen, setIsPanelOpen] = useState(true)
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = draftSections.findIndex((s) => s.publicId === active.id)
-    const newIndex = draftSections.findIndex((s) => s.publicId === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
-
-    // Locked sections (Navbar/Footer) must never change position. Rather than hardcoding
-    // "index 0 and last", derive the allowed range from where locked sections actually sit
-    // in the array right now, and reject any drop whose result would move one.
-    const lockedIndexesOf = (sections: DraftSection[]) =>
-      sections
-        .map((s, i) => (LOCKED_TYPES.includes(s.type as SectionType) ? i : -1))
-        .filter((i) => i !== -1)
-
-    const lockedBefore = lockedIndexesOf(draftSections)
-    const reordered = arrayMove(draftSections, oldIndex, newIndex)
-    const lockedAfter = lockedIndexesOf(reordered)
-
-    const preservesLockedPositions =
-      lockedBefore.length === lockedAfter.length &&
-      lockedBefore.every((idx, i) => idx === lockedAfter[i])
-
-    if (!preservesLockedPositions) return
-
-    setDraftSections(reordered.map((s, i) => ({ ...s, sortOrder: i })))
-    markDirty()
-  }
-
-  // Templates to show in left panel — exclude locked, show missing required prominently
-  const addableTemplates = templates.filter(
-    (t) => !LOCKED_TYPES.includes(t.type as SectionType)
-  )
-
-  return (
-    <div className="flex h-screen flex-col overflow-hidden bg-neutral-950 text-white light:bg-neutral-100 light:text-neutral-950">
-      {/* Top bar */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-neutral-950 px-5 z-10 light:border-neutral-200 light:bg-white">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-3 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:text-neutral-600 light:hover:bg-neutral-50"
-            onClick={() => navigate(`/app/${slug ?? ''}/landing-pages`)}
-          >
-            <ChevronLeft size={15} />
-            Back
-          </button>
-          <span className="text-sm font-medium text-white truncate max-w-[180px] light:text-neutral-950">{draftTitle || '…'}</span>
-          {isDirty ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300 light:bg-amber-100 light:text-amber-700">Unsaved</span> : null}
-          {missingRequired.length > 0 ? (
-            <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-300 light:bg-red-100 light:text-red-700">
-              Missing: {missingRequired.join(', ')}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-2">
-          {mutateError && mutateErrorStatus !== 409 ? (
-            <p className="text-xs text-red-400 light:text-red-600">{mutateError}</p>
-          ) : null}
-          {currentPage?.status === 'Published' ? (
-            <a
-              href={`/p/${slug}/${currentPage.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="View live"
-              className="inline-flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white light:border-neutral-200 light:bg-white light:text-neutral-500 light:hover:bg-neutral-50 light:hover:text-neutral-800"
-            >
-              <Globe size={15} />
-            </a>
-          ) : (
-            <span
-              title="Publish the page to view it live"
-              className="inline-flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/25 cursor-not-allowed light:border-neutral-200 light:bg-white light:text-neutral-300"
-            >
-              <Globe size={15} />
-            </span>
-          )}
-          <button
-            type="button"
-            disabled={isSaving || !currentPage}
-            className="inline-flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-white/70 transition hover:bg-white/10 light:border-neutral-200 light:bg-white light:text-neutral-700 light:hover:bg-neutral-50 disabled:opacity-40"
-            onClick={() => void handlePublishToggle()}
-          >
-            {currentPage?.status === 'Published' ? 'Unpublish' : 'Publish'}
-          </button>
-          <button
-            type="button"
-            disabled={isSaving || !isDirty || missingRequired.length > 0}
-            title={missingRequired.length > 0 ? `Add missing sections: ${missingRequired.join(', ')}` : undefined}
-            className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40"
-            onClick={() => void handleSave()}
-          >
-            {isSaving ? <Loader2 className="animate-spin" size={15} /> : null}
-            Save
-          </button>
-        </div>
-      </header>
-
-      {mutateErrorStatus === 409 && mutateError ? (
-        <div className="flex items-center gap-3 border-b border-amber-500/25 bg-amber-500/10 px-5 py-3 light:border-amber-200 light:bg-amber-50">
-          <AlertTriangle size={16} className="shrink-0 text-amber-400 light:text-amber-600" />
-          <p className="flex-1 text-sm text-amber-200 light:text-amber-800">{mutateError}</p>
-          {/* The 409 can mean either "payout setup incomplete" (→ Settings) or "subscription
-              payment incomplete" (→ workspace, where the "complete payment" action lives) — the
-              backend error code is the same (CONFLICT) for both, so route off the message text. */}
-          {isSubscriptionPaymentError(mutateError) ? (
-            <button
-              type="button"
-              className="shrink-0 text-sm font-semibold text-amber-300 underline transition hover:text-amber-100 light:text-amber-700 light:hover:text-amber-900"
-              onClick={() => navigate(`/app/${slug ?? ''}`)}
-            >
-              Go to workspace
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="shrink-0 text-sm font-semibold text-amber-300 underline transition hover:text-amber-100 light:text-amber-700 light:hover:text-amber-900"
-              onClick={() => navigate(`/app/${slug ?? ''}/settings`)}
-            >
-              Complete payout setup
-            </button>
-          )}
-        </div>
-      ) : null}
-
-      {isLoading ? (
-        <div className="flex flex-1 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-          <Loader2 className="animate-spin" size={17} />
-          Loading editor…
-        </div>
-      ) : pageError ? (
-        <div className="m-8 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 light:border-red-200 light:bg-red-50">
-          <p className="text-sm text-red-300 light:text-red-700">{pageError}</p>
-        </div>
-      ) : (
-        <div className="flex flex-1 overflow-hidden">
-
-          {/* Left: Templates panel */}
-          <SectionsPanel
-            isOpen={isPanelOpen}
-            templates={addableTemplates}
-            missingRequired={missingRequired}
-            draftSections={draftSections}
-            onToggle={() => setIsPanelOpen((v) => !v)}
-            onAdd={handleAddSection}
-          />
-
-          {/* Center: Preview */}
-          <div className="flex flex-1 flex-col overflow-y-auto">
-            <div className="mx-auto w-full max-w-3xl py-6 px-4">
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext
-                  items={draftSections.map((s) => s.publicId)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {draftSections.map((section) => {
-                    const isSelected = selectedSectionId === section.publicId
-                    const isLocked = LOCKED_TYPES.includes(section.type as SectionType)
-
-                    return (
-                      <SortableSection
-                        key={section.publicId}
-                        section={section}
-                        isSelected={isSelected}
-                        isLocked={isLocked}
-                        pageType={draftType}
-                        onSelect={() => { setSelectedSectionId(section.publicId); setSidebarMode('section') }}
-                        onDelete={() => handleDeleteSection(section.publicId)}
-                      />
-                    )
-                  })}
-                </SortableContext>
-              </DndContext>
-            </div>
-          </div>
-
-          {/* Right: Settings sidebar */}
-          <aside className="flex w-72 shrink-0 flex-col border-l border-white/10 bg-neutral-950 overflow-y-auto light:border-neutral-200 light:bg-white">
-            <div className="flex border-b border-white/10 light:border-neutral-200">
-              <button
-                type="button"
-                className={`flex flex-1 items-center justify-center gap-2 py-3 text-xs font-semibold uppercase tracking-wide transition ${sidebarMode === 'page' ? 'border-b-2 border-accent text-white light:border-neutral-950 light:text-neutral-950' : 'text-white/40 hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-600'}`}
-                onClick={() => setSidebarMode('page')}
-              >
-                Page
-              </button>
-              <button
-                type="button"
-                className={`flex flex-1 items-center justify-center gap-2 py-3 text-xs font-semibold uppercase tracking-wide transition ${sidebarMode === 'section' ? 'border-b-2 border-accent text-white light:border-neutral-950 light:text-neutral-950' : 'text-white/40 hover:text-white/70 light:text-neutral-400 light:hover:text-neutral-600'}`}
-                onClick={() => { if (selectedSection) setSidebarMode('section') }}
-              >
-                Section
-              </button>
-            </div>
-
-            <div className="flex-1 p-5">
-              {sidebarMode === 'page' ? (
-                <PageSettingsSidebar
-                  title={draftTitle}
-                  slug={draftSlug}
-                  type={draftType}
-                  isArchiving={isSaving}
-                  onTitleChange={(v) => { setDraftTitle(v); markDirty() }}
-                  onSlugChange={(v) => { setDraftSlug(v); markDirty() }}
-                  onTypeChange={(v) => { setDraftType(v); markDirty() }}
-                  onArchive={() => void handleArchive()}
-                />
-              ) : selectedSection ? (
-                <SectionSettingsSidebar
-                  key={selectedSection.publicId}
-                  slug={slug ?? ''}
-                  section={selectedSection}
-                  onContentChange={(json) => updateSectionContent(selectedSection.publicId, json)}
-                  onColorChange={(color) => updateSectionColor(selectedSection.publicId, color)}
-                />
-              ) : (
-                <p className="text-sm text-white/40 light:text-neutral-400">Click a section to edit it.</p>
-              )}
-            </div>
-          </aside>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* ─── SectionsPanel ───────────────────────────────────────────── */
-
-const ADDABLE_TYPES: SectionType[] = ['Hero', 'Features', 'ProductDetails', 'Cta', 'Testimonials', 'Faq', 'Gallery']
-
-function SectionsPanel({
-  isOpen, templates, missingRequired, draftSections, onToggle, onAdd,
-}: {
-  isOpen: boolean
-  templates: SectionTemplate[]
-  missingRequired: SectionType[]
-  draftSections: DraftSection[]
-  onToggle: () => void
-  onAdd: (template: SectionTemplate) => void
-}) {
-  const [expandedType, setExpandedType] = useState<SectionType | null>('Hero')
-  const [hoverTemplate, setHoverTemplate] = useState<SectionTemplate | null>(null)
-  const [hoverPos, setHoverPos] = useState<{ top: number }>({ top: 0 })
-
-  return (
-    <aside
-      className={`relative flex shrink-0 flex-col border-r border-white/10 bg-neutral-950 transition-all duration-200 light:border-neutral-200 light:bg-white ${isOpen ? 'w-72' : 'w-10'}`}
-    >
-      {/* Toggle button */}
-      <button
-        type="button"
-        title={isOpen ? 'Hide panel' : 'Show sections'}
-        className="absolute -right-3.5 top-4 z-20 grid size-7 place-items-center rounded-full border border-white/10 bg-neutral-900 text-white/60 shadow-sm transition hover:bg-neutral-800 hover:text-white light:border-neutral-200 light:bg-white light:text-neutral-500 light:hover:bg-neutral-50 light:hover:text-neutral-800"
-        onClick={onToggle}
-      >
-        {isOpen ? <PanelLeftClose size={13} /> : <PanelLeftOpen size={13} />}
-      </button>
-
-      {isOpen ? (
-        <>
-          <div className="border-b border-white/10 px-4 py-3 light:border-neutral-100">
-            <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Add section</p>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {ADDABLE_TYPES.map((type) => {
-              const typeTemplates = templates.filter((t) => t.type === type)
-              if (typeTemplates.length === 0) return null
-
-              const isMissing = REQUIRED_TYPES.includes(type) && missingRequired.includes(type)
-              const alreadyExists = REQUIRED_TYPES.includes(type) && draftSections.some((s) => s.type === type)
-              const isExpanded = expandedType === type
-
-              return (
-                <div key={type} className="border-b border-white/10 last:border-0 light:border-neutral-100">
-                  {/* Accordion header */}
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-white/5 light:hover:bg-neutral-50"
-                    onClick={() => setExpandedType(isExpanded ? null : type)}
-                  >
-                    <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${isMissing ? 'bg-red-500/15 text-red-400 light:bg-red-50 light:text-red-500' : alreadyExists ? 'bg-emerald-500/15 text-emerald-400 light:bg-emerald-50 light:text-emerald-600' : 'bg-white/10 text-white/60 light:bg-neutral-100 light:text-neutral-500'}`}>
-                      <SectionIcon type={type} size={15} />
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold ${isMissing ? 'text-red-400 light:text-red-600' : 'text-white light:text-neutral-950'}`}>
-                        {SECTION_LABELS[type]}
-                      </p>
-                      <p className="text-xs text-white/40 light:text-neutral-400">
-                        {isMissing ? 'Required — add one' : alreadyExists ? 'Already added' : `${typeTemplates.length} template${typeTemplates.length !== 1 ? 's' : ''}`}
-                      </p>
-                    </div>
-                    <ChevronRight size={14} className={`shrink-0 text-white/40 transition-transform light:text-neutral-400 ${isExpanded ? 'rotate-90' : ''}`} />
-                  </button>
-
-                  {/* Template list */}
-                  {isExpanded ? (
-                    <div className="px-3 pb-3 grid gap-1.5">
-                      {typeTemplates.map((template) => (
-                        <div
-                          key={template.key}
-                          className="relative"
-                          onMouseEnter={(e) => {
-                            setHoverTemplate(template)
-                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                            setHoverPos({ top: rect.top })
-                          }}
-                          onMouseLeave={() => setHoverTemplate(null)}
-                        >
-                          <button
-                            type="button"
-                            disabled={alreadyExists && REQUIRED_TYPES.includes(type)}
-                            onClick={() => onAdd(template)}
-                            className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left transition hover:border-white/25 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 light:border-neutral-200 light:bg-white light:hover:border-neutral-400 light:hover:bg-neutral-50"
-                          >
-                            <span className="size-4 shrink-0 rounded border border-white/15 light:border-neutral-200" style={{ backgroundColor: template.defaultBackgroundColor }} />
-                            <span className="flex-1 text-sm font-medium text-white/80 light:text-neutral-800">{template.name}</span>
-                            <span className="text-xs font-semibold text-white/40 light:text-neutral-400">+</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Hover preview — floats to the right of the panel */}
-          {hoverTemplate ? (
-            <div
-              className="fixed z-50 w-72 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-2xl pointer-events-none light:border-neutral-200 light:bg-white"
-              style={{ left: 288, top: Math.min(hoverPos.top, window.innerHeight - 300) }}
-            >
-              <div className="border-b border-white/10 px-4 py-2.5 light:border-neutral-100">
-                <p className="text-xs font-semibold text-white/60 light:text-neutral-500">{SECTION_LABELS[hoverTemplate.type as SectionType]} — {hoverTemplate.name}</p>
-              </div>
-              <div
-                className="overflow-hidden"
-                style={{ backgroundColor: hoverTemplate.defaultBackgroundColor, transform: 'scale(0.6)', transformOrigin: 'top left', width: '166.67%', height: 'auto' }}
-              >
-                <MiniSectionPreview template={hoverTemplate} />
-              </div>
-            </div>
-          ) : null}
-        </>
-      ) : null}
-    </aside>
-  )
-}
-
-/* ─── MiniSectionPreview ──────────────────────────────────────── */
-
-function MiniSectionPreview({ template }: { template: SectionTemplate }) {
-  const content = parseJson(template.contentJson)
-
-  switch (template.type as SectionType) {
-    case 'Navbar': {
-      const c = content as Partial<NavbarContent>
-      return (
-        <div className="flex items-center justify-between px-6 py-5" style={{ backgroundColor: template.defaultBackgroundColor }}>
-          <p className="text-base font-bold text-neutral-950">{c.brandName || 'My Brand'}</p>
-        </div>
-      )
-    }
-    case 'Hero': {
-      const c = content as Partial<HeroContent>
-      return (
-        <div className="px-8 py-10 text-center" style={{ backgroundColor: template.defaultBackgroundColor }}>
-          <p className={`text-2xl font-bold ${template.defaultBackgroundColor === '#111827' ? 'text-white' : 'text-neutral-950'}`}>{c.heading}</p>
-          {c.subheading ? <p className={`mt-2 text-sm ${template.defaultBackgroundColor === '#111827' ? 'text-white/60' : 'text-neutral-500'}`}>{c.subheading}</p> : null}
-          <div className="mt-4 inline-block rounded-lg bg-neutral-950 px-5 py-2 text-sm font-semibold text-white">{c.ctaText || 'Get started'}</div>
-        </div>
-      )
-    }
-    case 'Features': {
-      const c = content as Partial<FeaturesContent>
-      const items = (c.items ?? []).slice(0, 3)
-      return (
-        <div className="px-6 py-8" style={{ backgroundColor: template.defaultBackgroundColor }}>
-          {c.heading ? <p className="mb-4 text-center text-lg font-bold text-neutral-950">{c.heading}</p> : null}
-          <div className="grid grid-cols-3 gap-3">
-            {items.map((item, i) => (
-              <div key={i} className="rounded-lg border border-neutral-200 bg-white p-3">
-                <p className="text-xs font-semibold text-neutral-950">{item.title}</p>
-                <p className="mt-0.5 text-xs text-neutral-400 line-clamp-2">{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-    case 'ProductDetails': {
-      const c = content as Partial<ProductDetailsContent>
-      return (
-        <div className="px-6 py-8" style={{ backgroundColor: template.defaultBackgroundColor }}>
-          {c.heading ? <p className="text-lg font-bold text-neutral-950">{c.heading}</p> : null}
-          {c.description ? <p className="mt-2 text-sm text-neutral-500 line-clamp-2">{c.description}</p> : null}
-          {c.showPrice ? <p className="mt-3 text-xl font-bold text-neutral-950">€ —</p> : null}
-        </div>
-      )
-    }
-    case 'Testimonials': {
-      const c = content as Partial<TestimonialsContent>
-      const items = (c.items ?? []).slice(0, 2)
-      return (
-        <div className="px-6 py-8" style={{ backgroundColor: template.defaultBackgroundColor }}>
-          {c.heading ? <p className="mb-4 text-center text-lg font-bold text-neutral-950">{c.heading}</p> : null}
-          <div className="grid grid-cols-2 gap-3">
-            {items.map((item, i) => (
-              <div key={i} className="rounded-lg border border-neutral-200 bg-white p-3">
-                <p className="text-xs italic text-neutral-600 line-clamp-2">"{item.quote}"</p>
-                <p className="mt-1 text-xs font-semibold text-neutral-950">{item.author}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-    case 'Faq': {
-      const c = content as Partial<FaqContent>
-      const items = (c.items ?? []).slice(0, 2)
-      return (
-        <div className="px-6 py-8" style={{ backgroundColor: template.defaultBackgroundColor }}>
-          {c.heading ? <p className="mb-4 text-center text-lg font-bold text-neutral-950">{c.heading}</p> : null}
-          <div className="grid gap-2">
-            {items.map((item, i) => (
-              <div key={i} className="rounded-lg border border-neutral-200 bg-white p-3">
-                <p className="text-xs font-semibold text-neutral-950">{item.question}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-    case 'Gallery': {
-      const c = content as Partial<GalleryContent>
-      return (
-        <div className="px-6 py-8" style={{ backgroundColor: template.defaultBackgroundColor }}>
-          {c.heading ? <p className="mb-4 text-center text-lg font-bold text-neutral-950">{c.heading}</p> : null}
-          <div className="grid grid-cols-3 gap-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="aspect-square rounded-lg border border-neutral-200 bg-neutral-100" />
-            ))}
-          </div>
-        </div>
-      )
-    }
-    case 'Cta': {
-      const c = content as Partial<CtaContent>
-      return (
-        <div className="px-6 py-10 text-center" style={{ backgroundColor: template.defaultBackgroundColor }}>
-          <p className={`text-xl font-bold ${template.defaultBackgroundColor === '#111827' ? 'text-white' : 'text-neutral-950'}`}>{c.heading}</p>
-          {c.subheading ? <p className={`mt-1 text-sm ${template.defaultBackgroundColor === '#111827' ? 'text-white/60' : 'text-neutral-500'}`}>{c.subheading}</p> : null}
-          <div className="mt-4 inline-block rounded-lg bg-neutral-950 px-5 py-2 text-sm font-semibold text-white">{c.buttonText || 'Get started'}</div>
-        </div>
-      )
-    }
-    case 'Footer': {
-      const c = content as Partial<FooterContent>
-      return (
-        <div className="px-6 py-5 text-center" style={{ backgroundColor: template.defaultBackgroundColor }}>
-          <p className="text-xs text-neutral-400">{c.copyright}</p>
-        </div>
-      )
-    }
-  }
-}
-
-/* ─── SortableSection ─────────────────────────────────────────── */
-
-function SortableSection({
-  section, isSelected, isLocked, pageType, onSelect, onDelete,
-}: {
-  section: DraftSection
-  isSelected: boolean
-  isLocked: boolean
-  pageType: LandingPageType
-  onSelect: () => void
-  onDelete: () => void
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: section.publicId,
-    disabled: isLocked,
+    draftRef.current = draft
   })
 
-  const style: CSSProperties = {
-    backgroundColor: section.backgroundColor,
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+  const [device, setDevice] = useState<Device>('desktop')
+  const [panel, setPanel] = useState<Panel>('edit')
+  const [saving, setSaving] = useState(false)
+  const [savedAt, setSavedAt] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState(false)
+  const [unpublishing, setUnpublishing] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<DraftSection | null>(null)
+  const [unpublishOpen, setUnpublishOpen] = useState(false)
+  const [publishBlock, setPublishBlock] = useState<PublishBlock | null>(null)
+  const [published, setPublished] = useState<{ wasLive: boolean } | null>(null)
+  const [leaveTo, setLeaveTo] = useState<string | null>(null)
+  const [dragTarget, setDragTarget] = useState<{ draggedKey: string; afterKey: string } | null>(null)
+
+  const page = load.status === 'ready' ? load.page : null
+  const templates = load.status === 'ready' ? load.templates : []
+
+  useEffect(() => {
+    if (currentCreatorStatus === 'idle') void loadCurrentCreator()
+  }, [currentCreatorStatus, loadCurrentCreator])
+
+  useEffect(() => {
+    if (slug) void loadCreatorSettings(slug)
+  }, [slug, loadCreatorSettings])
+
+  const loadPage = useCallback(async () => {
+    setLoad({ status: 'loading' })
+    try {
+      const [loaded, loadedTemplates] = await Promise.all([getLandingPage(slug, pageId), getSectionTemplates(slug)])
+      dispatch({ type: 'load', page: loaded })
+      setSavedAt(loaded.updatedAt)
+      setLoad({ status: 'ready', page: loaded, templates: loadedTemplates })
+    } catch (error) {
+      setLoad({ status: 'error', notFound: error instanceof ApiError && error.status === 404 })
+    }
+  }, [slug, pageId])
+
+  useEffect(() => {
+    // Reset and load whenever the address changes; the state updates happen after the request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadPage()
+  }, [loadPage])
+
+  // The product's type labels the "no image" stand-in (Digital download / Online course / Service).
+  const productPublicId = page?.productPublicId ?? null
+  useEffect(() => {
+    if (!productPublicId) return
+    let cancelled = false
+    listProducts(slug, true)
+      .then((products) => {
+        if (!cancelled) setProductType((products.find((product) => product.publicId === productPublicId)?.type as ProductType | undefined) ?? null)
+      })
+      .catch(() => {
+        // Only the stand-in's label depends on it.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [slug, productPublicId])
+
+  const listUrl = `/app/${slug}/landing-pages`
+  const leaveGuardActive = draft.dirty && !saving
+  useLeaveGuard(leaveGuardActive, (path) => setLeaveTo(path))
+
+  // Keep the landing pages list in step with what the editor changed.
+  const patchListedPage = (patch: Partial<Pick<LandingPageWithSections, 'title' | 'status'>>) =>
+    useLandingPageStore.setState((state) => ({
+      pages: state.pages.map((listed) => (listed.publicId === pageId ? { ...listed, ...patch } : listed)),
+    }))
+
+  /** Saves the draft; resolves false when it failed (a toast says why). */
+  const save = async (): Promise<boolean> => {
+    if (!page) return false
+    setSaving(true)
+    try {
+      let current = draftRef.current
+      // Twice at most: a navbar link to a section added in this save points at it by the id the save gives it.
+      for (let round = 0; round < 2; round += 1) {
+        const { request, keys } = toSaveRequest(page, current.sections)
+        const response = await saveEditor(slug, pageId, request)
+        const saved = { type: 'saved' as const, page: response, keys, revision: current.revision }
+        const linksNeededIds = hasUnsavedLinkTargets(current.sections)
+        current = draftReducer(draftRef.current, saved)
+        dispatch(saved)
+        setSavedAt(response.updatedAt)
+        setLoad((state) => (state.status === 'ready' ? { ...state, page: response } : state))
+        if (!linksNeededIds) break
+      }
+      return true
+    } catch (error) {
+      toast({
+        tone: 'danger',
+        title: 'Changes not saved',
+        message: error instanceof ApiError ? error.message : 'Check your connection and try again.',
+      })
+      return false
+    } finally {
+      setSaving(false)
+    }
   }
 
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`relative cursor-pointer rounded-xl mb-1 ${
-        isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-transparent hover:ring-white/30 light:hover:ring-neutral-300'
-      }`}
-      onClick={onSelect}
-    >
-      {/* Section label */}
-      <div className={`absolute left-2 top-2 flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium shadow-sm ${isLocked ? 'bg-neutral-900/80 text-white' : 'bg-white/80 text-neutral-600 backdrop-blur-sm'}`}>
-        {isLocked ? <Lock size={10} /> : null}
-        <SectionIcon type={section.type as SectionType} size={11} />
-        {SECTION_LABELS[section.type as SectionType]}
-      </div>
+  const onSave = async () => {
+    if (await save()) toast({ title: 'Changes saved' })
+  }
 
-      {/* Drag handle + delete button — only non-locked, selected sections */}
-      {!isLocked && isSelected ? (
-        <div className="absolute right-2 top-2 flex items-center gap-1.5">
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            title="Drag to reorder"
-            className="grid size-7 cursor-grab touch-none place-items-center rounded-lg bg-white/80 text-neutral-500 backdrop-blur-sm shadow-sm transition hover:bg-neutral-100 hover:text-neutral-800 active:cursor-grabbing"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GripVertical size={12} />
-          </button>
-          <button
-            type="button"
-            className="grid size-7 place-items-center rounded-lg bg-white/80 text-neutral-500 backdrop-blur-sm shadow-sm transition hover:bg-red-50 hover:text-red-600"
-            onClick={(e) => { e.stopPropagation(); onDelete() }}
-          >
-            <Trash2 size={12} />
-          </button>
-        </div>
-      ) : null}
-
-      <SectionPreview section={section} pageType={pageType} />
-    </div>
-  )
-}
-
-/* ─── SectionPreview ──────────────────────────────────────────── */
-
-function SectionPreview({ section, pageType }: { section: DraftSection; pageType: LandingPageType }) {
-  const content = parseJson(section.contentJson)
-
-  switch (section.type as SectionType) {
-    case 'Navbar': {
-      const c = content as Partial<NavbarContent>
-      return (
-        <div className="flex items-center justify-between px-8 py-4">
-          <p className="font-bold text-neutral-950">{c.brandName || 'My Brand'}</p>
-          {c.links && c.links.length > 0 ? (
-            <nav className="flex gap-5">
-              {c.links.map((link, i) => (
-                <span key={i} className="text-sm text-neutral-500">{link.label}</span>
-              ))}
-            </nav>
-          ) : null}
-        </div>
-      )
+  const onPublish = async () => {
+    if (!page) return
+    if (draftRef.current.dirty && !(await save())) return
+    const wasLive = page.status === 'Published'
+    setPublishing(true)
+    try {
+      await publishLandingPage(slug, pageId)
+      setLoad((state) => (state.status === 'ready' ? { ...state, page: { ...state.page, status: 'Published' } } : state))
+      patchListedPage({ status: 'Published' })
+      setPublished({ wasLive })
+    } catch (error) {
+      const block = publishBlockOf(error)
+      if (block) setPublishBlock(block)
+      else
+        toast({
+          tone: 'danger',
+          title: 'Page not published',
+          message: error instanceof ApiError ? error.message : 'Check your connection and try again.',
+        })
+    } finally {
+      setPublishing(false)
     }
-    case 'Hero': {
-      const c = content as Partial<HeroContent>
-      return (
-        <div className="px-8 py-16 text-center">
-          {c.imageUrl ? (
-            <img src={c.imageUrl} alt="" className="mx-auto mb-6 max-h-64 w-full max-w-xl rounded-2xl object-cover" />
-          ) : null}
-          <h1 className="text-3xl font-bold text-neutral-950">{c.heading || 'Heading'}</h1>
-          {c.subheading ? <p className="mt-3 text-lg text-neutral-600">{c.subheading}</p> : null}
-          <div className="mt-6 flex flex-col items-center gap-3">
-            {pageType === 'Sales' ? (
-              <div className="flex w-full max-w-sm flex-col items-center gap-2">
-                <input type="email" placeholder="Your email address" readOnly className="w-full rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-400 bg-white" />
-                <button type="button" disabled className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white opacity-40">
-                  Buy now
-                </button>
-                <p className="text-xs text-neutral-400">This is the email address that will receive your product.</p>
-              </div>
-            ) : (
-              <div className="flex max-w-sm w-full gap-2">
-                <input type="email" placeholder="Your email" readOnly className="flex-1 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-400 bg-white" />
-                <button type="button" className="inline-flex h-10 items-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white">
-                  {c.ctaText || 'Get started'}
-                </button>
-              </div>
+  }
+
+  const onUnpublish = async () => {
+    setUnpublishing(true)
+    try {
+      await unpublishLandingPage(slug, pageId)
+      setLoad((state) => (state.status === 'ready' ? { ...state, page: { ...state.page, status: 'Draft' } } : state))
+      patchListedPage({ status: 'Draft' })
+      setUnpublishOpen(false)
+      toast({ title: 'Page unpublished' })
+    } catch (error) {
+      toast({
+        tone: 'danger',
+        title: 'Page not unpublished',
+        message: error instanceof ApiError ? error.message : 'Check your connection and try again.',
+      })
+    } finally {
+      setUnpublishing(false)
+    }
+  }
+
+  const requestLeave = () => {
+    if (draft.dirty) setLeaveTo(listUrl)
+    else navigate(listUrl)
+  }
+
+  const addSection = (template: SectionTemplate) => {
+    setPickerOpen(false)
+    dispatch({ type: 'add', template })
+    setPanel('edit')
+    toast({ title: `${kindOf(template.type).name} added`, message: `${template.name} layout, below the selected section.` })
+  }
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return
+    dispatch({ type: 'delete', key: deleteTarget.key })
+    setDeleteTarget(null)
+    toast({ title: 'Section deleted', message: 'Save to make it permanent.' })
+  }
+
+  // Bring the selected section into view inside the preview frame.
+  const frameRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const frame = frameRef.current
+    const selected = frame?.querySelector<HTMLElement>('.lp-sec.is-selected')
+    if (!frame || !selected) return
+    frame.scrollTop += selected.getBoundingClientRect().top - frame.getBoundingClientRect().top - 12
+  }, [draft.selectedKey, device])
+
+  const onDragTarget = useCallback((target: { draggedKey: string; afterKey: string } | null) => setDragTarget(target), [])
+
+  if (load.status === 'loading') {
+    return (
+      <div className="stack stack--lg">
+        <SkeletonBlock />
+      </div>
+    )
+  }
+  if (load.status === 'error' || !page) {
+    return load.status === 'error' && load.notFound ? (
+      <ErrorState
+        title="Page not found"
+        text="This landing page doesn’t exist or isn’t part of your workspace."
+        action={{ label: 'Back to landing pages', icon: ArrowLeft, to: listUrl }}
+      />
+    ) : (
+      <ErrorState onRetry={() => void loadPage()} />
+    )
+  }
+
+  const publicPath = `/p/${slug}/${page.slug}`
+  const publicUrl = `${window.location.host}${publicPath}`
+  const live = page.status === 'Published'
+  const currency = creator?.defaultCurrency ?? 'EUR'
+  const product =
+    page.productName !== null
+      ? { publicId: page.productPublicId, name: page.productName, priceCents: page.productPriceCents ?? 0, currency }
+      : null
+  const brandName = settings?.brandName || creator?.name || ''
+  const brandColor = settings?.primaryColor || DEFAULT_BRAND_COLOR
+
+  const selected = draft.sections.find((section) => section.key === draft.selectedKey) ?? null
+  const formContext: EditorPageContext = {
+    slug,
+    pageType: page.type,
+    product,
+    hasLogo: Boolean(settings?.logoUrl),
+    sections: draft.sections,
+    templates,
+  }
+
+  const previewContext: LandingContext = {
+    pageType: page.type,
+    product: product ? { name: product.name, priceCents: product.priceCents, currency, type: productType } : null,
+    brand: { name: brandName, color: brandColor, logoUrl: settings?.logoUrl || null },
+    selectedKey: draft.selectedKey,
+    renderAction: (label, options) =>
+      page.type === 'Sales' ? <PreviewBuyButton label={label} inverted={options?.inverted} /> : <PreviewLeadForm label={label} inverted={options?.inverted} />,
+  }
+
+  const draggedName = dragTarget ? kindOf(draft.sections.find((section) => section.key === dragTarget.draggedKey)?.type ?? 'Hero').name : ''
+  const preview = (
+    <LandingShell brandColor={brandColor} editor inert>
+      {draft.sections.map((section) => (
+        <LandingSectionWithDrop
+          key={section.key}
+          section={section as RenderedSection}
+          ctx={previewContext}
+          dropLabel={dragTarget?.afterKey === section.key ? `${draggedName} will move here` : null}
+        />
+      ))}
+    </LandingShell>
+  )
+
+  return (
+    <>
+      <PageHeader
+        eyebrow={`${page.type === 'Sales' ? 'Sales page' : 'Lead capture page'} · ${publicUrl}`}
+        title={titleWithEmphasis(page.title)}
+        actions={
+          <>
+            <Button variant="ghost" size="sm" iconOnly icon={X} aria-label="Close editor" data-tooltip="Close editor" onClick={requestLeave} />
+            <SaveStatus saving={saving} dirty={draft.dirty} savedAt={savedAt} />
+            <IconSegmented
+              label="Preview size"
+              name={deviceName}
+              className="editor__device"
+              value={device}
+              onChange={setDevice}
+              options={[
+                { value: 'desktop', label: 'Desktop', icon: Monitor },
+                { value: 'mobile', label: 'Mobile', icon: Smartphone },
+              ]}
+            />
+            <Button
+              variant="secondary"
+              icon={ExternalLink}
+              className="editor__hide-sm"
+              href={publicPath}
+              target="_blank"
+              rel="noopener"
+              disabledReason={live ? undefined : 'Your page isn’t live yet — the preview below shows how it will look.'}
+            >
+              Preview
+            </Button>
+            <Button variant="secondary" icon={Save} loading={saving} onClick={() => void onSave()}>
+              Save
+            </Button>
+            {live && (
+              <Button variant="ghost" icon={EyeOff} onClick={() => setUnpublishOpen(true)}>
+                Unpublish
+              </Button>
             )}
+            <Button variant="accent" icon={Rocket} loading={publishing} onClick={() => void onPublish()}>
+              {live ? 'Publish changes' : 'Publish'}
+            </Button>
+          </>
+        }
+      />
+      <div className="editor-shell">
+        <IconSegmented
+          label="Editor panel"
+          name="editor-panel"
+          className="editor-tabs"
+          value={panel}
+          onChange={setPanel}
+          options={[
+            { value: 'sections', label: 'Sections', icon: Layers },
+            { value: 'edit', label: 'Edit', icon: Pencil },
+            { value: 'preview', label: 'Preview', icon: Eye },
+          ]}
+        />
+        <div className="editor">
+          <div className="editor__panel editor__panel--sections">
+            <SectionsCard
+              sections={draft.sections}
+              selectedKey={draft.selectedKey}
+              templates={templates}
+              dispatch={(action) => {
+                dispatch(action)
+                if (action.type === 'select') setPanel('edit')
+              }}
+              onAdd={() => setPickerOpen(true)}
+              onDelete={setDeleteTarget}
+              onDragTarget={onDragTarget}
+            />
           </div>
-        </div>
-      )
-    }
-    case 'Features': {
-      const c = content as Partial<FeaturesContent>
-      const items = c.items ?? []
-      return (
-        <div className="px-8 py-12">
-          {c.heading ? <h2 className="mb-8 text-center text-2xl font-bold text-neutral-950">{c.heading}</h2> : null}
-          <div className={`grid gap-4 ${items.length <= 3 ? 'grid-cols-3' : 'grid-cols-3'}`}>
-            {items.map((item, i) => (
-              <div key={i} className="rounded-xl border border-neutral-200 bg-white/60 p-4">
-                <p className="font-semibold text-neutral-950">{item.title}</p>
-                <p className="mt-1 text-sm text-neutral-500">{item.description}</p>
+          <div className="editor__panel editor__panel--edit">
+            {selected ? <SectionForm section={selected} ctx={formContext} dispatch={dispatch} onDelete={setDeleteTarget} /> : <NothingSelected />}
+          </div>
+          <div className="editor__panel editor__panel--preview">
+            <div className="editor__stage">
+              <div className="editor__stagebar">
+                <span className="editor__stagelabel">
+                  {device === 'mobile' ? <Smartphone /> : <Monitor />}
+                  {device === 'mobile' ? 'Mobile preview · 390 px' : 'Desktop preview'}
+                </span>
+                <UrlPill>{publicUrl}</UrlPill>
               </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-    case 'ProductDetails': {
-      const c = content as Partial<ProductDetailsContent>
-      return (
-        <div className="px-8 py-12">
-          {c.imageUrl ? (
-            <img src={c.imageUrl} alt="" className="mb-6 max-h-64 w-full max-w-xl rounded-2xl object-cover" />
-          ) : null}
-          {c.heading ? <h2 className="text-2xl font-bold text-neutral-950">{c.heading}</h2> : null}
-          {c.description ? <p className="mt-3 text-neutral-600">{c.description}</p> : null}
-          {c.showPrice ? <p className="mt-4 text-2xl font-bold text-neutral-950">€ —</p> : null}
-          {c.bullets && c.bullets.length > 0 ? (
-            <ul className="mt-4 space-y-2">
-              {c.bullets.map((b, i) => (
-                <li key={i} className="flex items-center gap-2 text-sm text-neutral-700">
-                  <span className="size-1.5 rounded-full bg-neutral-950" />{b}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      )
-    }
-    case 'Testimonials': {
-      const c = content as Partial<TestimonialsContent>
-      const items = c.items ?? []
-      return (
-        <div className="px-8 py-12">
-          {c.heading ? <h2 className="mb-8 text-center text-2xl font-bold text-neutral-950">{c.heading}</h2> : null}
-          <div className={`grid gap-4 ${items.length <= 1 ? 'grid-cols-1' : items.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-            {items.map((item, i) => (
-              <div key={i} className="rounded-xl border border-neutral-200 bg-white/60 p-4">
-                <p className="text-sm italic text-neutral-700">"{item.quote}"</p>
-                <p className="mt-3 text-sm font-semibold text-neutral-950">{item.author}</p>
-                {item.role ? <p className="text-xs text-neutral-500">{item.role}</p> : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-    case 'Faq': {
-      const c = content as Partial<FaqContent>
-      const items = c.items ?? []
-      return (
-        <div className="px-8 py-12">
-          {c.heading ? <h2 className="mb-8 text-center text-2xl font-bold text-neutral-950">{c.heading}</h2> : null}
-          <div className="mx-auto max-w-2xl space-y-3">
-            {items.map((item, i) => (
-              <div key={i} className="rounded-xl border border-neutral-200 bg-white/60 p-4">
-                <p className="font-semibold text-neutral-950">{item.question}</p>
-                <p className="mt-1.5 text-sm text-neutral-600">{item.answer}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-    case 'Gallery': {
-      const c = content as Partial<GalleryContent>
-      const imageUrls = c.imageUrls ?? []
-      return (
-        <div className="px-8 py-12">
-          {c.heading ? <h2 className="mb-8 text-center text-2xl font-bold text-neutral-950">{c.heading}</h2> : null}
-          {imageUrls.length > 0 ? (
-            <div className="grid grid-cols-3 gap-3">
-              {imageUrls.map((url, i) => (
-                <img key={i} src={url} alt="" className="aspect-square w-full rounded-xl object-cover" />
-              ))}
+              {device === 'mobile' ? (
+                <div className="device">
+                  <span className="device__notch" aria-hidden="true" />
+                  <div className="device__screen" ref={frameRef}>
+                    {preview}
+                  </div>
+                </div>
+              ) : (
+                <div className="editor__frame" ref={frameRef}>
+                  {preview}
+                </div>
+              )}
             </div>
-          ) : (
-            <p className="text-center text-sm text-neutral-400">No images added yet.</p>
-          )}
-        </div>
-      )
-    }
-    case 'Cta': {
-      const c = content as Partial<CtaContent>
-      return (
-        <div className="px-8 py-14 text-center">
-          <h2 className="text-2xl font-bold text-neutral-950">{c.heading || 'Ready?'}</h2>
-          {c.subheading ? <p className="mt-2 text-neutral-600">{c.subheading}</p> : null}
-          <div className="mt-6 flex flex-col items-center gap-3">
-            {pageType === 'Sales' ? (
-              <div className="flex w-full max-w-sm flex-col items-center gap-2">
-                <input type="email" placeholder="Your email address" readOnly className="w-full rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-400 bg-white" />
-                <button type="button" disabled className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white opacity-40">
-                  Buy now
-                </button>
-                <p className="text-xs text-neutral-400">This is the email address that will receive your product.</p>
-              </div>
-            ) : (
-              <div className="flex max-w-sm w-full gap-2">
-                <input type="email" placeholder="Your email" readOnly className="flex-1 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm text-neutral-400 bg-white" />
-                <button type="button" className="inline-flex h-10 items-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white">
-                  {c.buttonText || 'Get started'}
-                </button>
-              </div>
-            )}
           </div>
         </div>
-      )
-    }
-    case 'Footer': {
-      const c = content as Partial<FooterContent>
-      return (
-        <div className="px-8 py-6 text-center">
-          <p className="text-sm text-neutral-400">{c.copyright || '© 2025 My Brand'}</p>
-        </div>
-      )
-    }
-  }
+      </div>
+
+      <SectionPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        templates={templates}
+        presentTypes={draft.sections.map((section) => section.type)}
+        onPick={addSection}
+      />
+      <DeleteSectionDialog
+        sectionName={deleteTarget ? kindOf(deleteTarget.type).name : null}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+      <UnpublishDialog open={unpublishOpen} busy={unpublishing} onConfirm={() => void onUnpublish()} onCancel={() => setUnpublishOpen(false)} />
+      <PublishBlockedModal block={publishBlock} slug={slug} planName={creator?.planName ?? null} onClose={() => setPublishBlock(null)} />
+      <PublishedModal
+        open={published !== null}
+        wasLive={published?.wasLive ?? false}
+        pageType={page.type}
+        url={`${window.location.origin}${publicPath}`}
+        onClose={() => setPublished(null)}
+      />
+      <LeaveModal
+        open={leaveTo !== null}
+        title={page.title}
+        saving={saving}
+        onKeepEditing={() => setLeaveTo(null)}
+        onDiscard={() => {
+          const to = leaveTo ?? listUrl
+          // Leave without the guard: the changes are being thrown away.
+          dispatch({ type: 'load', page })
+          setLeaveTo(null)
+          navigate(to)
+        }}
+        onSaveAndLeave={async () => {
+          const to = leaveTo ?? listUrl
+          if (await save()) {
+            setLeaveTo(null)
+            navigate(to)
+          }
+        }}
+      />
+    </>
+  )
 }
 
-/* ─── PageSettingsSidebar ─────────────────────────────────────── */
-
-function PageSettingsSidebar({
-  title, slug, type, isArchiving,
-  onTitleChange, onSlugChange, onTypeChange, onArchive,
-}: {
-  title: string; slug: string; type: LandingPageType; isArchiving: boolean
-  onTitleChange: (v: string) => void
-  onSlugChange: (v: string) => void
-  onTypeChange: (v: LandingPageType) => void
-  onArchive: () => void
-}) {
+function LandingSectionWithDrop({ section, ctx, dropLabel }: { section: RenderedSection; ctx: LandingContext; dropLabel: string | null }) {
   return (
-    <div className="grid gap-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Page settings</p>
-      <SidebarField label="Title" value={title} onChange={onTitleChange} />
-      <SidebarField label="URL slug" value={slug} onChange={onSlugChange} />
-      <div>
-        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Type</label>
-        <select value={type} onChange={(e) => onTypeChange(e.target.value as LandingPageType)} className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none transition focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400">
-          <option value="LeadGen">Lead Gen — collect emails</option>
-          <option value="Sales">Sales — sell a product</option>
-        </select>
-      </div>
-      <div className="pt-4 border-t border-white/10 light:border-neutral-100">
-        <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400 mb-3">Danger zone</p>
-        <button type="button" disabled={isArchiving} className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:opacity-40 light:border-red-200 light:bg-red-50 light:text-red-700 light:hover:bg-red-100" onClick={onArchive}>
-          Archive page
-        </button>
-      </div>
+    <>
+      <LandingSection section={section} ctx={ctx} editor />
+      {dropLabel && <LandingDropMarker label={dropLabel} />}
+    </>
+  )
+}
+
+/** The buy button as visitors see it; in the editor preview it does nothing. */
+function PreviewBuyButton({ label, inverted }: { label: string; inverted?: boolean }) {
+  return (
+    <div className="lp-buy">
+      <span className={`lp__cta ${inverted ? 'lp__cta--inverted' : ''}`}>
+        <span>{label}</span>
+        <ArrowRight />
+      </span>
+      <span className="lp-buy__note">
+        <Lock />
+        Secure card checkout · Instant delivery by email
+      </span>
     </div>
   )
 }
 
-/* ─── SectionSettingsSidebar ──────────────────────────────────── */
-
-function SectionSettingsSidebar({ slug, section, onContentChange, onColorChange }: {
-  slug: string
-  section: DraftSection
-  onContentChange: (json: string) => void
-  onColorChange: (color: string) => void
-}) {
-  const [content, setContent] = useState<Record<string, unknown>>(parseJson(section.contentJson))
-  const [bgColor, setBgColor] = useState(section.backgroundColor)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const updateContent = (patch: Record<string, unknown>) => {
-    const next = { ...content, ...patch }
-    setContent(next)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => onContentChange(JSON.stringify(next)), 300)
-  }
-
-  const handleColorChange = (color: string) => {
-    setBgColor(color)
-    onColorChange(color)
-  }
-
-  const updateItem = (index: number, key: string, value: string) => {
-    const items = [...((content.items as { title: string; description: string }[]) ?? [])]
-    items[index] = { ...items[index], [key]: value }
-    updateContent({ items })
-  }
-
-  const updateBullet = (index: number, value: string) => {
-    const bullets = [...((content.bullets as string[]) ?? [])]
-    bullets[index] = value
-    updateContent({ bullets })
-  }
-
-  const updateTestimonial = (index: number, key: string, value: string) => {
-    const items = [...((content.items as { quote: string; author: string; role: string }[]) ?? [])]
-    items[index] = { ...items[index], [key]: value }
-    updateContent({ items })
-  }
-
-  const addTestimonial = () => {
-    const items = [...((content.items as { quote: string; author: string; role: string }[]) ?? [])]
-    items.push({ quote: '', author: '', role: '' })
-    updateContent({ items })
-  }
-
-  const removeTestimonial = (index: number) => {
-    const items = [...((content.items as { quote: string; author: string; role: string }[]) ?? [])]
-    items.splice(index, 1)
-    updateContent({ items })
-  }
-
-  const updateFaqItem = (index: number, key: string, value: string) => {
-    const items = [...((content.items as { question: string; answer: string }[]) ?? [])]
-    items[index] = { ...items[index], [key]: value }
-    updateContent({ items })
-  }
-
-  const addFaqItem = () => {
-    const items = [...((content.items as { question: string; answer: string }[]) ?? [])]
-    items.push({ question: '', answer: '' })
-    updateContent({ items })
-  }
-
-  const removeFaqItem = (index: number) => {
-    const items = [...((content.items as { question: string; answer: string }[]) ?? [])]
-    items.splice(index, 1)
-    updateContent({ items })
-  }
-
-  const handleGalleryImageChange = (index: number, url: string) => {
-    const imageUrls = [...((content.imageUrls as string[]) ?? [])]
-    if (url) imageUrls[index] = url
-    else imageUrls.splice(index, 1)
-    updateContent({ imageUrls })
-  }
-
-  const addGalleryImage = (url: string) => {
-    if (!url) return
-    const imageUrls = [...((content.imageUrls as string[]) ?? []), url]
-    updateContent({ imageUrls })
-  }
-
+/** The email form as visitors see it; in the editor preview it does nothing. */
+function PreviewLeadForm({ label, inverted }: { label: string; inverted?: boolean }) {
   return (
-    <div className="grid gap-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">
-        {SECTION_LABELS[section.type as SectionType]}
-      </p>
-      <div>
-        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Background</label>
-        <div className="flex items-center gap-2">
-          <input type="color" value={bgColor} onChange={(e) => handleColorChange(e.target.value)} className="size-9 cursor-pointer rounded-lg border border-white/10 bg-transparent light:border-neutral-200" />
-          <input type="text" value={bgColor} onChange={(e) => handleColorChange(e.target.value)} maxLength={7} className="flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-mono text-white outline-none transition focus:border-white/25 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400" />
-        </div>
+    <div className={`lp-form ${inverted ? 'lp-form--inverted' : ''}`}>
+      <div className="lp-form__row">
+        <input className="lp-form__input" type="email" placeholder="you@example.com" aria-label="Email address" readOnly tabIndex={-1} />
+        <span className="lp__cta">
+          <span>{label}</span>
+        </span>
       </div>
-
-      {section.type === 'Navbar' ? (
-        <SidebarField label="Brand name" value={String(content.brandName ?? '')} onChange={(v) => updateContent({ brandName: v })} />
-      ) : section.type === 'Hero' ? (
-        <>
-          <ImageUploadField
-            slug={slug}
-            purpose="LandingPageHero"
-            label="Image"
-            value={String(content.imageUrl ?? '')}
-            onChange={(url) => updateContent({ imageUrl: url || null })}
-          />
-          <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
-          <SidebarField label="Subheading" value={String(content.subheading ?? '')} onChange={(v) => updateContent({ subheading: v })} />
-          <SidebarField label="Button text" value={String(content.ctaText ?? '')} onChange={(v) => updateContent({ ctaText: v })} />
-        </>
-      ) : section.type === 'Features' ? (
-        <>
-          <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Items</p>
-            <div className="grid gap-3">
-              {((content.items as { title: string; description: string }[]) ?? []).map((item, i) => (
-                <div key={i} className="rounded-xl border border-white/10 p-3 grid gap-2 light:border-neutral-100">
-                  <SidebarField label={`Title ${i + 1}`} value={item.title} onChange={(v) => updateItem(i, 'title', v)} />
-                  <SidebarField label="Description" value={item.description} onChange={(v) => updateItem(i, 'description', v)} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      ) : section.type === 'ProductDetails' ? (
-        <>
-          <ImageUploadField
-            slug={slug}
-            purpose="LandingPageProductImage"
-            label="Image"
-            value={String(content.imageUrl ?? '')}
-            onChange={(url) => updateContent({ imageUrl: url || null })}
-          />
-          <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
-          <SidebarField label="Description" value={String(content.description ?? '')} onChange={(v) => updateContent({ description: v })} textarea />
-          <div className="flex items-center gap-3">
-            <input type="checkbox" id="showPrice" checked={Boolean(content.showPrice)} onChange={(e) => updateContent({ showPrice: e.target.checked })} className="size-4 rounded accent-accent" />
-            <label htmlFor="showPrice" className="text-sm text-white/70 light:text-neutral-700">Show price</label>
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Bullets</p>
-            {((content.bullets as string[]) ?? []).map((b, i) => (
-              <div key={i} className="mb-2">
-                <SidebarField label={`Bullet ${i + 1}`} value={b} onChange={(v) => updateBullet(i, v)} />
-              </div>
-            ))}
-          </div>
-        </>
-      ) : section.type === 'Testimonials' ? (
-        <>
-          <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Items</p>
-              <button
-                type="button"
-                onClick={addTestimonial}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-white/70 transition hover:bg-white/10 light:text-neutral-600 light:hover:bg-neutral-100"
-              >
-                <Plus size={12} /> Add
-              </button>
-            </div>
-            <div className="grid gap-3">
-              {((content.items as { quote: string; author: string; role: string }[]) ?? []).map((item, i) => (
-                <div key={i} className="relative rounded-xl border border-white/10 p-3 grid gap-2 light:border-neutral-100">
-                  <button
-                    type="button"
-                    onClick={() => removeTestimonial(i)}
-                    className="absolute right-2 top-2 text-white/30 transition hover:text-white/70 light:text-neutral-300 light:hover:text-neutral-600"
-                  >
-                    <X size={14} />
-                  </button>
-                  <SidebarField label="Quote" value={item.quote} onChange={(v) => updateTestimonial(i, 'quote', v)} textarea />
-                  <SidebarField label="Author" value={item.author} onChange={(v) => updateTestimonial(i, 'author', v)} />
-                  <SidebarField label="Role" value={item.role} onChange={(v) => updateTestimonial(i, 'role', v)} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      ) : section.type === 'Faq' ? (
-        <>
-          <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Items</p>
-              <button
-                type="button"
-                onClick={addFaqItem}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-white/70 transition hover:bg-white/10 light:text-neutral-600 light:hover:bg-neutral-100"
-              >
-                <Plus size={12} /> Add
-              </button>
-            </div>
-            <div className="grid gap-3">
-              {((content.items as { question: string; answer: string }[]) ?? []).map((item, i) => (
-                <div key={i} className="relative rounded-xl border border-white/10 p-3 grid gap-2 light:border-neutral-100">
-                  <button
-                    type="button"
-                    onClick={() => removeFaqItem(i)}
-                    className="absolute right-2 top-2 text-white/30 transition hover:text-white/70 light:text-neutral-300 light:hover:text-neutral-600"
-                  >
-                    <X size={14} />
-                  </button>
-                  <SidebarField label="Question" value={item.question} onChange={(v) => updateFaqItem(i, 'question', v)} />
-                  <SidebarField label="Answer" value={item.answer} onChange={(v) => updateFaqItem(i, 'answer', v)} textarea />
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      ) : section.type === 'Gallery' ? (
-        <>
-          <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">Images</p>
-            <div className="grid gap-3">
-              {((content.imageUrls as string[]) ?? []).map((url, i) => (
-                <ImageUploadField
-                  key={i}
-                  slug={slug}
-                  purpose="LandingPageProductImage"
-                  label={`Image ${i + 1}`}
-                  value={url}
-                  onChange={(v) => handleGalleryImageChange(i, v)}
-                />
-              ))}
-              <ImageUploadField
-                key={((content.imageUrls as string[]) ?? []).length}
-                slug={slug}
-                purpose="LandingPageProductImage"
-                label="Add image"
-                value=""
-                onChange={addGalleryImage}
-              />
-            </div>
-          </div>
-        </>
-      ) : section.type === 'Cta' ? (
-        <>
-          <SidebarField label="Heading" value={String(content.heading ?? '')} onChange={(v) => updateContent({ heading: v })} />
-          <SidebarField label="Subheading" value={String(content.subheading ?? '')} onChange={(v) => updateContent({ subheading: v })} />
-          <SidebarField label="Button text" value={String(content.buttonText ?? '')} onChange={(v) => updateContent({ buttonText: v })} />
-        </>
-      ) : section.type === 'Footer' ? (
-        <SidebarField label="Copyright text" value={String(content.copyright ?? '')} onChange={(v) => updateContent({ copyright: v })} />
-      ) : null}
+      <p className="lp-form__note">Free · No spam · Unsubscribe any time</p>
     </div>
   )
-}
-
-/* ─── Helpers ─────────────────────────────────────────────────── */
-
-function SidebarField({ label, value, onChange, textarea }: { label: string; value: string; onChange: (v: string) => void; textarea?: boolean }) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-white/40 light:text-neutral-400">{label}</label>
-      {textarea ? (
-        <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400 light:focus:ring-neutral-100" />
-      ) : (
-        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:border-neutral-200 light:bg-white light:text-neutral-950 light:focus:border-neutral-400 light:focus:ring-neutral-100" />
-      )}
-    </div>
-  )
-}
-
-function SectionIcon({ type, size = 14 }: { type: SectionType; size?: number }) {
-  switch (type) {
-    case 'Navbar': return <Globe size={size} />
-    case 'Hero': return <Zap size={size} />
-    case 'Features': return <Package size={size} />
-    case 'ProductDetails': return <BookOpen size={size} />
-    case 'Cta': return <Wrench size={size} />
-    case 'Footer': return <Type size={size} />
-    case 'Testimonials': return <MessageSquareQuote size={size} />
-    case 'Faq': return <HelpCircle size={size} />
-    case 'Gallery': return <Images size={size} />
-  }
-}
-
-function parseJson(json: string): Record<string, unknown> {
-  try { return JSON.parse(json) as Record<string, unknown> } catch { return {} }
-}
-
-function isSubscriptionPaymentError(message: string): boolean {
-  return message.toLowerCase().includes('subscription payment')
 }
