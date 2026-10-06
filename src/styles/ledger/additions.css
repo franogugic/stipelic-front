@@ -51,3 +51,12 @@ button.link {
 .modal__alert {
   margin-top: var(--space-4);
 }
+
+/* A creator's real logo in the header of a creator-branded result page (the prototype only draws a monogram mark). */
+.lp-logo-img {
+  display: block;
+  max-width: 200px;
+  height: 36px;
+  object-fit: contain;
+  object-position: left center;
+}

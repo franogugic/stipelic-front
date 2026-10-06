@@ -21,6 +21,7 @@ import { LandingPageEditorPage } from '../../features/landing-pages/pages/Landin
 import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPagesPage'
 import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSuccessPage'
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
+import { UnsubscribePage } from '../../features/marketing/pages/UnsubscribePage'
 import { EmailsPage } from '../../features/marketing/pages/EmailsPage'
 import { SubscribersPage } from '../../features/marketing/pages/SubscribersPage'
 import { ProductDetailPage } from '../../features/products/pages/ProductDetailPage'
@@ -52,6 +53,7 @@ export function AppRouter() {
       <Route element={<AuthBootstrap />}>
         <Route path="/p/:creatorSlug/:pageSlug/success" element={<OrderSuccessPage />} />
         <Route path="/p/:creatorSlug/:pageSlug" element={<PublicLandingPage />} />
+        <Route path="/unsubscribe/:token" element={<UnsubscribePage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/confirm-email-change" element={<ConfirmEmailChangePage />} />
         <Route path="/check-inbox" element={<CheckInboxPage />} />
