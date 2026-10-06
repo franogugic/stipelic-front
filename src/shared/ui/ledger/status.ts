@@ -104,10 +104,13 @@ export function campaignStatusKey(campaign: { status: string; sentCount: number;
 export const campaignSendingLabel = (campaign: { sentCount: number; recipientCount: number }) =>
   `Sending ${campaign.sentCount}/${campaign.recipientCount}`
 
-/** Workspace subscription: PendingPayment → unpaid, PastDue → past_due, Active + cancelAtPeriodEnd → cancelling. */
-export function subscriptionStatusKey(creator: { status: string; cancelAtPeriodEnd?: boolean }) {
-  if (creator.status === 'PendingPayment') return 'unpaid'
-  if (creator.status === 'PastDue') return 'past_due'
+/**
+ * Workspace subscription: PendingPayment → unpaid, PastDue → past_due, Active + cancelAtPeriodEnd → cancelling.
+ * Past due lives on the subscription (`subscriptionStatus`); the workspace itself stays Active.
+ */
+export function subscriptionStatusKey(creator: { status: string; subscriptionStatus?: string | null; cancelAtPeriodEnd?: boolean }) {
+  if (creator.status === 'PendingPayment' || creator.subscriptionStatus === 'PendingPayment') return 'unpaid'
+  if (creator.subscriptionStatus === 'PastDue') return 'past_due'
   if (creator.status === 'Active') return creator.cancelAtPeriodEnd ? 'cancelling' : 'active'
   return lower(creator.status)
 }

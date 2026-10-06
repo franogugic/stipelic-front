@@ -85,11 +85,13 @@ export function createCreator(request: CreateCreatorRequest) {
   }).then(unwrapApiResponse)
 }
 
-export function startCreatorSubscriptionCheckout() {
+/** Checkout for a workspace waiting for its first payment (no body), or an upgrade of a Free workspace to `planCode`. */
+export function startCreatorSubscriptionCheckout(planCode?: string) {
   return apiRequest<ApiResponse<CreatorSubscriptionCheckoutResult>>(
     '/api/creators/current/subscription/checkout',
     {
       method: 'POST',
+      body: planCode ? { planCode } : undefined,
     },
   ).then(unwrapApiResponse)
 }

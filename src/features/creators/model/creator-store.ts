@@ -73,7 +73,8 @@ type CreatorState = {
     values: UpdateCreatorSettingsRequest,
   ) => Promise<CreatorSettings | null>
   createCreatorProfile: (values: CreateCreatorFormValues) => Promise<CreateCreatorResult | null>
-  startCreatorCheckout: () => Promise<CreatorSubscriptionCheckoutResult | null>
+  /** With `planCode` a Free workspace is upgraded to that plan; without it the pending first payment is started. */
+  startCreatorCheckout: (planCode?: string) => Promise<CreatorSubscriptionCheckoutResult | null>
   continueOnFreePlan: () => Promise<ContinueOnFreeResult>
   deleteCreatorProfile: () => Promise<boolean>
   /** Opens the Stripe billing portal; resolves with an error message when it could not (otherwise the page navigates away). */
@@ -297,11 +298,11 @@ export const useCreatorStore = create<CreatorState>((set) => ({
     }
   },
 
-  startCreatorCheckout: async () => {
+  startCreatorCheckout: async (planCode) => {
     set({ checkoutStatus: 'submitting', checkoutError: null })
 
     try {
-      const checkout = await startCreatorSubscriptionCheckout()
+      const checkout = await startCreatorSubscriptionCheckout(planCode)
       set({
         checkoutResult: checkout,
         checkoutStatus: 'success',

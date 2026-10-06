@@ -1,6 +1,6 @@
 import { ArrowUpRight, CalendarClock, CircleAlert, CreditCard, Gauge, Lock } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { date, money, number, percent, plural } from '../../../../shared/lib/format'
 import {
   Alert,
@@ -42,6 +42,8 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
   const [cancelling, setCancelling] = useState(false)
   const [paying, setPaying] = useState(false)
   const [portalOpening, setPortalOpening] = useState(false)
+  const [upgradingCode, setUpgradingCode] = useState<string | null>(null)
+  const compareRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     void loadCreatorPlans()
@@ -59,17 +61,46 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
 
   const plan = plans.find((candidate) => candidate.code === creator.planCode)
   const planName = creator.planName
-  const status = subscriptionStatusKey({ status: creator.status, cancelAtPeriodEnd: creator.cancelAtPeriodEnd })
+  const status = subscriptionStatusKey({
+    status: creator.status,
+    subscriptionStatus: creator.subscriptionStatus,
+    cancelAtPeriodEnd: creator.cancelAtPeriodEnd,
+  })
   const paid = plan ? plan.priceCents > 0 : creator.planCode !== 'free'
   const endDate = creator.currentPeriodEnd ? date(creator.currentPeriodEnd) : null
   const isCancelling = status === 'cancelling'
   const currency = plan?.currency ?? creator.defaultCurrency
+  const onFree = !paid
+  const freePlan = plans.find((candidate) => candidate.priceCents === 0)
+  const freeSummary = freePlan
+    ? ` — ${limitText(freePlan.limits['max_landing_pages'], 'landing page')}, ${limitText(freePlan.limits['max_products'], 'product')} and a ${percent(freePlan.platformFeeBasisPoints / 100)} fee per sale`
+    : ''
 
   const openPortal = async () => {
     setPortalOpening(true)
     const failure = await openBillingPortal()
     setPortalOpening(false)
     if (failure) toast({ tone: 'danger', title: failure })
+  }
+
+  // A Free workspace has no billing portal yet: it upgrades by choosing a plan, and pays on Stripe.
+  const changePlan = () => {
+    if (onFree) compareRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    else void openPortal()
+  }
+
+  const upgradeTo = async (option: CreatorPlan) => {
+    setUpgradingCode(option.code)
+    const checkout = await startCreatorCheckout(option.code)
+    if (checkout?.checkoutUrl) {
+      window.location.assign(checkout.checkoutUrl)
+      return
+    }
+    setUpgradingCode(null)
+    toast({
+      tone: 'danger',
+      title: useCreatorStore.getState().checkoutError ?? 'We could not start checkout. Please try again.',
+    })
   }
 
   const completePayment = async () => {
@@ -137,7 +168,7 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
               tone: 'info',
               icon: CalendarClock,
               title: `Your ${planName} plan ends${endDate ? ` on ${endDate}` : ''}`,
-              text: 'After that, your workspace is suspended and your landing pages go offline.',
+              text: 'After that, your workspace moves to the Free plan and its limits.',
               action: (
                 <Button variant="primary" loading={portalOpening} onClick={() => void openPortal()}>
                   Keep my plan
@@ -189,7 +220,7 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
                     : `Renews${endDate ? ` on ${endDate}` : ''}`}
             </p>
             <div className="cluster">
-              <Button variant="accent" icon={ArrowUpRight} loading={portalOpening} onClick={() => void openPortal()}>
+              <Button variant="accent" icon={ArrowUpRight} loading={portalOpening} onClick={changePlan}>
                 Change plan
               </Button>
               {paid && !isCancelling && status === 'active' && (
@@ -213,43 +244,58 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
           </div>
         </Card>
       </div>
-      <Card title="Compare plans">
-        <div className="plan-compare">
-          {plans.map((option) => {
-            const emails = option.limits['max_email_sends_per_month']
-            const optionPaid = option.priceCents > 0
-            return (
-              <div className={['plan-compare__item', option.code === creator.planCode && 'is-current'].filter(Boolean).join(' ')} key={option.code}>
-                <div className="cluster cluster--between">
-                  <strong>{option.name}</strong>
-                  {option.code === creator.planCode && <Badge tone="solid-accent">Current</Badge>}
+      <section ref={compareRef} aria-label="Compare plans">
+        <Card title="Compare plans">
+          <div className="plan-compare">
+            {plans.map((option) => {
+              const emails = option.limits['max_email_sends_per_month']
+              const optionPaid = option.priceCents > 0
+              return (
+                <div className={['plan-compare__item', option.code === creator.planCode && 'is-current'].filter(Boolean).join(' ')} key={option.code}>
+                  <div className="cluster cluster--between">
+                    <strong>{option.name}</strong>
+                    {option.code === creator.planCode && <Badge tone="solid-accent">Current</Badge>}
+                  </div>
+                  <p className="plan__price">
+                    {money(option.priceCents, option.currency, { decimals: false })}
+                    <small className="text-sm text-muted"> /{optionPaid ? (option.billingInterval === 'Yearly' ? 'yr' : 'mo') : 'mo'}</small>
+                  </p>
+                  <ul className="plan__list" role="list">
+                    <li>{percent(option.platformFeeBasisPoints / 100)} fee per sale</li>
+                    <li>
+                      {limitText(option.limits['max_landing_pages'], 'landing page')} ·{' '}
+                      {limitText(option.limits['max_products'], 'product')}
+                    </li>
+                    <li>{emails < 0 ? 'Unlimited' : number(emails)} emails / month</li>
+                  </ul>
+                  {onFree && optionPaid && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      loading={upgradingCode === option.code}
+                      disabled={upgradingCode !== null && upgradingCode !== option.code}
+                      onClick={() => void upgradeTo(option)}
+                    >
+                      Upgrade to {option.name}
+                    </Button>
+                  )}
                 </div>
-                <p className="plan__price">
-                  {money(option.priceCents, option.currency, { decimals: false })}
-                  <small className="text-sm text-muted"> /{optionPaid ? (option.billingInterval === 'Yearly' ? 'yr' : 'mo') : 'mo'}</small>
-                </p>
-                <ul className="plan__list" role="list">
-                  <li>{percent(option.platformFeeBasisPoints / 100)} fee per sale</li>
-                  <li>
-                    {limitText(option.limits['max_landing_pages'], 'landing page')} ·{' '}
-                    {limitText(option.limits['max_products'], 'product')}
-                  </li>
-                  <li>{emails < 0 ? 'Unlimited' : number(emails)} emails / month</li>
-                </ul>
-              </div>
-            )
-          })}
-        </div>
-        <p className="text-sm text-muted plan-compare__note">
-          <Lock className="inline-icon" /> Plan changes, invoices and your payment method are managed in the secure
-          Stripe billing portal.
-        </p>
-      </Card>
+              )
+            })}
+          </div>
+          <p className="text-sm text-muted plan-compare__note">
+            <Lock className="inline-icon" />{' '}
+            {onFree
+              ? 'Upgrading takes you to Stripe’s secure checkout; invoices and your payment method are managed there afterwards.'
+              : 'Plan changes, invoices and your payment method are managed in the secure Stripe billing portal.'}
+          </p>
+        </Card>
+      </section>
 
       <ConfirmDialog
         open={confirmCancel}
         title={`Cancel your ${planName} subscription?`}
-        text={`You keep ${planName}${endDate ? ` until ${endDate}` : ''}. After that your workspace is suspended and your landing pages go offline.`}
+        text={`You keep ${planName}${endDate ? ` until ${endDate}` : ''}. After that your workspace moves to the Free plan${freeSummary}.`}
         confirmLabel="Cancel subscription"
         cancelLabel={`Keep ${planName}`}
         tone="danger"

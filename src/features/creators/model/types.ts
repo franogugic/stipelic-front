@@ -37,6 +37,8 @@ export type Creator = {
   defaultCurrency: string
   planCode: string
   planName: string
+  /** The current subscription's status; null when the workspace has none. */
+  subscriptionStatus: 'PendingPayment' | 'Active' | 'PastDue' | null
   cancelAtPeriodEnd: boolean
   currentPeriodEnd: string | null
   countryCode: string
