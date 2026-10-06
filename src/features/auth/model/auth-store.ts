@@ -11,12 +11,63 @@ import {
   resetPassword,
   verifyEmail,
 } from '../api/auth-api'
-import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues } from './types'
+import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues, VerifyEmailOutcome } from './types'
 
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
 type AsyncStatus = 'idle' | 'submitting' | 'success' | 'error'
 type SessionStatus = 'checking' | 'authenticated' | 'unauthenticated'
-const resendCooldownMs = 60_000
+export const resendCooldownMs = 60_000
+
+// A pending verification: the email of an account that still has to be verified, and when the next
+// resend is allowed. Registering creates no session, so the check-inbox screen only knows these from
+// here; sessionStorage keeps both across a refresh.
+const pendingVerificationEmailKey = 'luma.pendingVerificationEmail'
+const resendAvailableAtKey = 'luma.resendAvailableAt'
+
+function readSession(key: string): string | null {
+  try {
+    return window.sessionStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeSession(key: string, value: string | null) {
+  try {
+    if (value) window.sessionStorage.setItem(key, value)
+    else window.sessionStorage.removeItem(key)
+  } catch {
+    // Storage can be unavailable (private mode, blocked site data); the in-memory value still works.
+  }
+}
+
+function readResendAvailableAt(): number | null {
+  const availableAt = Number(readSession(resendAvailableAtKey))
+  const now = Date.now()
+  // Only a running cooldown counts: ignore a missing or garbled value, one that is over, and one longer
+  // than a single cooldown.
+  return Number.isFinite(availableAt) && availableAt > now && availableAt <= now + resendCooldownMs
+    ? availableAt
+    : null
+}
+
+function startResendCooldown() {
+  const resendAvailableAt = Date.now() + resendCooldownMs
+  writeSession(resendAvailableAtKey, String(resendAvailableAt))
+  return resendAvailableAt
+}
+
+function storePendingVerificationEmail(email: string | null) {
+  writeSession(pendingVerificationEmailKey, email)
+}
+
+/** Forgets the pending verification (email and resend cooldown) in storage; pair with `noPendingVerification`. */
+function forgetPendingVerification() {
+  writeSession(pendingVerificationEmailKey, null)
+  writeSession(resendAvailableAtKey, null)
+}
+
+const noPendingVerification = { pendingVerificationEmail: null, resendAvailableAt: null }
 
 const getAccountStatus = (user: AuthUser): AccountStatus =>
   user.isEmailVerified === false ? 'pendingVerification' : 'active'
@@ -27,6 +78,10 @@ type AuthState = {
   sessionStatus: SessionStatus
   loginStatus: AuthStatus
   loginError: string | null
+  /** The `ApiError.code` of the last failed login, e.g. `EMAIL_NOT_VERIFIED`. */
+  loginErrorCode: string | null
+  /** The submitted email when the login failed with `EMAIL_NOT_VERIFIED`, so the link can be resent. */
+  unverifiedEmail: string | null
   logoutStatus: AsyncStatus
   logoutError: string | null
   registerStatus: AuthStatus
@@ -35,20 +90,39 @@ type AuthState = {
   resendMessage: string | null
   resendError: string | null
   resendAvailableAt: number | null
+  /** Set after registering (no session yet), cleared once verified, on logout and on a verified login. */
+  pendingVerificationEmail: string | null
   verifyEmailStatus: AsyncStatus
   verifyEmailMessage: string | null
   verifyEmailError: string | null
+  /** HTTP status of a `failed` check (null for a network error), e.g. 429. */
+  verifyEmailErrorStatus: number | null
+  verifyEmailOutcome: VerifyEmailOutcome | null
+  /** The token the current outcome belongs to, so a page never shows another link's result. */
+  verifyEmailCheckedToken: string | null
+  /** From a `verified` outcome, to greet the user. */
+  verifiedFirstName: string | null
+  /** From an `expired` outcome: where a new link can be sent. */
+  expiredEmail: string | null
   requestPasswordResetStatus: AsyncStatus
   requestPasswordResetMessage: string | null
   requestPasswordResetError: string | null
   resetPasswordStatus: AsyncStatus
   resetPasswordMessage: string | null
   resetPasswordError: string | null
+  /** HTTP status of a failed reset (null for a network error); 400 means the link died meanwhile. */
+  resetPasswordErrorStatus: number | null
   login: (values: LoginFormValues) => Promise<AuthUser | null>
   logout: () => Promise<void>
   loadCurrentUser: () => Promise<void>
+  /** Replaces the signed-in user with a fresh copy from the API (e.g. after a profile update). */
+  applyCurrentUser: (user: AuthUser) => void
   register: (values: RegisterFormValues) => Promise<AuthUser | null>
-  resendVerificationEmail: () => Promise<void>
+  /**
+   * Sends to `email`, or to the signed-in user's address when omitted. Without a session the given email
+   * becomes the pending verification, so the check-inbox screen can show it.
+   */
+  resendVerificationEmail: (email?: string) => Promise<void>
   verifyEmailToken: (token: string) => Promise<void>
   requestPasswordResetForEmail: (email: string) => Promise<void>
   resetPasswordWithToken: (token: string, newPassword: string) => Promise<boolean>
@@ -67,6 +141,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   sessionStatus: 'checking',
   loginStatus: 'idle',
   loginError: null,
+  loginErrorCode: null,
+  unverifiedEmail: null,
   logoutStatus: 'idle',
   logoutError: null,
   registerStatus: 'idle',
@@ -74,27 +150,36 @@ export const useAuthStore = create<AuthState>((set) => ({
   resendStatus: 'idle',
   resendMessage: null,
   resendError: null,
-  resendAvailableAt: null,
+  resendAvailableAt: readResendAvailableAt(),
+  pendingVerificationEmail: readSession(pendingVerificationEmailKey),
   verifyEmailStatus: 'idle',
   verifyEmailMessage: null,
   verifyEmailError: null,
+  verifyEmailErrorStatus: null,
+  verifyEmailOutcome: null,
+  verifyEmailCheckedToken: null,
+  verifiedFirstName: null,
+  expiredEmail: null,
   requestPasswordResetStatus: 'idle',
   requestPasswordResetMessage: null,
   requestPasswordResetError: null,
   resetPasswordStatus: 'idle',
   resetPasswordMessage: null,
   resetPasswordError: null,
+  resetPasswordErrorStatus: null,
   login: async (values) => {
-    set({ loginStatus: 'submitting', loginError: null })
+    set({ loginStatus: 'submitting', loginError: null, loginErrorCode: null, unverifiedEmail: null })
 
     try {
       const user = await loginUser(values)
+      if (user.isEmailVerified) forgetPendingVerification()
       set({
         currentUser: user,
         accountStatus: getAccountStatus(user),
         sessionStatus: 'authenticated',
         loginStatus: 'success',
         loginError: null,
+        ...(user.isEmailVerified ? noPendingVerification : {}),
       })
       return user
     } catch (error) {
@@ -103,7 +188,14 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? error.message
           : 'We could not sign you in. Please try again.'
 
-      set({ loginStatus: 'error', loginError: message })
+      const code = error instanceof ApiError ? (error.code ?? null) : null
+
+      set({
+        loginStatus: 'error',
+        loginError: message,
+        loginErrorCode: code,
+        unverifiedEmail: code === 'EMAIL_NOT_VERIFIED' ? values.email.trim() : null,
+      })
       return null
     }
   },
@@ -120,7 +212,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         logoutError: null,
         loginStatus: 'idle',
         loginError: null,
+        loginErrorCode: null,
+        unverifiedEmail: null,
+        ...noPendingVerification,
       })
+      forgetPendingVerification()
       resetAllFeatureStores()
     } catch (error) {
       const message =
@@ -130,6 +226,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       set({ logoutStatus: 'error', logoutError: message })
     }
+  },
+  applyCurrentUser: (user) => {
+    set({ currentUser: user, accountStatus: getAccountStatus(user) })
   },
   loadCurrentUser: async () => {
     set({ sessionStatus: 'checking' })
@@ -159,13 +258,16 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const user = await registerUser(values)
+      const pendingVerificationEmail = values.email.trim().toLowerCase()
+      storePendingVerificationEmail(pendingVerificationEmail)
       set({
         currentUser: null,
+        pendingVerificationEmail,
         accountStatus: 'pendingVerification',
         sessionStatus: 'unauthenticated',
         registerStatus: 'success',
         registerError: null,
-        resendAvailableAt: Date.now() + resendCooldownMs,
+        resendAvailableAt: startResendCooldown(),
       })
       return user
     } catch (error) {
@@ -178,25 +280,35 @@ export const useAuthStore = create<AuthState>((set) => ({
       return null
     }
   },
-  resendVerificationEmail: async () => {
+  resendVerificationEmail: async (email) => {
     const { currentUser, resendAvailableAt } = useAuthStore.getState()
-    if (!currentUser) {
+    const recipient = email ?? currentUser?.email
+    if (!recipient) {
       return
     }
 
+    // Signed out (e.g. from an expired link opened on another device), the address is only known here.
+    const rememberRecipient = () => {
+      if (currentUser) return
+      storePendingVerificationEmail(recipient)
+      set({ pendingVerificationEmail: recipient })
+    }
+
     if (resendAvailableAt && resendAvailableAt > Date.now()) {
+      rememberRecipient()
       return
     }
 
     set({ resendStatus: 'submitting', resendMessage: null, resendError: null })
 
     try {
-      const response = await resendEmailVerification(currentUser.email)
+      const response = await resendEmailVerification(recipient)
+      rememberRecipient()
       set({
         resendStatus: 'success',
         resendMessage: response.message,
         resendError: null,
-        resendAvailableAt: Date.now() + resendCooldownMs,
+        resendAvailableAt: startResendCooldown(),
       })
     } catch (error) {
       const message =
@@ -213,19 +325,50 @@ export const useAuthStore = create<AuthState>((set) => ({
         verifyEmailStatus: 'error',
         verifyEmailMessage: null,
         verifyEmailError: 'Verification link is missing a token.',
+        verifyEmailErrorStatus: null,
+        verifyEmailOutcome: 'invalid',
+        verifyEmailCheckedToken: token,
+        verifiedFirstName: null,
+        expiredEmail: null,
       })
       return
     }
 
-    set({ verifyEmailStatus: 'submitting', verifyEmailMessage: null, verifyEmailError: null })
+    set({
+      verifyEmailStatus: 'submitting',
+      verifyEmailMessage: null,
+      verifyEmailError: null,
+      verifyEmailErrorStatus: null,
+      verifyEmailOutcome: null,
+      verifyEmailCheckedToken: token,
+      verifiedFirstName: null,
+      expiredEmail: null,
+    })
 
     try {
       const response = await verifyEmail(token)
+
+      if (response.outcome === 'Expired') {
+        set({
+          verifyEmailStatus: 'success',
+          verifyEmailMessage: response.message,
+          verifyEmailOutcome: 'expired',
+          expiredEmail: response.email ?? null,
+        })
+        return
+      }
+
+      forgetPendingVerification()
+      const { currentUser } = useAuthStore.getState()
       set({
+        ...noPendingVerification,
+        currentUser: currentUser ? { ...currentUser, isEmailVerified: true } : null,
         accountStatus: 'active',
         verifyEmailStatus: 'success',
         verifyEmailMessage: response.message,
         verifyEmailError: null,
+        verifyEmailOutcome: 'verified',
+        verifiedFirstName: response.firstName ?? null,
       })
     } catch (error) {
       const message =
@@ -233,7 +376,15 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? error.message
           : 'We could not verify your email. Please request a new verification link.'
 
-      set({ verifyEmailStatus: 'error', verifyEmailMessage: null, verifyEmailError: message })
+      // Only a rejected token is an invalid link; anything else means the check could not be made.
+      const isRejectedToken = error instanceof ApiError && error.status === 400
+      set({
+        verifyEmailStatus: 'error',
+        verifyEmailMessage: null,
+        verifyEmailError: message,
+        verifyEmailErrorStatus: error instanceof ApiError ? error.status : null,
+        verifyEmailOutcome: isRejectedToken ? 'invalid' : 'failed',
+      })
     }
   },
   requestPasswordResetForEmail: async (email) => {
@@ -264,7 +415,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
   resetPasswordWithToken: async (token, newPassword) => {
-    set({ resetPasswordStatus: 'submitting', resetPasswordMessage: null, resetPasswordError: null })
+    set({
+      resetPasswordStatus: 'submitting',
+      resetPasswordMessage: null,
+      resetPasswordError: null,
+      resetPasswordErrorStatus: null,
+    })
 
     try {
       const response = await resetPassword(token, newPassword)
@@ -280,12 +436,17 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? error.message
           : 'We could not reset your password. Please try again.'
 
-      set({ resetPasswordStatus: 'error', resetPasswordMessage: null, resetPasswordError: message })
+      set({
+        resetPasswordStatus: 'error',
+        resetPasswordMessage: null,
+        resetPasswordError: message,
+        resetPasswordErrorStatus: error instanceof ApiError ? error.status : null,
+      })
       return false
     }
   },
   resetLoginFeedback: () => {
-    set({ loginStatus: 'idle', loginError: null })
+    set({ loginStatus: 'idle', loginError: null, loginErrorCode: null, unverifiedEmail: null })
   },
   resetRegisterFeedback: () => {
     set({ registerStatus: 'idle', registerError: null })
@@ -294,7 +455,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ resendStatus: 'idle', resendMessage: null, resendError: null })
   },
   resetVerifyEmailFeedback: () => {
-    set({ verifyEmailStatus: 'idle', verifyEmailMessage: null, verifyEmailError: null })
+    set({
+      verifyEmailStatus: 'idle',
+      verifyEmailMessage: null,
+      verifyEmailError: null,
+      verifyEmailErrorStatus: null,
+      verifyEmailOutcome: null,
+      verifyEmailCheckedToken: null,
+      verifiedFirstName: null,
+      expiredEmail: null,
+    })
   },
   resetRequestPasswordResetFeedback: () => {
     set({
@@ -304,15 +474,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     })
   },
   resetResetPasswordFeedback: () => {
-    set({ resetPasswordStatus: 'idle', resetPasswordMessage: null, resetPasswordError: null })
+    set({ resetPasswordStatus: 'idle', resetPasswordMessage: null, resetPasswordError: null, resetPasswordErrorStatus: null })
   },
   resetAuth: () => {
+    forgetPendingVerification()
     set({
       currentUser: null,
       accountStatus: null,
       sessionStatus: 'unauthenticated',
       loginStatus: 'idle',
       loginError: null,
+      loginErrorCode: null,
+      unverifiedEmail: null,
       logoutStatus: 'idle',
       logoutError: null,
       registerStatus: 'idle',
@@ -321,15 +494,22 @@ export const useAuthStore = create<AuthState>((set) => ({
       resendMessage: null,
       resendError: null,
       resendAvailableAt: null,
+      pendingVerificationEmail: null,
       verifyEmailStatus: 'idle',
       verifyEmailMessage: null,
       verifyEmailError: null,
+      verifyEmailErrorStatus: null,
+      verifyEmailOutcome: null,
+      verifyEmailCheckedToken: null,
+      verifiedFirstName: null,
+      expiredEmail: null,
       requestPasswordResetStatus: 'idle',
       requestPasswordResetMessage: null,
       requestPasswordResetError: null,
       resetPasswordStatus: 'idle',
       resetPasswordMessage: null,
       resetPasswordError: null,
+      resetPasswordErrorStatus: null,
     })
   },
 }))

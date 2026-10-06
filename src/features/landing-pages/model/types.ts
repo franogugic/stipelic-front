@@ -26,7 +26,9 @@ export type LandingPage = {
   slug: string
   type: LandingPageType
   status: LandingPageStatus
-  productId: number | null
+  productPublicId: string | null
+  productName: string | null
+  productThumbnailUrl: string | null
   customDomain: string | null
   createdAt: string
   updatedAt: string
@@ -34,11 +36,14 @@ export type LandingPage = {
   uniqueVisitors: number
   purchaseCount: number
   totalRevenueCents: number
+  captureCount: number
 }
 
-export type LandingPageWithSections = LandingPage & {
+export type LandingPageWithSections = Omit<
+  LandingPage,
+  'totalViews' | 'uniqueVisitors' | 'purchaseCount' | 'totalRevenueCents' | 'captureCount'
+> & {
   sections: LandingPageSection[]
-  productName: string | null
   productPriceCents: number | null
 }
 
@@ -53,6 +58,11 @@ export type SectionTemplate = {
 export type PeriodStats = {
   totalViews: number
   uniqueVisitors: number
+  /** Paid orders, by the time they were paid. */
+  purchaseCount: number
+  /** Email captures, by the time they were captured. */
+  captureCount: number
+  revenueCents: number
 }
 
 export type EmailCaptureItem = {

@@ -1,698 +1,456 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  Building2,
-  Check,
-  CreditCard,
-  Crown,
-  Landmark,
-  Loader2,
-  Rocket,
-  Sparkles,
-  Zap,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, CircleAlert, Landmark } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TextField } from '../../../shared/ui/TextField'
-import { CreatorStepIndicator } from '../components/CreatorStepIndicator'
-import { creatorConstraints } from '../model/creator-constraints'
+import { money, number, percent } from '../../../shared/lib/format'
+import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import {
-  createSlug,
-  validateCreateCreatorForm,
-  type CreatorStep,
-} from '../model/create-creator-validation'
+  Alert,
+  Badge,
+  Brand,
+  Button,
+  ColorField,
+  Field,
+  Input,
+  InputAddon,
+  InputGroup,
+  Segmented,
+  Select,
+} from '../../../shared/ui/ledger'
+import { createSlug, validateCreateCreatorForm } from '../model/create-creator-validation'
+import type { CreateCreatorFieldName } from '../model/create-creator-validation'
 import { useCreatorStore } from '../model/creator-store'
 import { usePayoutStore } from '../model/payout-store'
-import type { CreateCreatorFormValues, CreatorPlan } from '../model/types'
+import type { CreateCreatorFormValues, CreatorPlan, PayoutMode } from '../model/types'
+
+/** The API has no "recommended" flag; the prototype marks Pro. */
+const RECOMMENDED_PLAN_CODE = 'pro'
+
+const DEFAULT_PRIMARY_COLOR = '#111827'
+
+const STEPS = ['Name & link', 'Choose plan', 'Make it yours'] as const
+type Step = 1 | 2 | 3
+
+const STEP_FIELDS: Record<Step, CreateCreatorFieldName[]> = {
+  1: ['name', 'slug', 'countryCode'],
+  2: ['planCode'],
+  3: ['supportEmail', 'brandName', 'primaryColor', 'defaultCurrency'],
+}
+
+/** The API's code for a create that failed because the address is taken. */
+const SLUG_TAKEN_CODE = 'CREATOR_SLUG_TAKEN'
+
+const regionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' })
+
+function browserTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Sarajevo'
+  } catch {
+    return 'Europe/Sarajevo'
+  }
+}
 
 const initialValues: CreateCreatorFormValues = {
   name: '',
   slug: '',
-  planCode: 'free',
+  planCode: RECOMMENDED_PLAN_CODE,
   defaultCurrency: 'EUR',
   countryCode: '',
   configureSettingsOnStart: false,
   supportEmail: '',
   brandName: '',
   logoUrl: '',
-  primaryColor: '#111827',
-  timezone: 'Europe/Sarajevo',
+  primaryColor: DEFAULT_PRIMARY_COLOR,
+  timezone: browserTimezone(),
   language: 'en',
 }
 
-const regionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' })
-
+/** New workspace in three steps: name & link, plan, optional branding. */
 export function CreateCreatorPage() {
   const navigate = useNavigate()
-  const [step, setStep] = useState<CreatorStep>('identity')
+  const [step, setStep] = useState<Step>(1)
   const [values, setValues] = useState<CreateCreatorFormValues>(initialValues)
-  const [touchedFields, setTouchedFields] = useState<
-    Partial<Record<keyof CreateCreatorFormValues, boolean>>
-  >({})
+  const [touched, setTouched] = useState<Partial<Record<CreateCreatorFieldName, boolean>>>({})
+  const [slugTakenError, setSlugTakenError] = useState<string | null>(null)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   const createCreatorProfile = useCreatorStore((s) => s.createCreatorProfile)
   const createStatus = useCreatorStore((s) => s.createStatus)
   const createError = useCreatorStore((s) => s.createError)
-  const createdCreator = useCreatorStore((s) => s.createdCreator)
+  const resetCreateCreatorFeedback = useCreatorStore((s) => s.resetCreateCreatorFeedback)
+  const startCreatorCheckout = useCreatorStore((s) => s.startCreatorCheckout)
+  const checkoutError = useCreatorStore((s) => s.checkoutError)
   const creatorPlans = useCreatorStore((s) => s.creatorPlans)
-  const creatorPlansStatus = useCreatorStore((s) => s.creatorPlansStatus)
   const creatorPlansError = useCreatorStore((s) => s.creatorPlansError)
   const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
-  const resetCreateCreatorFeedback = useCreatorStore((s) => s.resetCreateCreatorFeedback)
 
   const payoutCountries = usePayoutStore((s) => s.payoutCountries)
-  const payoutCountriesStatus = usePayoutStore((s) => s.payoutCountriesStatus)
   const loadPayoutCountries = usePayoutStore((s) => s.loadPayoutCountries)
 
-  const validation = useMemo(() => validateCreateCreatorForm(values), [values])
-  const selectedPlan = useMemo(
-    () => creatorPlans.find((p) => p.code === values.planCode),
-    [creatorPlans, values.planCode],
-  )
-  const canContinueFromPlan = selectedPlan?.status.toLowerCase() === 'active'
-  const isSubmitting = createStatus === 'submitting'
+  useDocumentTitle('Create workspace · Luma')
 
-  const countryOptions = useMemo(
+  useEffect(() => {
+    void loadCreatorPlans()
+    void loadPayoutCountries()
+  }, [loadCreatorPlans, loadPayoutCountries])
+
+  // The store outlives the page: never start with a previous attempt's error.
+  useEffect(() => {
+    resetCreateCreatorFeedback()
+  }, [resetCreateCreatorFeedback])
+
+  const countries = useMemo(
     () =>
       payoutCountries
-        .map((c) => ({ ...c, name: regionDisplayNames.of(c.code) ?? c.code }))
+        .map((country) => ({ ...country, name: regionDisplayNames.of(country.code) ?? country.code }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [payoutCountries],
   )
-  const selectedCountry = countryOptions.find((c) => c.code === values.countryCode)
+  const selectedCountry = countries.find((country) => country.code === values.countryCode)
+  const activePlans = creatorPlans.filter((plan) => plan.status.toLowerCase() === 'active')
 
-  useEffect(() => { void loadCreatorPlans() }, [loadCreatorPlans])
-  useEffect(() => { void loadPayoutCountries() }, [loadPayoutCountries])
+  // Step 3 counts as configured when anything there was filled in or changed.
+  const configureSettingsOnStart =
+    values.brandName.trim() !== '' ||
+    values.supportEmail.trim() !== '' ||
+    values.primaryColor.trim().toUpperCase() !== DEFAULT_PRIMARY_COLOR.toUpperCase()
 
-  const updateField = <TField extends keyof CreateCreatorFormValues>(
-    fieldName: TField,
-    value: CreateCreatorFormValues[TField],
-  ) => {
+  const validation = useMemo(
+    () => validateCreateCreatorForm({ ...values, configureSettingsOnStart }),
+    [values, configureSettingsOnStart],
+  )
+  const fieldError = (field: CreateCreatorFieldName) =>
+    touched[field] ? validation.fieldErrors[field] : undefined
+  const isSubmitting = createStatus === 'submitting' || isRedirecting
+
+  const update = <TField extends CreateCreatorFieldName>(field: TField, value: CreateCreatorFormValues[TField]) => {
     resetCreateCreatorFeedback()
-    setValues((c) => ({ ...c, [fieldName]: value }))
+    if (field === 'slug') setSlugTakenError(null)
+    setValues((current) => ({ ...current, [field]: value }))
   }
 
-  const updateName = (value: string) => {
+  // The address follows the name until it is edited by hand.
+  const updateName = (name: string) => {
     resetCreateCreatorFeedback()
-    setValues((c) => ({ ...c, name: value, slug: c.slug ? c.slug : createSlug(value) }))
-  }
-
-  const touchField = (fieldName: keyof CreateCreatorFormValues) =>
-    setTouchedFields((c) => ({ ...c, [fieldName]: true }))
-
-  const getError = (fieldName: keyof CreateCreatorFormValues) =>
-    touchedFields[fieldName] ? validation.fieldErrors[fieldName] : undefined
-
-  const goToPlan = () => {
-    setTouchedFields((c) => ({ ...c, name: true, slug: true }))
-    if (validation.isIdentityValid) setStep('plan')
-  }
-  const goToSetup = () => {
-    setTouchedFields((c) => ({ ...c, planCode: true }))
-    if (validation.isPlanValid) setStep('setup')
-  }
-  const goToReview = () => {
-    setTouchedFields((c) => ({ ...c, defaultCurrency: true, countryCode: true }))
-    if (validation.isSetupValid) setStep(values.configureSettingsOnStart ? 'settings' : 'review')
-  }
-  const goFromSettingsToReview = () => {
-    setTouchedFields((c) => ({
-      ...c, supportEmail: true, brandName: true, logoUrl: true, primaryColor: true, timezone: true,
+    setValues((current) => ({
+      ...current,
+      name,
+      slug: current.slug === createSlug(current.name) ? createSlug(name) : current.slug,
     }))
-    if (validation.isSettingsValid) setStep('review')
   }
+
+  const touch = (field: CreateCreatorFieldName) => setTouched((current) => ({ ...current, [field]: true }))
+  const touchStep = (target: Step) =>
+    setTouched((current) => ({ ...current, ...Object.fromEntries(STEP_FIELDS[target].map((field) => [field, true])) }))
+  const isStepValid = (target: Step) =>
+    STEP_FIELDS[target].every((field) => !validation.fieldErrors[field]) && (target !== 1 || !slugTakenError)
+
+  const goForward = () => {
+    touchStep(step)
+    if (!isStepValid(step)) return
+    resetCreateCreatorFeedback()
+    setStep((current) => (current < 3 ? ((current + 1) as Step) : current))
+  }
+
   const goBack = () => {
-    if (step === 'review')   { setStep(values.configureSettingsOnStart ? 'settings' : 'setup'); return }
-    if (step === 'settings') { setStep('setup'); return }
-    if (step === 'setup')    { setStep('plan'); return }
-    if (step === 'plan')     { setStep('identity'); return }
+    resetCreateCreatorFeedback()
+    setStep((current) => (current > 1 ? ((current - 1) as Step) : current))
   }
 
-  const submitCreator = async () => {
-    setTouchedFields({
-      name: true, slug: true, planCode: true, defaultCurrency: true,
-      configureSettingsOnStart: true, supportEmail: true, brandName: true,
-      logoUrl: true, primaryColor: true, timezone: true, language: true,
-    })
-    if (!validation.isValid) return
-    const result = await createCreatorProfile(values)
-    if (result?.checkoutUrl) { window.location.assign(result.checkoutUrl); return }
-    if (result) navigate('/')
+  const create = async (withSettings: boolean) => {
+    if (withSettings) {
+      touchStep(3)
+      if (!isStepValid(3)) return
+    }
+
+    const payload: CreateCreatorFormValues = withSettings
+      ? { ...values, configureSettingsOnStart }
+      : { ...values, configureSettingsOnStart: false, defaultCurrency: 'EUR' }
+
+    const result = await createCreatorProfile(payload)
+    if (!result) {
+      const { createErrorCode, createError: message } = useCreatorStore.getState()
+      // A taken address goes back to where it can be fixed.
+      if (createErrorCode === SLUG_TAKEN_CODE) {
+        resetCreateCreatorFeedback()
+        setSlugTakenError(message)
+        setTouched((current) => ({ ...current, slug: true }))
+        setStep(1)
+      }
+      return
+    }
+
+    if (!result.requiresPayment) {
+      navigate('/', { replace: true })
+      return
+    }
+
+    // A paid plan pays first; the workspace stays pending until Stripe confirms.
+    setIsRedirecting(true)
+    const checkoutUrl = (await startCreatorCheckout())?.checkoutUrl
+    if (checkoutUrl) {
+      window.location.assign(checkoutUrl)
+      return
+    }
+    setIsRedirecting(false)
+    navigate(`/app/${result.creator.slug}`, { replace: true })
+  }
+
+  const apiError = createError ?? (step === 2 ? creatorPlansError : null) ?? checkoutError
+
+  const heading: Record<Step, { title: ReactNode; text: string }> = {
+    1: { title: <>Name your <em>workspace</em></>, text: 'This is the name and address your customers will see.' },
+    2: { title: <>Choose your <em>plan</em></>, text: 'You can change it any time. Lower plans take a bigger fee per sale.' },
+    3: { title: <>Make it <em>yours</em></>, text: 'Optional — you can change all of this later in Settings.' },
   }
 
   return (
-    <div className="flex min-h-screen bg-neutral-50">
-      {/* Minimal left branding strip */}
-      <div className="hidden w-72 shrink-0 flex-col bg-neutral-950 px-8 py-10 lg:flex">
-        <div className="flex items-center gap-3">
-          <span className="grid size-8 place-items-center rounded-lg bg-white">
-            <span className="text-xs font-black text-neutral-950">CP</span>
-          </span>
-          <span className="text-sm font-semibold text-white">Creator Platform</span>
+    <div className="center-card" style={{ placeItems: 'start center' }}>
+      <div className="stack stack--xl" style={{ width: 'min(960px, 100%)', paddingTop: 'var(--space-10)' }}>
+        <div className="cluster cluster--between">
+          <Brand to="/" />
+          <span className="text-sm text-muted">Step {step} of 3</span>
         </div>
 
-        <div className="mt-12">
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
-            New workspace
-          </p>
-          <div className="mt-6 grid gap-3">
-            {[
-              { step: 'identity', label: 'Name & URL' },
-              { step: 'plan',     label: 'Choose plan' },
-              { step: 'setup',    label: 'Initial setup' },
-              ...(values.configureSettingsOnStart ? [{ step: 'settings', label: 'Brand settings' }] : []),
-              { step: 'review',   label: 'Review' },
-            ].map(({ step: s, label }, i) => {
-              const steps: CreatorStep[] = ['identity', 'plan', 'setup', 'settings', 'review']
-              const currentIndex = steps.indexOf(step)
-              const thisIndex = steps.indexOf(s as CreatorStep)
-              const isDone = thisIndex < currentIndex
-              const isCurrent = s === step
-              return (
-                <div key={s} className="flex items-center gap-3">
-                  <span
-                    className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold transition ${
-                      isDone
-                        ? 'bg-white text-neutral-950'
-                        : isCurrent
-                          ? 'bg-white/20 text-white'
-                          : 'bg-white/10 text-white/30'
-                    }`}
-                  >
-                    {isDone ? <Check size={11} strokeWidth={3} /> : i + 1}
-                  </span>
-                  <span
-                    className={`text-sm transition ${
-                      isCurrent ? 'font-semibold text-white' : isDone ? 'text-white/60' : 'text-white/30'
-                    }`}
-                  >
-                    {label}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
+        <ol className="stepper" role="list">
+          {STEPS.map((label, index) => {
+            const stepNumber = index + 1
+            const state =
+              stepNumber < step ? 'stepper__step--done' : stepNumber === step ? 'stepper__step--current' : undefined
+            return (
+              <li
+                key={label}
+                className={['stepper__step', state].filter(Boolean).join(' ')}
+                aria-current={stepNumber === step ? 'step' : undefined}
+              >
+                {label}
+              </li>
+            )
+          })}
+        </ol>
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col">
-        {/* Top bar */}
-        <header className="flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-8">
-          <div className="flex items-center gap-2.5 lg:hidden">
-            <span className="grid size-7 place-items-center rounded-lg bg-neutral-950">
-              <span className="text-xs font-black text-white">CP</span>
-            </span>
-            <span className="text-sm font-medium text-neutral-500">New workspace</span>
-          </div>
-          <span className="hidden text-sm font-medium text-neutral-500 lg:block">
-            {getStepTitle(step)}
-          </span>
-          <button
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50"
-            type="button"
-            onClick={() => navigate('/')}
+        <div className="stack stack--sm">
+          <h1 className="page-title">{heading[step].title}</h1>
+          <p className="text-secondary">{heading[step].text}</p>
+        </div>
+
+        {apiError ? (
+          <Alert tone="danger" icon={CircleAlert} live>
+            <p>{apiError}</p>
+          </Alert>
+        ) : null}
+
+        {step === 1 && (
+          <form
+            className="form"
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault()
+              goForward()
+            }}
           >
-            <ArrowLeft size={13} />
-            Cancel
-          </button>
-        </header>
-
-        {/* Mobile step indicator */}
-        <div className="border-b border-neutral-200 bg-white px-6 py-3 lg:hidden">
-          <CreatorStepIndicator currentStep={step} includeSettings={values.configureSettingsOnStart} />
-        </div>
-
-        <main className="flex-1 px-8 py-10">
-          <div className="mx-auto w-full max-w-xl">
-            {/* Success state */}
-            {createdCreator ? (
-              <div className="rounded-2xl border border-emerald-200 bg-white p-8 shadow-sm text-center">
-                <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-emerald-50">
-                  <Zap className="text-emerald-600" size={28} strokeWidth={1.8} />
-                </div>
-                <h2 className="mt-6 text-xl font-semibold tracking-tight text-neutral-950">
-                  Workspace created!
-                </h2>
-                <p className="mt-2.5 text-sm leading-6 text-neutral-500">
-                  <span className="font-semibold text-neutral-950">{createdCreator.name}</span> is
-                  ready at <span className="font-mono text-neutral-700">/{createdCreator.slug}</span>.
-                </p>
-                <button
-                  className="mx-auto mt-8 flex h-11 items-center gap-2 rounded-xl bg-neutral-950 px-6 text-sm font-semibold text-white transition hover:bg-neutral-800"
-                  type="button"
-                  onClick={() => navigate(`/app/${createdCreator.slug}`)}
+            <Field label="Workspace name" error={fieldError('name')}>
+              {(control) => (
+                <Input
+                  {...control}
+                  name="name"
+                  autoComplete="organization"
+                  value={values.name}
+                  onBlur={() => touch('name')}
+                  onChange={(event) => updateName(event.target.value)}
+                />
+              )}
+            </Field>
+            <Field
+              label="Your address"
+              hint="Lowercase letters, numbers and dashes."
+              error={slugTakenError ?? fieldError('slug')}
+            >
+              {(control) => (
+                <InputGroup>
+                  <InputAddon>{window.location.host}/p/</InputAddon>
+                  <Input
+                    {...control}
+                    className="mono"
+                    name="slug"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    value={values.slug}
+                    onBlur={() => touch('slug')}
+                    onChange={(event) => update('slug', event.target.value)}
+                  />
+                </InputGroup>
+              )}
+            </Field>
+            <Field label="Country" hint="Decides how your earnings are paid out." error={fieldError('countryCode')}>
+              {(control) => (
+                <Select
+                  {...control}
+                  name="countryCode"
+                  value={values.countryCode}
+                  onBlur={() => touch('countryCode')}
+                  onChange={(event) => update('countryCode', event.target.value)}
                 >
-                  Open workspace
-                  <ArrowRight size={16} />
-                </button>
-              </div>
-            ) : null}
+                  <option value="" disabled>
+                    Select your country
+                  </option>
+                  {countries.map((country) => (
+                    <option key={country.code} value={country.code}>
+                      {country.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            {/* Enter submits the step. */}
+            <button type="submit" hidden />
+          </form>
+        )}
 
-            {!createdCreator ? (
-              <>
-                <div className="mb-8">
-                  <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">
-                    {getStepTitle(step)}
-                  </h1>
-                  <p className="mt-1.5 text-sm text-neutral-500">{getStepDescription(step)}</p>
-                </div>
+        {step === 2 && (
+          <>
+            <div className="plans">
+              {activePlans.map((plan) => (
+                <PlanCard
+                  key={plan.code}
+                  plan={plan}
+                  checked={values.planCode === plan.code}
+                  onSelect={() => update('planCode', plan.code)}
+                />
+              ))}
+            </div>
+            {selectedCountry && <PayoutAlert country={selectedCountry.name} payoutMode={selectedCountry.payoutMode} />}
+          </>
+        )}
 
-                <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
-                  {/* ── Identity ── */}
-                  {step === 'identity' ? (
-                    <div className="grid gap-5">
-                      <TextField
-                        label="Workspace name"
-                        name="name"
-                        maxLength={creatorConstraints.name.maxLength}
-                        placeholder="Ana Studio"
-                        value={values.name}
-                        error={getError('name')}
-                        hint="The public name of your creator workspace."
-                        onBlur={() => touchField('name')}
-                        onChange={(e) => updateName(e.target.value)}
-                      />
-                      <div>
-                        <TextField
-                          label="URL slug"
-                          name="slug"
-                          maxLength={creatorConstraints.slug.maxLength}
-                          placeholder="ana-studio"
-                          value={values.slug}
-                          error={getError('slug')}
-                          onBlur={() => touchField('slug')}
-                          onChange={(e) => updateField('slug', createSlug(e.target.value))}
-                        />
-                        <p className="mt-2 text-xs text-neutral-400">
-                          Your workspace URL:{' '}
-                          <span className="font-mono text-neutral-600">
-                            creatorplatform.io/{values.slug || 'your-slug'}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                  ) : null}
+        {step === 3 && (
+          <form
+            className="form"
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault()
+              void create(true)
+            }}
+          >
+            <Field label="Brand name" error={fieldError('brandName')}>
+              {(control) => (
+                <Input
+                  {...control}
+                  name="brandName"
+                  placeholder={values.name.trim()}
+                  value={values.brandName}
+                  onBlur={() => touch('brandName')}
+                  onChange={(event) => update('brandName', event.target.value)}
+                />
+              )}
+            </Field>
+            <Field label="Support email" hint="Used as reply-to for campaigns." error={fieldError('supportEmail')}>
+              {(control) => (
+                <Input
+                  {...control}
+                  type="email"
+                  name="supportEmail"
+                  autoComplete="email"
+                  inputMode="email"
+                  value={values.supportEmail}
+                  onBlur={() => touch('supportEmail')}
+                  onChange={(event) => update('supportEmail', event.target.value)}
+                />
+              )}
+            </Field>
+            <Field label="Primary colour" error={fieldError('primaryColor')}>
+              {(control) => (
+                <ColorField
+                  id={control.id}
+                  value={values.primaryColor}
+                  onChange={(value) => update('primaryColor', value)}
+                />
+              )}
+            </Field>
+            <Field label="Currency" error={fieldError('defaultCurrency')}>
+              {() => (
+                <Segmented
+                  label="Currency"
+                  options={[
+                    { value: 'EUR', label: 'EUR' },
+                    { value: 'USD', label: 'USD' },
+                  ]}
+                  value={values.defaultCurrency}
+                  onChange={(value) => update('defaultCurrency', value === 'USD' ? 'USD' : 'EUR')}
+                />
+              )}
+            </Field>
+            <p className="text-sm text-muted">You can add your logo later in Settings.</p>
+            <button type="submit" hidden />
+          </form>
+        )}
 
-                  {/* ── Plan ── */}
-                  {step === 'plan' ? (
-                    <div>
-                      {creatorPlansStatus === 'loading' ? (
-                        <div className="flex h-24 items-center justify-center gap-3 text-sm text-neutral-400">
-                          <Loader2 className="animate-spin" size={16} />
-                          Loading plans…
-                        </div>
-                      ) : null}
-                      {creatorPlansStatus === 'error' ? (
-                        <p className="text-sm text-red-600">{creatorPlansError}</p>
-                      ) : null}
-                      {creatorPlansStatus === 'success' ? (
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {creatorPlans.map((plan) => {
-                            const PlanIcon = getPlanIcon(plan.code)
-                            const isSelected = values.planCode === plan.code
-                            const isAvailable = plan.status.toLowerCase() === 'active'
-                            const limits = formatPlanLimits(plan.limits)
-                            return (
-                              <button
-                                key={plan.code}
-                                className={`min-h-36 rounded-xl border p-4 text-left transition ${
-                                  isSelected
-                                    ? 'border-neutral-950 bg-neutral-950 text-white'
-                                    : isAvailable
-                                      ? 'border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm'
-                                      : 'cursor-not-allowed border-neutral-200 bg-neutral-50 opacity-50'
-                                }`}
-                                type="button"
-                                disabled={!isAvailable}
-                                onClick={() => updateField('planCode', plan.code)}
-                              >
-                                <div className="flex items-start justify-between">
-                                  <span className={`grid size-8 place-items-center rounded-lg ${isSelected ? 'bg-white/15' : 'bg-neutral-100'}`}>
-                                    <PlanIcon size={16} className={isSelected ? 'text-white' : 'text-neutral-600'} />
-                                  </span>
-                                  {isSelected ? (
-                                    <span className="grid size-5 place-items-center rounded-full bg-white">
-                                      <Check size={11} className="text-neutral-950" />
-                                    </span>
-                                  ) : (
-                                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
-                                      {plan.billingInterval === 'None' ? 'Free' : plan.billingInterval}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="mt-4 text-sm font-semibold">{plan.name}</p>
-                                <p className={`mt-0.5 text-sm ${isSelected ? 'text-white/60' : 'text-neutral-500'}`}>
-                                  {formatPlanPrice(plan)}
-                                </p>
-                                {limits.length > 0 ? (
-                                  <ul className={`mt-3 grid gap-0.5 text-xs ${isSelected ? 'text-white/50' : 'text-neutral-400'}`}>
-                                    {limits.slice(0, 3).map((l) => <li key={l}>· {l}</li>)}
-                                  </ul>
-                                ) : null}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  {/* ── Setup ── */}
-                  {step === 'setup' ? (
-                    <div className="grid gap-6">
-                      <div>
-                        <p className="mb-3 text-sm font-medium text-neutral-700">Default currency</p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {(['EUR', 'USD'] as const).map((currency) => (
-                            <button
-                              key={currency}
-                              className={`h-10 rounded-xl border text-sm font-semibold transition ${
-                                values.defaultCurrency === currency
-                                  ? 'border-neutral-950 bg-neutral-950 text-white'
-                                  : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
-                              }`}
-                              type="button"
-                              onClick={() => updateField('defaultCurrency', currency)}
-                            >
-                              {currency}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="mb-3 block text-sm font-medium text-neutral-700" htmlFor="countryCode">
-                          Country
-                        </label>
-                        {payoutCountriesStatus === 'loading' ? (
-                          <div className="flex h-[42px] items-center gap-2 px-1 text-sm text-neutral-400">
-                            <Loader2 className="animate-spin" size={14} />
-                            Loading countries…
-                          </div>
-                        ) : (
-                          <select
-                            id="countryCode"
-                            className={[
-                              'h-[42px] w-full rounded-xl border px-3.5 text-sm text-neutral-950 outline-none transition',
-                              'focus:ring-2',
-                              getError('countryCode')
-                                ? 'border-red-300 bg-red-50/50 focus:border-red-400 focus:ring-red-100'
-                                : 'border-neutral-200 bg-white focus:border-neutral-400 focus:ring-neutral-100',
-                            ].join(' ')}
-                            value={values.countryCode}
-                            onBlur={() => touchField('countryCode')}
-                            onChange={(e) => updateField('countryCode', e.target.value)}
-                          >
-                            <option value="" disabled>
-                              Select your country…
-                            </option>
-                            {countryOptions.map((c) => (
-                              <option key={c.code} value={c.code}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        {getError('countryCode') ? (
-                          <p className="mt-1.5 text-xs font-medium text-red-600">{getError('countryCode')}</p>
-                        ) : null}
-
-                        {selectedCountry ? (
-                          <div className="mt-3 flex items-start gap-3 rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-3">
-                            {selectedCountry.payoutMode === 'StripeConnect' ? (
-                              <CreditCard size={16} className="mt-0.5 shrink-0 text-neutral-500" />
-                            ) : (
-                              <Landmark size={16} className="mt-0.5 shrink-0 text-neutral-500" />
-                            )}
-                            <p className="text-sm leading-5 text-neutral-600">
-                              {selectedCountry.payoutMode === 'StripeConnect'
-                                ? "Payouts go directly to your Stripe account — you'll connect it after setup."
-                                : "You'll add your bank details after setup; payouts are sent by bank transfer."}
-                            </p>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div>
-                        <p className="mb-3 text-sm font-medium text-neutral-700">Initial configuration</p>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {([
-                            { value: false, icon: Sparkles, title: 'Quick start', desc: 'Start with clean defaults. Customize branding later from settings.' },
-                            { value: true,  icon: Building2, title: 'Custom branding', desc: 'Set your brand name, colours, and support email before launching.' },
-                          ] as const).map(({ value, icon: Icon, title, desc }) => {
-                            const isSelected = values.configureSettingsOnStart === value
-                            return (
-                              <button
-                                key={title}
-                                className={`rounded-xl border p-4 text-left transition ${
-                                  isSelected
-                                    ? 'border-neutral-950 bg-neutral-950 text-white'
-                                    : 'border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm'
-                                }`}
-                                type="button"
-                                onClick={() => updateField('configureSettingsOnStart', value)}
-                              >
-                                <Icon size={16} className={isSelected ? 'text-white' : 'text-neutral-500'} />
-                                <p className="mt-3 text-sm font-semibold">{title}</p>
-                                <p className={`mt-1 text-xs leading-5 ${isSelected ? 'text-white/60' : 'text-neutral-400'}`}>{desc}</p>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {/* ── Settings ── */}
-                  {step === 'settings' ? (
-                    <div className="grid gap-5">
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <TextField
-                          label="Brand name"
-                          name="brandName"
-                          maxLength={creatorConstraints.brandName.maxLength}
-                          placeholder={values.name || 'Ana Studio'}
-                          value={values.brandName}
-                          error={getError('brandName')}
-                          onBlur={() => touchField('brandName')}
-                          onChange={(e) => updateField('brandName', e.target.value)}
-                        />
-                        <TextField
-                          label="Support email"
-                          name="supportEmail"
-                          type="email"
-                          inputMode="email"
-                          maxLength={creatorConstraints.supportEmail.maxLength}
-                          placeholder="hello@example.com"
-                          value={values.supportEmail}
-                          error={getError('supportEmail')}
-                          onBlur={() => touchField('supportEmail')}
-                          onChange={(e) => updateField('supportEmail', e.target.value)}
-                        />
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
-                        <TextField
-                          label="Logo URL"
-                          name="logoUrl"
-                          type="url"
-                          maxLength={creatorConstraints.logoUrl.maxLength}
-                          placeholder="https://example.com/logo.png"
-                          value={values.logoUrl}
-                          error={getError('logoUrl')}
-                          onBlur={() => touchField('logoUrl')}
-                          onChange={(e) => updateField('logoUrl', e.target.value)}
-                        />
-                        <div className="grid gap-1.5">
-                          <label className="text-sm font-medium text-neutral-700">Primary colour</label>
-                          <span className="flex h-[42px] items-center gap-2.5 rounded-xl border border-neutral-200 bg-white px-3 transition focus-within:border-neutral-400 focus-within:ring-2 focus-within:ring-neutral-100">
-                            <input
-                              className="size-6 shrink-0 cursor-pointer rounded border-0 bg-transparent p-0"
-                              type="color"
-                              value={values.primaryColor}
-                              onChange={(e) => updateField('primaryColor', e.target.value)}
-                            />
-                            <input
-                              className="min-w-0 flex-1 text-sm text-neutral-950 outline-none"
-                              maxLength={creatorConstraints.primaryColor.maxLength}
-                              value={values.primaryColor}
-                              onBlur={() => touchField('primaryColor')}
-                              onChange={(e) => updateField('primaryColor', e.target.value)}
-                            />
-                          </span>
-                          {getError('primaryColor') ? (
-                            <p className="text-xs text-red-600">{getError('primaryColor')}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="mb-3 text-sm font-medium text-neutral-700">Timezone</p>
-                        <div className="grid gap-2 sm:grid-cols-3">
-                          {(['Europe/Sarajevo', 'Europe/Berlin', 'America/New_York'] as const).map((tz) => (
-                            <button
-                              key={tz}
-                              className={`rounded-xl border p-3 text-left transition ${
-                                values.timezone === tz
-                                  ? 'border-neutral-950 bg-neutral-950 text-white'
-                                  : 'border-neutral-200 bg-white hover:border-neutral-300'
-                              }`}
-                              type="button"
-                              onClick={() => updateField('timezone', tz)}
-                            >
-                              <p className="text-sm font-semibold">{formatTimezoneLabel(tz)}</p>
-                              <p className={`mt-0.5 text-xs ${values.timezone === tz ? 'text-white/50' : 'text-neutral-400'}`}>{tz}</p>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {/* ── Review ── */}
-                  {step === 'review' ? (
-                    <div className="grid gap-2">
-                      <ReviewRow label="Workspace name" value={values.name.trim()} />
-                      <ReviewRow label="URL slug" value={`/${values.slug.trim()}`} />
-                      <ReviewRow label="Plan" value={selectedPlan?.name ?? values.planCode} />
-                      <ReviewRow label="Currency" value={values.defaultCurrency} />
-                      <ReviewRow label="Country" value={selectedCountry?.name ?? values.countryCode} />
-                      {values.configureSettingsOnStart ? (
-                        <>
-                          <ReviewRow label="Brand name" value={values.brandName.trim() || values.name.trim()} />
-                          <ReviewRow label="Primary colour" value={values.primaryColor} />
-                          <ReviewRow label="Timezone" value={values.timezone} />
-                        </>
-                      ) : (
-                        <ReviewRow label="Brand settings" value="Using defaults — edit anytime" />
-                      )}
-
-                      {selectedPlan && selectedPlan.priceCents > 0 ? (
-                        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                          After creating, you'll be redirected to Stripe to complete payment for the{' '}
-                          <strong>{selectedPlan.name}</strong> plan ({formatPlanPrice(selectedPlan)}).
-                        </div>
-                      ) : null}
-
-                      {createError ? (
-                        <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                          {createError}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* Navigation */}
-                <div className="mt-6 flex items-center justify-between">
-                  <button
-                    className="inline-flex h-10 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    type="button"
-                    disabled={step === 'identity' || isSubmitting}
-                    onClick={goBack}
-                  >
-                    <ArrowLeft size={15} />
-                    Back
-                  </button>
-
-                  {step === 'identity' ? (
-                    <button className={primaryBtn} type="button" onClick={goToPlan}>
-                      Continue <ArrowRight size={15} />
-                    </button>
-                  ) : null}
-                  {step === 'plan' ? (
-                    <button className={primaryBtn} type="button" disabled={creatorPlansStatus !== 'success' || !canContinueFromPlan} onClick={goToSetup}>
-                      Continue <ArrowRight size={15} />
-                    </button>
-                  ) : null}
-                  {step === 'setup' ? (
-                    <button className={primaryBtn} type="button" onClick={goToReview}>
-                      {values.configureSettingsOnStart ? 'Configure branding' : 'Review'} <ArrowRight size={15} />
-                    </button>
-                  ) : null}
-                  {step === 'settings' ? (
-                    <button className={primaryBtn} type="button" onClick={goFromSettingsToReview}>
-                      Review <ArrowRight size={15} />
-                    </button>
-                  ) : null}
-                  {step === 'review' ? (
-                    <button className={primaryBtn} type="button" disabled={isSubmitting} onClick={() => void submitCreator()}>
-                      {isSubmitting ? (
-                        <><Loader2 className="animate-spin" size={15} /> Creating…</>
-                      ) : (
-                        <>Create workspace <ArrowRight size={15} /></>
-                      )}
-                    </button>
-                  ) : null}
-                </div>
-              </>
-            ) : null}
-          </div>
-        </main>
+        <div className="cluster cluster--between">
+          {step > 1 ? (
+            <Button variant="ghost" icon={ArrowLeft} onClick={goBack} disabled={isSubmitting}>
+              Back
+            </Button>
+          ) : (
+            <span />
+          )}
+          {step < 3 ? (
+            <Button variant="primary" icon={ArrowRight} onClick={goForward}>
+              Continue
+            </Button>
+          ) : (
+            <div className="cluster">
+              <Button variant="ghost" onClick={() => void create(false)} disabled={isSubmitting}>
+                Skip
+              </Button>
+              <Button variant="accent" icon={Check} loading={isSubmitting} onClick={() => void create(true)}>
+                Create workspace
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-const primaryBtn =
-  'inline-flex h-10 items-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40'
+function PlanCard({ plan, checked, onSelect }: { plan: CreatorPlan; checked: boolean; onSelect: () => void }) {
+  const limit = (key: string) => plan.limits[key]
+  const count = (key: string) => {
+    const value = limit(key)
+    return value === undefined || value < 0 ? 'Unlimited' : number(value)
+  }
 
-/* ─── Sub-components ─────────────────────────────────────────── */
-
-function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-3">
-      <span className="text-sm text-neutral-500">{label}</span>
-      <span className="text-sm font-semibold text-neutral-950">{value}</span>
-    </div>
+    <label className="choice">
+      <input className="choice__input" type="radio" name="plan" value={plan.code} checked={checked} onChange={onSelect} />
+      <span className="cluster cluster--between">
+        <span className="choice__title">{plan.name}</span>
+        {plan.code === RECOMMENDED_PLAN_CODE && <Badge tone="solid-accent">Recommended</Badge>}
+      </span>
+      <span className="plan__price">
+        {money(plan.priceCents, plan.currency, { decimals: plan.priceCents % 100 !== 0 })}
+        <small className="text-sm text-muted"> /mo</small>
+      </span>
+      <ul className="plan__list" role="list">
+        <li>{percent(plan.platformFeeBasisPoints / 100)} fee per sale</li>
+        <li>{count('max_landing_pages')} landing pages</li>
+        <li>{count('max_products')} products</li>
+        <li>{count('max_email_sends_per_month')} emails / month</li>
+        <li>{count('max_contacts')} contacts</li>
+      </ul>
+    </label>
   )
 }
 
-/* ─── Helpers ────────────────────────────────────────────────── */
-
-function getStepTitle(step: CreatorStep) {
-  switch (step) {
-    case 'identity': return 'Name your workspace'
-    case 'plan':     return 'Choose a plan'
-    case 'setup':    return 'Initial setup'
-    case 'settings': return 'Brand settings'
-    case 'review':   return 'Review & create'
-  }
-}
-
-function getStepDescription(step: CreatorStep) {
-  switch (step) {
-    case 'identity': return 'Give your workspace a name and a unique URL slug.'
-    case 'plan':     return 'Select the plan that fits your current needs. You can upgrade anytime.'
-    case 'setup':    return 'Set your billing currency and choose how to start.'
-    case 'settings': return 'Customize your brand before the workspace goes live.'
-    case 'review':   return 'Review everything before creating your workspace.'
-  }
-}
-
-function formatTimezoneLabel(tz: string) {
-  return tz.split('/').at(-1)?.replaceAll('_', ' ') ?? tz
-}
-
-function getPlanIcon(code: string) {
-  switch (code) {
-    case 'basic': return Rocket
-    case 'pro':   return Crown
-    case 'plus':  return Building2
-    default:      return Sparkles
-  }
-}
-
-function formatPlanPrice(plan: CreatorPlan) {
-  if (plan.priceCents <= 0) return 'Free forever'
-  return `€${(plan.priceCents / 100).toFixed(0)} / ${plan.billingInterval.toLowerCase() || 'month'}`
-}
-
-function formatPlanLimits(limits: CreatorPlan['limits']) {
-  return Object.entries(limits).map(
-    ([key, value]) => `${formatLimitKey(key)}: ${value < 0 ? 'Unlimited' : value.toLocaleString()}`,
+function PayoutAlert({ country, payoutMode }: { country: string; payoutMode: PayoutMode }) {
+  return payoutMode === 'BankTransfer' ? (
+    <Alert tone="info" icon={Landmark} title={`${country} · Bank transfer payouts`}>
+      Your earnings are collected on Luma and paid to your bank account (IBAN) when you request a payout.
+    </Alert>
+  ) : (
+    <Alert tone="info" icon={Landmark} title={`${country} · Stripe payouts`}>
+      Your earnings go straight to your own Stripe account. Creators in Serbia or BiH are paid by bank transfer (IBAN)
+      instead.
+    </Alert>
   )
-}
-
-function formatLimitKey(key: string) {
-  return key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
 }

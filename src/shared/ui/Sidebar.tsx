@@ -11,13 +11,14 @@ import type { NavSection } from './nav-sections'
 export type { NavSection } from './nav-sections'
 
 type SidebarProps = {
+  /** The workspace address; empty on a platform page of an admin without a workspace (only the Admin group shows). */
   slug: string
   activeSection: NavSection
   /** Closes the mobile drawer; only the drawer's close button uses it. */
   onCloseDrawer?: () => void
 }
 
-type NavItem = { section: NavSection | 'admin-payouts'; label: string; icon: LucideIcon; href: (slug: string) => string }
+type NavItem = { section: NavSection; label: string; icon: LucideIcon; href: (slug: string) => string }
 type NavGroup = { id: string; label?: string; items: NavItem[] }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -92,23 +93,23 @@ export function Sidebar({ slug, activeSection, onCloseDrawer }: SidebarProps) {
   return (
     <div className="sidebar">
       <div className="sidebar__head">
-        <Brand to={`/app/${slug}`} />
+        <Brand to={slug ? `/app/${slug}` : '/'} />
         <Button variant="ghost" iconOnly icon={X} className="sidebar__close" aria-label="Close menu" onClick={onCloseDrawer} />
       </div>
-      <div className="workspace-card">
-        <span className="workspace-card__logo" aria-hidden="true">
-          {brandName ? monogram(brandName) : ''}
-        </span>
-        <span className="workspace-card__text">
-          <span className="workspace-card__name">{creator?.name ?? ''}</span>
-          <span className="workspace-card__url">{`${window.location.host}/p/${slug}`}</span>
-        </span>
-      </div>
+      {slug && (
+        <div className="workspace-card">
+          <span className="workspace-card__logo" aria-hidden="true">
+            {brandName ? monogram(brandName) : ''}
+          </span>
+          <span className="workspace-card__text">
+            <span className="workspace-card__name">{creator?.name ?? ''}</span>
+            <span className="workspace-card__url">{`${window.location.host}/p/${slug}`}</span>
+          </span>
+        </div>
+      )}
       <nav className="nav" aria-label="Main">
-        {NAV_GROUPS.map((group) => (
-          <NavGroupList key={group.id} group={group} slug={slug} active={activeSection} />
-        ))}
-        {isAdmin && <NavGroupList group={ADMIN_GROUP} slug={slug} active="" />}
+        {slug && NAV_GROUPS.map((group) => <NavGroupList key={group.id} group={group} slug={slug} active={activeSection} />)}
+        {isAdmin && <NavGroupList group={ADMIN_GROUP} slug={slug} active={activeSection} />}
       </nav>
       <div className="sidebar__foot">
         <ThemeSwitch />

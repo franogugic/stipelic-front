@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getAudiencePreview } from '../api/campaigns-api'
 import { useCampaignStore } from './campaign-store'
 import { useTemplateStore } from './template-store'
 import type {
+  AudiencePreview,
   CampaignAudienceType,
   CampaignAudiences,
   CampaignDetail,
@@ -26,17 +28,11 @@ function audienceOptions(audiences: CampaignAudiences | null) {
   ]
 }
 
-/**
- * State and rules of the "new campaign" form, shared by every screen that sends a campaign. Pass
- * `lockedToAll` for a screen whose audience is fixed to every subscriber (the audience select is then
- * not needed and the selection is always All).
- */
-export function useCampaignComposer({ slug, lockedToAll = false }: { slug: string; lockedToAll?: boolean }) {
+/** State and rules of the "new campaign" form. */
+export function useCampaignComposer({ slug }: { slug: string }) {
   const audiences = useCampaignStore((s) => s.audiences)
   const audiencesStatus = useCampaignStore((s) => s.audiencesStatus)
   const loadAudiences = useCampaignStore((s) => s.loadAudiences)
-  const usage = useCampaignStore((s) => s.usage)
-  const loadUsage = useCampaignStore((s) => s.loadUsage)
   const sendCampaignForSlug = useCampaignStore((s) => s.sendCampaignForSlug)
   const sendCampaignStatus = useCampaignStore((s) => s.sendCampaignStatus)
   const sendCampaignError = useCampaignStore((s) => s.sendCampaignError)
@@ -56,22 +52,41 @@ export function useCampaignComposer({ slug, lockedToAll = false }: { slug: strin
 
   useEffect(() => {
     void loadAudiences(slug)
-    void loadUsage(slug)
     void loadTemplates(slug)
-  }, [slug, loadAudiences, loadUsage, loadTemplates])
+  }, [slug, loadAudiences, loadTemplates])
 
   const options = useMemo(() => audienceOptions(audiences), [audiences])
-  const selection = lockedToAll
-    ? ALL_SELECTION
-    : pickedSelection ?? options.find((o) => o.recipientCount > 0)?.value ?? ALL_SELECTION
+  const selection = pickedSelection ?? options.find((o) => o.recipientCount > 0)?.value ?? ALL_SELECTION
 
   const audienceType: CampaignAudienceType =
     selection === ALL_SELECTION ? 'All' : (selection.split(':')[0] as CampaignAudienceType)
   const targetPublicId = selection === ALL_SELECTION ? null : selection.split(':')[1]
   const recipientCount = options.find((o) => o.value === selection)?.recipientCount ?? null
 
-  // null = unlimited (or usage not known yet).
-  const remaining = usage && usage.limit >= 0 ? Math.max(0, usage.limit - usage.sent) : null
+  // The allowance for the chosen audience; a result belongs to the audience it was fetched for.
+  const [previewAttempt, setPreviewAttempt] = useState(0)
+  const [previewResult, setPreviewResult] = useState<{ key: string; data: AudiencePreview | null } | null>(null)
+  const previewKey = `${slug}|${selection}|${previewAttempt}`
+  const audienceReady = audiences !== null
+
+  useEffect(() => {
+    if (!audienceReady) return
+    let active = true
+    getAudiencePreview(slug, audienceType, targetPublicId)
+      .then((data) => active && setPreviewResult({ key: previewKey, data }))
+      .catch(() => active && setPreviewResult({ key: previewKey, data: null }))
+    return () => {
+      active = false
+    }
+  }, [slug, audienceReady, audienceType, targetPublicId, previewKey])
+
+  const previewState = previewResult?.key === previewKey ? previewResult : null
+  const preview = previewState?.data ?? null
+  const previewStatus: 'loading' | 'ready' | 'error' = previewState === null ? 'loading' : preview ? 'ready' : 'error'
+  const retryPreview = useCallback(() => setPreviewAttempt((attempt) => attempt + 1), [])
+
+  // null = unlimited (or not known yet).
+  const remaining = preview && preview.monthlyLimit >= 0 ? preview.remaining : null
   const overLimit = recipientCount !== null && remaining !== null && recipientCount > remaining
 
   const ctaLabelSet = content.ctaLabel.trim().length > 0
@@ -79,13 +94,9 @@ export function useCampaignComposer({ slug, lockedToAll = false }: { slug: strin
   const ctaError =
     ctaLabelSet !== ctaUrlSet ? 'Set both a button label and a button URL, or leave both empty.' : null
 
-  const canSend =
-    content.subject.trim().length > 0 &&
-    content.bodyText.trim().length > 0 &&
-    ctaError === null &&
-    recipientCount !== null &&
-    recipientCount > 0 &&
-    !overLimit
+  const subjectError = content.subject.trim().length > 0 ? null : 'Add a subject.'
+  const bodyError = content.bodyText.trim().length > 0 ? null : 'Write a message.'
+  const contentValid = subjectError === null && bodyError === null && ctaError === null
 
   const isDirty =
     content.subject !== baseline.subject ||
@@ -158,16 +169,14 @@ export function useCampaignComposer({ slug, lockedToAll = false }: { slug: strin
       const campaign = await sendCampaignForSlug(slug, buildRequest(scheduledAt))
       if (campaign) {
         reset()
-        void loadUsage(slug)
         void loadAudiences(slug)
       }
       return campaign
     },
-    [slug, sendCampaignForSlug, buildRequest, reset, loadUsage, loadAudiences],
+    [slug, sendCampaignForSlug, buildRequest, reset, loadAudiences],
   )
 
   return {
-    lockedToAll,
     audiences,
     audiencesStatus,
     selection,
@@ -186,10 +195,14 @@ export function useCampaignComposer({ slug, lockedToAll = false }: { slug: strin
     content,
     setField,
     ctaError,
-    usage,
+    preview,
+    previewStatus,
+    retryPreview,
     remaining,
     overLimit,
-    canSend,
+    subjectError,
+    bodyError,
+    contentValid,
     buildRequest,
     send,
     isSending: sendCampaignStatus === 'submitting',

@@ -21,6 +21,7 @@ export function ConfirmDialog({
   busy,
   onConfirm,
   onCancel,
+  children,
 }: {
   open: boolean
   title: ReactNode
@@ -33,6 +34,8 @@ export function ConfirmDialog({
   busy?: boolean
   onConfirm: () => void
   onCancel: () => void
+  /** Extra content under the text, e.g. an error that keeps the dialog open. */
+  children?: ReactNode
 }) {
   const inputId = useId()
   const [typed, setTyped] = useState('')
@@ -72,24 +75,29 @@ export function ConfirmDialog({
         </>
       }
     >
-      {requireText ? (
-        <div className="field">
-          <label className="field__label" htmlFor={inputId}>
-            <span>
-              Type <strong className="mono">{requireText}</strong> to confirm
-            </span>
-          </label>
-          <input
-            className="input"
-            id={inputId}
-            type="text"
-            autoComplete="off"
-            spellCheck={false}
-            data-autofocus
-            value={typed}
-            onChange={(event) => setTyped(event.target.value)}
-          />
-        </div>
+      {requireText || children ? (
+        <>
+          {requireText && (
+            <div className="field">
+              <label className="field__label" htmlFor={inputId}>
+                <span>
+                  Type <strong className="mono">{requireText}</strong> to confirm
+                </span>
+              </label>
+              <input
+                className="input"
+                id={inputId}
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                data-autofocus
+                value={typed}
+                onChange={(event) => setTyped(event.target.value)}
+              />
+            </div>
+          )}
+          {children}
+        </>
       ) : undefined}
     </Modal>
   )

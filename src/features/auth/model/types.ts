@@ -3,6 +3,8 @@ export type RegisterFormValues = {
   lastName: string
   email: string
   password: string
+  /** The Terms and Privacy Policy checkbox; the backend refuses registration without it. */
+  acceptTerms: boolean
 }
 
 export type LoginFormValues = {
@@ -44,7 +46,18 @@ export type VerifyEmailRequest = {
 
 export type VerifyEmailResponse = {
   message: string
+  outcome: 'Verified' | 'Expired'
+  /** Set for `Verified`. */
+  firstName?: string | null
+  /** Set for `Expired`: the address the link was sent to. */
+  email?: string | null
 }
+
+/**
+ * What a verification link turned out to be. `invalid`: missing or rejected (400) token. `failed`: the check
+ * itself did not complete (rate limit, server or network error), so the link may still be fine.
+ */
+export type VerifyEmailOutcome = 'verified' | 'expired' | 'invalid' | 'failed'
 
 export type LogoutResponse = {
   message: string
@@ -65,4 +78,29 @@ export type ResetPasswordRequest = {
 
 export type ResetPasswordResponse = {
   message: string
+}
+
+/** `POST /api/auth/reset-password/inspect`: whether a reset link can still be used, and for which address. */
+export type InspectResetTokenResponse = { status: 'Valid'; email: string } | { status: 'Expired' }
+
+export type UpdateProfileRequest = {
+  firstName: string
+  lastName: string
+}
+
+export type RequestEmailChangeRequest = {
+  newEmail: string
+  currentPassword: string
+}
+
+/** The signed-in user's unconfirmed email change. */
+export type PendingEmailChange = {
+  newEmail: string
+  expiresAt: string
+}
+
+export type ConfirmEmailChangeResponse = {
+  message: string
+  /** The new address the account now uses. */
+  email: string
 }

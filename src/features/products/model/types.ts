@@ -16,7 +16,7 @@ export type Product = {
   paidOrderCount: number
 }
 
-export type CreateProductRequest = {
+type ProductFields = {
   name: string
   description: string
   priceCents: number
@@ -25,6 +25,23 @@ export type CreateProductRequest = {
   thumbnailUrl: string
 }
 
-export type UpdateProductRequest = CreateProductRequest & {
-  status: ProductStatus
+/** Active or Draft; omitted, the API keeps the current status (Draft on create). Archiving has its own endpoint. */
+export type WritableProductStatus = Exclude<ProductStatus, 'Archived'>
+
+export type CreateProductRequest = ProductFields & { status?: WritableProductStatus }
+
+export type UpdateProductRequest = ProductFields & { status?: WritableProductStatus }
+
+export type ProductAnalyticsRange = '30d' | '3m' | '6m' | '1y'
+
+export type ProductAnalytics = {
+  revenueCents: number
+  salesCount: number
+  thisMonthRevenueCents: number
+  contactCount: number
+  /** "day" for 30d, "month" otherwise. */
+  granularity: 'day' | 'month'
+  /** Oldest first, every bucket present; `bucketStart` is "yyyy-MM-dd". */
+  points: Array<{ bucketStart: string; revenueCents: number }>
+  sellingPages: Array<{ publicId: string; title: string; status: 'Draft' | 'Published' | 'Archived' }>
 }

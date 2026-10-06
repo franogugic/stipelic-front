@@ -2,6 +2,8 @@ import { Menu } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useCreatorStore } from '../../features/creators/model/creator-store'
+import { useDocumentTitle } from '../lib/use-document-title'
 import { Brand, Button, ThemeToggleButton } from './ledger'
 import { NAV_SECTION_LABELS } from './nav-sections'
 import type { NavSection } from './nav-sections'
@@ -12,6 +14,9 @@ type AppShellProps = {
   slug: string
   activeSection: NavSection
   children: ReactNode
+  /** Tab title for a page below a section (e.g. one landing page); defaults to "{Section} · Luma". Set here because
+   * the shell's own title effect runs after its children's and would override theirs. */
+  documentTitle?: string
 }
 
 const DESKTOP_QUERY = '(min-width: 1024px)'
@@ -21,24 +26,33 @@ const DESKTOP_QUERY = '(min-width: 1024px)'
  * Below 1024 px the sidebar is a drawer: opening it makes the canvas inert and focuses the current link;
  * Esc, the backdrop, the close button, a route change and growing past 1024 px close it.
  */
-export function AppShell({ slug, activeSection, children }: AppShellProps) {
+export function AppShell({ slug, activeSection, documentTitle, children }: AppShellProps) {
   const { pathname } = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerPath, setDrawerPath] = useState(pathname)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLElement>(null)
   const restoreFocus = useRef(false)
 
-  // The SPA has no page reload, so a route change has to close the drawer itself (no focus restore).
-  if (pathname !== drawerPath) {
-    setDrawerPath(pathname)
-    if (drawerOpen) setDrawerOpen(false)
-  }
+  // The shell (workspace name, plan, banners) needs the creator on every page, including ones that never load it.
+  const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
+  const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
+  useEffect(() => {
+    if (currentCreatorStatus === 'idle') void loadCurrentCreator()
+  }, [currentCreatorStatus, loadCurrentCreator])
 
   const closeDrawer = useCallback((restore = true) => {
     restoreFocus.current = restore
     setDrawerOpen(false)
   }, [])
+
+  // The SPA has no page reload, so a route change has to close the drawer itself — and never pulls
+  // focus back to the menu button, since the user has already moved on.
+  const lastPath = useRef(pathname)
+  useEffect(() => {
+    if (lastPath.current === pathname) return
+    lastPath.current = pathname
+    closeDrawer(false)
+  }, [pathname, closeDrawer])
 
   // Focus moves into the sidebar when the drawer opens, and back to the menu button when it closes.
   const wasOpen = useRef(false)
@@ -71,9 +85,7 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
     return () => query.removeEventListener('change', onChange)
   }, [closeDrawer])
 
-  useEffect(() => {
-    document.title = `${NAV_SECTION_LABELS[activeSection]} · Luma`
-  }, [activeSection])
+  useDocumentTitle(documentTitle ?? `${NAV_SECTION_LABELS[activeSection]} · Luma`)
 
   return (
     <>
@@ -97,7 +109,7 @@ export function AppShell({ slug, activeSection, children }: AppShellProps) {
               aria-label="Open menu"
               onClick={() => setDrawerOpen(true)}
             />
-            <Brand to={`/app/${slug}`} />
+            <Brand to={slug ? `/app/${slug}` : '/'} />
             <div className="app-topbar__end">
               <ThemeToggleButton />
             </div>

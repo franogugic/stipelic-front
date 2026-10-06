@@ -3,11 +3,9 @@ import { useRef, useState } from 'react'
 import {
   ALLOWED_UPLOAD_CONTENT_TYPES,
   MAX_UPLOAD_FILE_SIZE_BYTES,
-  uploadImage,
   type MediaUploadPurpose,
 } from '../api/media-api'
-
-type UploadStatus = 'idle' | 'uploading' | 'error'
+import { useImageUpload } from '../lib/use-image-upload'
 
 export function ImageUploadField({
   slug,
@@ -22,42 +20,9 @@ export function ImageUploadField({
   value: string
   onChange: (url: string) => void
 }) {
-  const [status, setStatus] = useState<UploadStatus>('idle')
-  const [error, setError] = useState<string | null>(null)
+  const { uploading: isUploading, error, upload } = useImageUpload({ slug, purpose, onUploaded: onChange })
   const [isDragOver, setIsDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  const validate = (file: File): string | null => {
-    if (!ALLOWED_UPLOAD_CONTENT_TYPES.includes(file.type)) {
-      return 'Only JPEG, PNG, or WebP images are allowed.'
-    }
-    if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
-      return `Image must be under ${Math.round(MAX_UPLOAD_FILE_SIZE_BYTES / 1_048_576)} MB.`
-    }
-    return null
-  }
-
-  const handleFile = async (file: File) => {
-    const validationError = validate(file)
-    if (validationError) {
-      setStatus('error')
-      setError(validationError)
-      return
-    }
-
-    setStatus('uploading')
-    setError(null)
-    try {
-      const url = await uploadImage(slug, purpose, file)
-      onChange(url)
-      setStatus('idle')
-    } catch {
-      setStatus('error')
-      setError('Upload failed. Please try again.')
-    }
-  }
-
-  const isUploading = status === 'uploading'
 
   return (
     <div className="grid gap-1.5">
@@ -102,7 +67,7 @@ export function ImageUploadField({
             e.preventDefault()
             setIsDragOver(false)
             const file = e.dataTransfer.files[0]
-            if (file) void handleFile(file)
+            if (file) void upload(file)
           }}
           className={`flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition disabled:cursor-not-allowed ${
             isDragOver
@@ -112,7 +77,7 @@ export function ImageUploadField({
         >
           {isUploading ? (
             <Loader2 className="animate-spin text-white/40 light:text-neutral-400" size={20} />
-          ) : status === 'error' ? (
+          ) : error ? (
             <ImageOff className="text-red-400" size={20} />
           ) : (
             <Upload className="text-white/40 light:text-neutral-400" size={20} />
@@ -133,7 +98,7 @@ export function ImageUploadField({
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
-          if (file) void handleFile(file)
+          if (file) void upload(file)
           e.target.value = ''
         }}
       />

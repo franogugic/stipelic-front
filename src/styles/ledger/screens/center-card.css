@@ -1,0 +1,17 @@
+/* Centred card (onboarding, public pages) */
+.center-card {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--space-6);
+  background: var(--color-canvas);
+}
+
+.center-card__box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  width: min(460px, 100%);
+  text-align: center;
+}

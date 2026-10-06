@@ -1,0 +1,62 @@
+/*
+ * Luma additions — the ONLY place for CSS that is not copied from designer-prototype/.
+ * Every rule here exists because the app needs markup the prototype does not have.
+ * Keep this file imported last in the aggregator.
+ */
+
+/* A <button class="link"> (an action, not navigation) renders exactly like the prototype's <a class="link">. */
+button.link {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: start;
+  text-rendering: inherit;
+}
+
+/* A <fieldset> that groups choice cards under one label (the styleguide's "Page type" pattern; its own
+   .sg-fieldset class is styleguide-only CSS). */
+.choice-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* The prototype centres .modal through the browser's own `dialog:modal { margin: auto }`. The legacy Tailwind
+   preflight (`* { margin: 0 }`, still loaded until every screen is converted) removes it and pins every modal
+   to the top-left corner. Remove together with Tailwind. */
+.modal {
+  margin: auto;
+}
+
+/* Real date labels ("3 Sep") are wider than the prototype's day numbers and would wrap in narrow columns. Only
+   every few columns carry a label, so a label may spread into its blank neighbours. */
+.bars__label {
+  white-space: nowrap;
+}
+
+/* A <fieldset disabled> that only switches a whole form off (a read-only product); it must not look like a fieldset. */
+.form-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* An Alert placed under the typed-confirmation field of a ConfirmDialog (the prototype's blocked delete state). */
+.modal__alert {
+  margin-top: var(--space-4);
+}
+
+/* A creator's real logo in the header of a creator-branded result page (the prototype only draws a monogram mark). */
+.lp-logo-img {
+  display: block;
+  max-width: 200px;
+  height: 36px;
+  object-fit: contain;
+  object-position: left center;
+}

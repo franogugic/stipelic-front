@@ -35,6 +35,7 @@ export type CreatorBalanceSummary = {
   currency: string
   balanceCents: number
   hasPayoutProfile: boolean
+  workspaceStatus: 'Active' | 'PendingPayment' | 'Suspended' | 'Disabled'
 }
 
 export type CreatePayoutRequest = {

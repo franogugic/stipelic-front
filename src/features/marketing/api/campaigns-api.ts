@@ -1,5 +1,7 @@
 import { apiRequest } from '../../../shared/api/http-client'
 import type {
+  AudiencePreview,
+  CampaignAudienceType,
   CampaignAudiences,
   CampaignDetail,
   CampaignListItem,
@@ -62,5 +64,20 @@ export function cancelScheduledCampaign(slug: string, campaignPublicId: string) 
   return apiRequest<ApiResponse<CampaignDetail>>(
     `/api/creators/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignPublicId)}/schedule`,
     { method: 'DELETE' },
+  ).then(unwrapApiResponse)
+}
+
+/** Recipients and the monthly send allowance for one audience. `targetPublicId` is omitted for All. */
+export function getAudiencePreview(slug: string, audienceType: CampaignAudienceType, targetPublicId: string | null) {
+  const query = new URLSearchParams({ audienceType })
+  if (targetPublicId) query.set('targetPublicId', targetPublicId)
+  return apiRequest<ApiResponse<AudiencePreview>>(
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/audience-preview?${query}`,
+  ).then(unwrapApiResponse)
+}
+
+export function getCampaign(slug: string, campaignPublicId: string) {
+  return apiRequest<ApiResponse<CampaignDetail>>(
+    `/api/creators/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignPublicId)}`,
   ).then(unwrapApiResponse)
 }

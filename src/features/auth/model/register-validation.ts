@@ -46,6 +46,10 @@ export function validateRegisterForm(values: RegisterFormValues): RegisterValida
     fieldErrors.password = 'Password does not meet all requirements.'
   }
 
+  if (!values.acceptTerms) {
+    fieldErrors.acceptTerms = 'You must accept the Terms and Privacy Policy.'
+  }
+
   return {
     fieldErrors,
     passwordChecks,
@@ -53,27 +57,23 @@ export function validateRegisterForm(values: RegisterFormValues): RegisterValida
   }
 }
 
+// Mirrors the backend's AuthService.CheckPassword, which tests each UTF-16 code unit with .NET's char
+// predicates: IsUpper (Lu), IsLower (Ll), IsDigit (Nd) and !IsLetterOrDigit. Testing code units (not code
+// points) keeps the two sides identical, e.g. for an emoji's surrogate halves.
+const isUpper = (unit: string) => /^\p{Lu}$/u.test(unit)
+const isLower = (unit: string) => /^\p{Ll}$/u.test(unit)
+const isDigit = (unit: string) => /^\p{Nd}$/u.test(unit)
+const isLetterOrDigit = (unit: string) => /^[\p{L}\p{Nd}]$/u.test(unit)
+
+/** The backend's five password rules, in the prototype's order and with its labels. */
 export function getPasswordChecks(password: string): PasswordCheck[] {
+  const units = Array.from({ length: password.length }, (_, index) => password[index])
+
   return [
-    {
-      id: 'length',
-      label: 'At least 8 characters',
-      isMet: password.length >= 8,
-    },
-    {
-      id: 'lowercase',
-      label: 'One lowercase letter',
-      isMet: /[a-z]/.test(password),
-    },
-    {
-      id: 'uppercase',
-      label: 'One uppercase letter',
-      isMet: /[A-Z]/.test(password),
-    },
-    {
-      id: 'number',
-      label: 'One number',
-      isMet: /\d/.test(password),
-    },
+    { id: 'length', label: '8+ characters', isMet: password.length >= 8 },
+    { id: 'uppercase', label: 'Uppercase letter', isMet: units.some(isUpper) },
+    { id: 'lowercase', label: 'Lowercase letter', isMet: units.some(isLower) },
+    { id: 'number', label: 'Number', isMet: units.some(isDigit) },
+    { id: 'special', label: 'Special character', isMet: units.some((unit) => !isLetterOrDigit(unit)) },
   ]
 }

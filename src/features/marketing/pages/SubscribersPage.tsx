@@ -1,165 +1,359 @@
-import { Loader2, Search, Users } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Download, Send, Trash2, UserCheck, UserPlus, Users, UserX } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { date, month, monthYear, number, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
-import { useCreatorStore } from '../../creators/model/creator-store'
-import { useContactsStore } from '../model/contacts-store'
+import {
+  Badge,
+  Bars,
+  Button,
+  Card,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  HBars,
+  Metric,
+  PageHeader,
+  SearchInput,
+  Select,
+  SkeletonCards,
+  SkeletonRows,
+  StatusBadge,
+  TableFooter,
+  subscriberStatusKey,
+  useToast,
+} from '../../../shared/ui/ledger'
+import { deleteContact, exportContacts, getContactStats, searchContacts } from '../api/contacts-api'
+import type { Contact, ContactStats } from '../model/types'
 
-const CONTACTS_SEARCH_DEBOUNCE_MS = 350
+const PAGE_SIZE = 12
+const SEARCH_MAX_LENGTH = 100
+const SEARCH_DEBOUNCE_MS = 350
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+type Stats = { key: string; stats: ContactStats | null }
+/** The contacts loaded so far for one set of filters (first page, then "Load more" pages). */
+type Results = { key: string; contacts: Contact[]; hasMore: boolean; error: boolean }
 
 export function SubscribersPage() {
-  const navigate = useNavigate()
-  const { slug } = useParams<{ slug: string }>()
-  const normalizedSlug = slug ?? ''
+  const { slug = '' } = useParams<{ slug: string }>()
+  const [searchParams] = useSearchParams()
+  const toast = useToast()
 
-  const currentCreator = useCreatorStore((s) => s.currentCreator)
-  const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
-  const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
-  const creator = currentCreator?.slug === normalizedSlug ? currentCreator : null
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [search, setSearch] = useState('')
+  const [term, setTerm] = useState('')
+  // The link from a page's analytics ("View all in Subscribers") arrives with ?source={page public id}.
+  const [sourceId, setSourceId] = useState(() => {
+    const requested = searchParams.get('source') ?? ''
+    return UUID.test(requested) ? requested : ''
+  })
+  const [attempt, setAttempt] = useState(0)
+  const [results, setResults] = useState<Results | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Contact | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-  const isLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
+  const filtersActive = Boolean(sourceId || term)
+  const resultsKey = `${slug}|${sourceId}|${term}|${attempt}`
+
+  const loadStats = useCallback(() => {
+    getContactStats(slug)
+      .then((data) => setStats({ key: slug, stats: data }))
+      .catch(() => setStats({ key: slug, stats: null }))
+  }, [slug])
 
   useEffect(() => {
-    if (currentCreatorStatus === 'idle') void loadCurrentCreator()
-  }, [currentCreatorStatus, loadCurrentCreator])
+    if (slug) loadStats()
+  }, [slug, loadStats])
 
-  if (!slug) return null
+  // The search runs 350 ms after the last keystroke, trimmed.
+  useEffect(() => {
+    const timer = setTimeout(() => setTerm(search.trim()), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // A new set of filters starts from the first page again; a result for older filters is never shown.
+  useEffect(() => {
+    if (!slug) return
+    let current = true
+    searchContacts(slug, { search: term || undefined, landingPageId: sourceId || undefined, limit: PAGE_SIZE })
+      .then((page) => current && setResults({ key: resultsKey, contacts: page.contacts, hasMore: page.hasMore, error: false }))
+      .catch(() => current && setResults({ key: resultsKey, contacts: [], hasMore: false, error: true }))
+    return () => {
+      current = false
+    }
+  }, [slug, sourceId, term, resultsKey])
+
+  const statsState = stats?.key === slug ? stats : null
+  const first = results?.key === resultsKey ? results : null
+  const contacts = first?.contacts ?? []
+  const hasMore = first?.hasMore ?? false
+  const total = statsState?.stats?.total
+
+  const retry = () => {
+    setStats(null)
+    loadStats()
+    setResults(null)
+    setAttempt((value) => value + 1)
+  }
+
+  const loadMore = () => {
+    const last = contacts[contacts.length - 1]
+    if (!last || loadingMore) return
+    setLoadingMore(true)
+    const requestKey = resultsKey
+    searchContacts(slug, {
+      search: term || undefined,
+      landingPageId: sourceId || undefined,
+      afterEmail: last.email,
+      limit: PAGE_SIZE,
+    })
+      // Appended only while the filters are still the ones it was asked for.
+      .then((page) =>
+        setResults((current) =>
+          current?.key === requestKey
+            ? { ...current, contacts: [...current.contacts, ...page.contacts], hasMore: page.hasMore }
+            : current,
+        ),
+      )
+      .catch(() => toast({ tone: 'danger', title: 'We couldn’t load more subscribers. Please try again.' }))
+      .finally(() => setLoadingMore(false))
+  }
+
+  const runExport = async () => {
+    setExporting(true)
+    try {
+      await exportContacts(slug, { search: term || undefined, landingPageId: sourceId || undefined })
+    } catch (error) {
+      toast({
+        tone: 'danger',
+        title: error instanceof Error ? error.message : 'We couldn’t export the subscribers. Please try again.',
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const confirmDelete = async () => {
+    const target = deleteTarget
+    if (!target) return
+    setDeleting(true)
+    try {
+      await deleteContact(slug, target.email)
+      setResults((current) =>
+        current ? { ...current, contacts: current.contacts.filter((contact) => contact.email !== target.email) } : current,
+      )
+      loadStats()
+      toast({ tone: 'success', title: 'Subscriber deleted' })
+    } catch (error) {
+      toast({
+        tone: 'danger',
+        title: error instanceof Error ? error.message : 'We couldn’t delete the subscriber. Please try again.',
+      })
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
+
+  const clearFilters = () => {
+    setSearch('')
+    setTerm('')
+    setSourceId('')
+  }
+
+  // With a filter the API has no filtered total, so the count is what is loaded ("+" while there is more).
+  const loadedCount = `${number(contacts.length)}${hasMore ? '+' : ''}`
+  const showingText = filtersActive || total === undefined ? `Showing ${loadedCount}` : `Showing ${number(contacts.length)} of ${number(total)}`
+  const resultsCount = filtersActive || total === undefined ? contacts.length : total
+  const resultsText = hasMore && filtersActive ? `${loadedCount} results` : plural(resultsCount, 'result')
+
+  const list = () => {
+    if (!first) return <SkeletonRows count={6} />
+    if (first.error) return <ErrorState compact onRetry={retry} />
+    if (contacts.length === 0) {
+      return (
+        <EmptyState
+          compact
+          icon={Users}
+          title="No subscribers match these filters"
+          action={{ label: 'Clear filters', variant: 'ghost', onClick: clearFilters }}
+        />
+      )
+    }
+    return (
+      <>
+        <div className="table-wrap">
+          <table className="table table--stack">
+            <thead>
+              <tr>
+                <th scope="col">Email</th>
+                <th scope="col">Sources</th>
+                <th scope="col">Joined</th>
+                <th scope="col">Status</th>
+                <th scope="col" className="is-actions">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {contacts.map((contact) => (
+                <tr key={contact.email}>
+                  <td className="is-lead">
+                    <span className="table__primary">{contact.email}</span>
+                  </td>
+                  <td data-label="Sources">
+                    <div className="cluster cluster--sm">
+                      {contact.sourceList.map((source) => (
+                        <Badge tone="outline" key={source.landingPagePublicId}>
+                          {source.title}
+                        </Badge>
+                      ))}
+                    </div>
+                  </td>
+                  <td data-label="Joined" className="num">
+                    {date(contact.firstCapturedAt)}
+                  </td>
+                  <td data-label="Status">
+                    <StatusBadge kind="subscriber" value={subscriberStatusKey(contact.isUnsubscribed)} />
+                  </td>
+                  <td className="is-actions">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      iconOnly
+                      icon={Trash2}
+                      aria-label={`Delete ${contact.email}`}
+                      onClick={() => setDeleteTarget(contact)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <TableFooter count={showingText} onLoadMore={hasMore ? loadMore : undefined} loading={loadingMore} />
+      </>
+    )
+  }
+
+  const body = () => {
+    if (!statsState) {
+      return (
+        <div className="stack stack--lg">
+          <SkeletonCards count={4} />
+          <SkeletonRows count={6} />
+        </div>
+      )
+    }
+    const data = statsState.stats
+    if (!data) return <ErrorState onRetry={retry} />
+    if (data.total === 0) {
+      return (
+        <EmptyState
+          icon={Users}
+          title="No subscribers yet"
+          text="They appear when someone leaves an email on one of your pages."
+        />
+      )
+    }
+    return (
+      <div className="dash reveal">
+        <div className="span-12 grid grid--4">
+          <Metric label="Total" icon={Users} value={number(data.total)} />
+          <Metric label="Active" icon={UserCheck} value={number(data.active)} />
+          <Metric label="New this month" icon={UserPlus} value={number(data.newThisMonth)} />
+          <Metric label="Unsubscribed" icon={UserX} value={number(data.unsubscribed)} />
+        </div>
+        <div className="span-8">
+          <Card title="Growth" subtitle="Total subscribers by month">
+            <Bars
+              values={data.growth.map((point) => point.total)}
+              labels={data.growth.map((point) => month(`${point.month}-15`))}
+              tooltipLabels={data.growth.map((point) => monthYear(`${point.month}-15`))}
+              formatValue={number}
+              label="Total subscribers by month"
+            />
+          </Card>
+        </div>
+        <div className="span-4">
+          <Card title="Sources">
+            {data.sources.length > 0 ? (
+              <HBars rows={data.sources.map((source) => ({ label: source.title, value: source.count, display: number(source.count) }))} />
+            ) : (
+              <p className="text-sm text-muted">No sources yet.</p>
+            )}
+          </Card>
+        </div>
+        <div className="span-12">
+          <Card>
+            <div className="toolbar">
+              <SearchInput
+                placeholder="Search by email"
+                aria-label="Search by email"
+                maxLength={SEARCH_MAX_LENGTH}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              <Select aria-label="Source" value={sourceId} onChange={(event) => setSourceId(event.target.value)}>
+                <option value="">All sources</option>
+                {/* A source from the link that isn't among the pages with contacts still has to be selectable. */}
+                {sourceId && !data.sources.some((source) => source.landingPagePublicId === sourceId) && (
+                  <option value={sourceId}>This page</option>
+                )}
+                {data.sources.map((source) => (
+                  <option key={source.landingPagePublicId} value={source.landingPagePublicId}>
+                    {source.title}
+                  </option>
+                ))}
+              </Select>
+              {first && !first.error && <span className="text-sm text-muted">{resultsText}</span>}
+            </div>
+            {list()}
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  const noContactsAtAll = total === 0
 
   return (
     <AppShell slug={slug} activeSection="subscribers">
-      <div className="px-8 py-8">
-        {isLoading ? (
-          <div className="flex h-40 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-            <Loader2 className="animate-spin" size={18} />
-            Loading workspace…
-          </div>
-        ) : !creator ? (
-          <div className="rounded-2xl border border-border bg-card p-8 backdrop-blur-sm light:shadow-sm">
-            <p className="font-semibold text-white light:text-neutral-950">Workspace not found</p>
-            <button
-              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
-              type="button"
-              onClick={() => navigate('/')}
+      <PageHeader
+        title={<em>Subscribers</em>}
+        subtitle="Everyone who left an email on your pages."
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              icon={Download}
+              loading={exporting}
+              disabledReason={noContactsAtAll ? 'There are no subscribers to export yet.' : undefined}
+              onClick={() => void runExport()}
             >
-              Go home
-            </button>
-          </div>
-        ) : (
-          <div className="grid gap-8">
-            <div>
-              <h1 className="font-display text-3xl font-bold leading-none text-white light:text-neutral-950">Subscribers</h1>
-              <p className="mt-1.5 text-sm text-white/40 light:text-neutral-400">
-                Everyone who has signed up on one of your landing pages.
-              </p>
-            </div>
+              Export
+            </Button>
+            <Button variant="primary" icon={Send} to={`/app/${slug}/emails`}>
+              Send to all
+            </Button>
+          </>
+        }
+      />
+      {body()}
 
-            <ContactsList slug={normalizedSlug} />
-          </div>
-        )}
-      </div>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={`Delete ${deleteTarget?.email ?? ''}?`}
+        text="Removes this contact from all your landing pages. If they unsubscribed, they stay suppressed."
+        confirmLabel="Delete"
+        tone="danger"
+        busy={deleting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDelete()}
+      />
     </AppShell>
-  )
-}
-
-function ContactsList({ slug }: { slug: string }) {
-  const [searchInput, setSearchInput] = useState('')
-
-  const contacts = useContactsStore((s) => s.contacts)
-  const contactsStatus = useContactsStore((s) => s.contactsStatus)
-  const hasMore = useContactsStore((s) => s.hasMore)
-  const loadMoreStatus = useContactsStore((s) => s.loadMoreStatus)
-  const loadContacts = useContactsStore((s) => s.loadContacts)
-  const loadMoreContacts = useContactsStore((s) => s.loadMoreContacts)
-
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      void loadContacts(slug, searchInput.trim())
-    }, CONTACTS_SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(handle)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, searchInput])
-
-  return (
-    <div className="grid gap-6">
-      <div className="relative max-w-sm">
-        <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 light:text-neutral-400" />
-        <input
-          type="text"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search by email…"
-          className="h-10 w-full rounded-xl border border-border bg-secondary pl-10 pr-3.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-white/25 focus:ring-2 focus:ring-white/10 light:text-neutral-950 light:placeholder-neutral-400"
-        />
-      </div>
-
-      {contactsStatus === 'loading' ? (
-        <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-          <Loader2 className="animate-spin" size={16} />
-          Loading contacts…
-        </div>
-      ) : contacts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-card py-20 text-center light:border-neutral-300">
-          <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
-            <Users size={24} strokeWidth={1.5} />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-white light:text-neutral-950">
-              {searchInput.trim() ? 'No contacts match your search' : 'No contacts yet'}
-            </p>
-            <p className="mt-1 max-w-sm text-sm text-white/40 light:text-neutral-400">
-              {searchInput.trim()
-                ? 'Try a different email or clear the search.'
-                : 'Contacts appear here once someone signs up on one of your landing pages.'}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="overflow-hidden rounded-2xl border border-border bg-card backdrop-blur-sm light:shadow-sm">
-            <div className="grid grid-cols-[1fr_1.4fr_160px_140px] items-center border-b border-border px-5 py-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Email</p>
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">Sources</p>
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 light:text-neutral-400">First captured</p>
-              <span />
-            </div>
-            <ul className="divide-y divide-border">
-              {contacts.map((contact) => (
-                <li key={contact.email} className="transition-colors hover:bg-secondary/60">
-                  <div className="grid grid-cols-[1fr_1.4fr_140px_140px] items-center px-5 py-4">
-                    <p className="truncate text-sm font-medium text-white light:text-neutral-950">{contact.email}</p>
-                    <p className="truncate text-xs text-white/60 light:text-neutral-600">
-                      {contact.sourcesCount} {contact.sourcesCount === 1 ? 'source' : 'sources'}
-                      {contact.sources ? ` · ${contact.sources}` : ''}
-                    </p>
-                    <p className="text-xs text-white/50 light:text-neutral-500">
-                      {new Date(contact.firstCapturedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </p>
-                    {contact.isUnsubscribed ? (
-                      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/50 light:bg-neutral-100 light:text-neutral-500">
-                        Unsubscribed
-                      </span>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {hasMore ? (
-            <div className="flex justify-center">
-              <button
-                type="button"
-                disabled={loadMoreStatus === 'loading'}
-                onClick={() => void loadMoreContacts(slug)}
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50 light:text-neutral-600"
-              >
-                {loadMoreStatus === 'loading' ? <Loader2 className="animate-spin" size={14} /> : null}
-                Load more
-              </button>
-            </div>
-          ) : null}
-        </>
-      )}
-    </div>
   )
 }

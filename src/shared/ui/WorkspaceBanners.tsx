@@ -1,4 +1,4 @@
-import { CalendarClock, CreditCard, Landmark, ShieldAlert } from 'lucide-react'
+import { CalendarClock, CircleAlert, CreditCard, Landmark, ShieldAlert } from 'lucide-react'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { date } from '../lib/format'
 import { Banner, useToast } from './ledger'
@@ -15,6 +15,11 @@ export function WorkspaceBanners({ slug }: { slug: string }) {
   const openBillingPortal = useCreatorStore((s) => s.openBillingPortal)
 
   if (!creator) return null
+
+  const openPortal = async () => {
+    const failure = await openBillingPortal()
+    if (failure) toast({ tone: 'danger', title: failure })
+  }
 
   const status = creator.status.toLowerCase()
   const planName = creator.planName
@@ -46,12 +51,22 @@ export function WorkspaceBanners({ slug }: { slug: string }) {
           Publishing pages is paused until the {planName} subscription is paid.
         </Banner>
       )}
+      {creator.subscriptionStatus === 'PastDue' && (
+        <Banner
+          tone="danger"
+          icon={CircleAlert}
+          title="Your last payment didn’t go through."
+          action={{ label: 'Update payment method', variant: 'secondary', onClick: () => void openPortal() }}
+        >
+          Update your payment method to keep the {planName} plan.
+        </Banner>
+      )}
       {creator.cancelAtPeriodEnd && (
         <Banner
           tone="info"
           icon={CalendarClock}
           title={creator.currentPeriodEnd ? `Your ${planName} plan ends on ${date(creator.currentPeriodEnd)}.` : `Your ${planName} plan is set to end.`}
-          action={{ label: 'Keep my plan', variant: 'secondary', onClick: () => void openBillingPortal() }}
+          action={{ label: 'Keep my plan', variant: 'secondary', onClick: () => void openPortal() }}
         >
           After that, your workspace moves to the Free plan and its limits.
         </Banner>

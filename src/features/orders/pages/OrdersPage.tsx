@@ -1,290 +1,286 @@
-import { Download, Loader2, Search, ShoppingBag } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Download, Landmark, Percent, Receipt, Undo2, Wallet } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { number } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
-import { Dropdown } from '../../../shared/ui/Dropdown'
-import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
-import { useProductStore } from '../../products/model/product-store'
-import { listOrders } from '../api/orders-api'
-import { OrderStatusBadge } from '../components/OrderStatusBadge'
-import type { Order, OrderStatus } from '../model/types'
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  Metric,
+  Money,
+  PageHeader,
+  SearchInput,
+  Select,
+  SkeletonCards,
+  SkeletonRows,
+  TableFooter,
+  useToast,
+} from '../../../shared/ui/ledger'
+import { useCreatorStore } from '../../creators/model/creator-store'
+import { listLandingPages } from '../../landing-pages/api/landing-pages-api'
+import { listProducts } from '../../products/api/products-api'
+import { exportOrders, getOrderSummary, listOrders } from '../api/orders-api'
+import type { OrderFilters } from '../api/orders-api'
+import { OrdersTable } from '../components/OrdersTable'
+import type { Order, OrderStatus, OrderSummary } from '../model/types'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 12
+const SEARCH_MAX_LENGTH = 100
+const SEARCH_DEBOUNCE_MS = 350
 
-const STATUS_OPTIONS: { value: 'all' | OrderStatus; label: string }[] = [
-  { value: 'all', label: 'All statuses' },
-  { value: 'Paid', label: 'Paid' },
-  { value: 'Pending', label: 'Pending' },
-  { value: 'Failed', label: 'Failed' },
-  { value: 'Refunded', label: 'Refunded' },
-]
+const STATUSES: OrderStatus[] = ['Paid', 'Pending', 'Failed', 'Refunded']
+
+type Option = { value: string; label: string }
+type Summary = { key: string; summary: OrderSummary | null }
+/** The orders loaded so far for one set of filters (first page, then "Load more" pages); `error` when loading failed. */
+type Results = { key: string; orders: Order[]; hasMore: boolean; error: boolean }
 
 export function OrdersPage() {
-  const { slug } = useParams<{ slug: string }>()
-  const products = useProductStore((s) => s.products)
-  const loadProducts = useProductStore((s) => s.loadProducts)
-  const landingPages = useLandingPageStore((s) => s.pages)
-  const loadLandingPages = useLandingPageStore((s) => s.loadPages)
-  const [orders, setOrders] = useState<Order[]>([])
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
-  const [hasMore, setHasMore] = useState(false)
-  const [loadMoreStatus, setLoadMoreStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const { slug = '' } = useParams<{ slug: string }>()
+  const toast = useToast()
+  const creatorCurrency = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator.defaultCurrency : null))
+
+  const [summary, setSummary] = useState<Summary | null>(null)
+  const [productOptions, setProductOptions] = useState<Option[]>([])
+  const [pageOptions, setPageOptions] = useState<Option[]>([])
+
   const [search, setSearch] = useState('')
-  const [productFilter, setProductFilter] = useState('all')
-  const [landingPageFilter, setLandingPageFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all')
+  const [term, setTerm] = useState('')
+  const [productId, setProductId] = useState('')
+  const [status, setStatus] = useState('')
+  const [pageId, setPageId] = useState('')
+  const [attempt, setAttempt] = useState(0)
 
-  useEffect(() => {
-    if (slug) void loadProducts(slug)
-  }, [slug, loadProducts])
+  const [results, setResults] = useState<Results | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
-  useEffect(() => {
-    if (slug) void loadLandingPages(slug)
-  }, [slug, loadLandingPages])
+  const filters: OrderFilters = {
+    productId: productId || undefined,
+    landingPageId: pageId || undefined,
+    status: status || undefined,
+    search: term || undefined,
+  }
+  const filtersActive = Boolean(productId || pageId || status || term)
+  const resultsKey = `${slug}|${productId}|${pageId}|${status}|${term}|${attempt}`
 
-  // Product/status are real server-side filters (narrow the full order set, not just the loaded
-  // page), so changing either re-runs the query from the start — same as a fresh mount.
+  // Workspace-wide numbers and the filter options (archived products and pages still have orders).
+  const loadSummary = useCallback(() => {
+    getOrderSummary(slug)
+      .then((data) => setSummary({ key: slug, summary: data }))
+      .catch(() => setSummary({ key: slug, summary: null }))
+  }, [slug])
+
   useEffect(() => {
     if (!slug) return
-    let isCurrent = true
+    loadSummary()
+    listProducts(slug, true)
+      .then((products) => setProductOptions(products.map((product) => ({ value: product.publicId, label: product.name }))))
+      .catch(() => setProductOptions([]))
+    listLandingPages(slug, true)
+      .then((pages) => setPageOptions(pages.map((page) => ({ value: page.publicId, label: page.title }))))
+      .catch(() => setPageOptions([]))
+  }, [slug, loadSummary])
 
-    async function run() {
-      setStatus('loading')
-      try {
-        const page = await listOrders(slug!, {
-          productId: productFilter === 'all' ? undefined : productFilter,
-          landingPageId: landingPageFilter === 'all' ? undefined : landingPageFilter,
-          status: statusFilter === 'all' ? undefined : statusFilter,
-          limit: PAGE_SIZE,
-        })
-        if (!isCurrent) return
-        setOrders(page.orders)
-        setHasMore(page.hasMore)
-        setStatus('success')
-      } catch {
-        if (isCurrent) setStatus('error')
-      }
-    }
+  // The search runs 350 ms after the last keystroke, trimmed.
+  useEffect(() => {
+    const timer = setTimeout(() => setTerm(search.trim()), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [search])
 
-    void run()
-    return () => { isCurrent = false }
-  }, [slug, productFilter, landingPageFilter, statusFilter])
-
-  const loadMore = () => {
-    if (!slug || orders.length === 0) return
-    const last = orders[orders.length - 1]
-    setLoadMoreStatus('loading')
+  // A new set of filters starts from the first page again; a result for older filters is never shown.
+  useEffect(() => {
+    if (!slug) return
+    let current = true
     listOrders(slug, {
-      productId: productFilter === 'all' ? undefined : productFilter,
-      landingPageId: landingPageFilter === 'all' ? undefined : landingPageFilter,
-      status: statusFilter === 'all' ? undefined : statusFilter,
-      afterCreatedAt: last.createdAt,
-      afterId: last.publicId,
+      productId: productId || undefined,
+      landingPageId: pageId || undefined,
+      status: status || undefined,
+      search: term || undefined,
       limit: PAGE_SIZE,
     })
-      .then((page) => {
-        setOrders((prev) => [...prev, ...page.orders])
-        setHasMore(page.hasMore)
-        setLoadMoreStatus('idle')
-      })
-      .catch(() => setLoadMoreStatus('error'))
+      .then((page) => current && setResults({ key: resultsKey, orders: page.orders, hasMore: page.hasMore, error: false }))
+      .catch(() => current && setResults({ key: resultsKey, orders: [], hasMore: false, error: true }))
+    return () => {
+      current = false
+    }
+  }, [slug, productId, pageId, status, term, resultsKey])
+
+  const summaryState = summary?.key === slug ? summary : null
+  const first = results?.key === resultsKey ? results : null
+  const orders = first?.orders ?? []
+  const hasMore = first?.hasMore ?? false
+  const currency = summaryState?.summary?.currency ?? creatorCurrency ?? 'EUR'
+
+  const retry = () => {
+    setSummary(null)
+    loadSummary()
+    setResults(null)
+    setAttempt((value) => value + 1)
   }
 
-  const filteredOrders = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return orders
-    return orders.filter((o) =>
-      (o.name?.toLowerCase().includes(q) ?? false) ||
-      o.email.toLowerCase().includes(q) ||
-      o.productName.toLowerCase().includes(q)
+  const loadMore = () => {
+    const last = orders[orders.length - 1]
+    if (!last || loadingMore) return
+    setLoadingMore(true)
+    const requestKey = resultsKey
+    listOrders(slug, { ...filters, afterCreatedAt: last.createdAt, afterId: last.publicId, limit: PAGE_SIZE })
+      // Appended only while the filters are still the ones it was asked for.
+      .then((page) =>
+        setResults((current) =>
+          current?.key === requestKey
+            ? { ...current, orders: [...current.orders, ...page.orders], hasMore: page.hasMore }
+            : current,
+        ),
+      )
+      .catch(() => toast({ tone: 'danger', title: 'We couldn’t load more orders. Please try again.' }))
+      .finally(() => setLoadingMore(false))
+  }
+
+  const runExport = async () => {
+    setExporting(true)
+    try {
+      await exportOrders(slug, filters)
+    } catch (error) {
+      toast({
+        tone: 'danger',
+        title: error instanceof Error ? error.message : 'We couldn’t export the orders. Please try again.',
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const clearFilters = () => {
+    setSearch('')
+    setTerm('')
+    setProductId('')
+    setStatus('')
+    setPageId('')
+  }
+
+  const total = summaryState?.summary?.totalOrderCount
+  const noOrdersAtAll = total === 0
+  const subtitle =
+    total === undefined
+      ? 'All transactions across your products and pages.'
+      : `${number(total)} ${total === 1 ? 'transaction' : 'transactions'} across all products and pages.`
+
+  const count = () => {
+    const shown = number(orders.length)
+    if (filtersActive || total === undefined) return `Showing ${shown}${hasMore ? '+' : ''}`
+    return `Showing ${shown} of ${number(total)}`
+  }
+
+  const list = () => {
+    if (!first) return <SkeletonRows count={6} />
+    if (first.error) return <ErrorState compact onRetry={retry} />
+    if (orders.length === 0) {
+      return (
+        <EmptyState
+          compact
+          icon={Receipt}
+          title="No orders match these filters"
+          action={{ label: 'Clear filters', variant: 'ghost', onClick: clearFilters }}
+        />
+      )
+    }
+    return (
+      <>
+        <OrdersTable orders={orders} />
+        <TableFooter count={count()} onLoadMore={hasMore ? loadMore : undefined} loading={loadingMore} />
+      </>
     )
-  }, [orders, search])
+  }
 
-  const productOptions = useMemo(
-    () => [{ value: 'all', label: 'All products' }, ...products.map((p) => ({ value: p.publicId, label: p.name }))],
-    [products],
-  )
-
-  const landingPageOptions = useMemo(
-    () => [{ value: 'all', label: 'All landing pages' }, ...landingPages.map((p) => ({ value: p.publicId, label: p.title }))],
-    [landingPages],
-  )
-
-  const exportCsv = () => {
-    const header = ['ID', 'Date', 'Customer', 'Email', 'Product', 'Landing Page', 'Amount', 'Fee', 'Net', 'Currency', 'Status']
-    const rows = filteredOrders.map((o) => [
-      o.publicId,
-      o.createdAt,
-      o.name ?? '',
-      o.email,
-      o.productName,
-      o.landingPageTitle ?? '',
-      String(o.amountCents / 100),
-      String(o.platformFeeCents / 100),
-      String(o.netAmountCents / 100),
-      o.currency,
-      o.status,
-    ])
-    const csv = [header, ...rows]
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+  const body = () => {
+    if (!summaryState) {
+      return (
+        <div className="stack stack--lg">
+          <SkeletonCards count={4} />
+          <SkeletonRows count={6} />
+        </div>
+      )
+    }
+    const data = summaryState.summary
+    if (!data) return <ErrorState onRetry={retry} />
+    if (noOrdersAtAll) {
+      return (
+        <EmptyState
+          icon={Receipt}
+          title="No orders yet"
+          text="Orders appear here as soon as someone buys from one of your pages."
+        />
+      )
+    }
+    return (
+      <>
+        <div className="grid grid--4 reveal" style={{ marginBottom: 'var(--space-6)' }}>
+          <Metric label="Gross revenue" icon={Wallet} value={<Money amountCents={data.totalPaidAmountCents} currency={currency} />} />
+          <Metric label="Platform fees" icon={Percent} value={<Money amountCents={data.totalPlatformFeeCents} currency={currency} />} />
+          <Metric label="Net to you" icon={Landmark} value={<Money amountCents={data.netAmountCents} currency={currency} />} />
+          <Metric label="Refunded" icon={Undo2} value={number(data.refundedOrderCount)} meta="orders" />
+        </div>
+        <Card>
+          <div className="toolbar">
+            <SearchInput
+              placeholder="Search customer or email"
+              aria-label="Search customer or email"
+              maxLength={SEARCH_MAX_LENGTH}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <Select aria-label="Product" value={productId} onChange={(event) => setProductId(event.target.value)}>
+              <option value="">All products</option>
+              {productOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+            <Select aria-label="Status" value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="">All statuses</option>
+              {STATUSES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+            <Select aria-label="Landing page" value={pageId} onChange={(event) => setPageId(event.target.value)}>
+              <option value="">All pages</option>
+              {pageOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {list()}
+        </Card>
+      </>
+    )
   }
 
   return (
-    <AppShell slug={slug!} activeSection="orders">
-      <div className="p-8">
-        <PageHeader title="Orders" subtitle="All purchases across your products and landing pages." />
-
-        <div className="flex flex-wrap items-center gap-3 mb-5">
-          <div className="relative flex-1 max-w-xs">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search customer or product…"
-              className="w-full pl-9 pr-3 py-2 rounded-lg text-sm bg-card text-foreground placeholder:text-muted-foreground/40 focus:outline-none border border-border"
-            />
-          </div>
-          <Dropdown value={productFilter} onChange={setProductFilter} options={productOptions} className="w-44" />
-          <Dropdown value={landingPageFilter} onChange={setLandingPageFilter} options={landingPageOptions} className="w-44" />
-          <Dropdown value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} className="w-40" />
-          <GhostBtn onClick={exportCsv}>
-            <Download size={13} /> Export
-          </GhostBtn>
-        </div>
-
-        {status === 'loading' && (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="animate-spin text-white/40 light:text-neutral-400" size={24} />
-          </div>
-        )}
-
-        {status === 'error' && (
-          <p className="text-sm text-red-400 light:text-red-500">Failed to load orders. Please try again.</p>
-        )}
-
-        {status === 'success' && orders.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-            <ShoppingBag size={32} className="text-white/15 light:text-neutral-300" />
-            <p className="text-sm text-white/40 light:text-neutral-400">No orders match these filters.</p>
-          </div>
-        )}
-
-        {status === 'success' && filteredOrders.length === 0 && orders.length > 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-            <Search size={32} className="text-white/15 light:text-neutral-300" />
-            <p className="text-sm text-white/40 light:text-neutral-400">No orders match your search.</p>
-          </div>
-        )}
-
-        {status === 'success' && filteredOrders.length > 0 && (
-          <Card>
-            <table className="w-full">
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  {['ID', 'Date', 'Customer', 'Product', 'Amount', 'Status'].map((h) => (
-                    <th key={h} className="text-left px-5 py-3 text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((order) => (
-                  <tr key={order.publicId} className="hover:bg-white/[0.02] transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <td className="px-5 py-3.5 text-[11px] font-mono text-muted-foreground" title={order.publicId}>
-                      {order.publicId.slice(0, 8)}
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-muted-foreground font-mono">
-                      {new Date(order.createdAt).toLocaleDateString(undefined, {
-                        year: 'numeric', month: 'short', day: 'numeric',
-                      })}
-                    </td>
-                    <td className="px-5 py-3.5 text-sm">{order.name ?? order.email}</td>
-                    <td className="px-5 py-3.5 text-sm text-muted-foreground">
-                      {order.productName}
-                      {order.landingPageTitle ? (
-                        <p className="text-[10px] text-muted-foreground/70">via {order.landingPageTitle}</p>
-                      ) : null}
-                    </td>
-                    <td className="px-5 py-3.5 text-sm font-mono font-semibold" style={{ color: 'var(--color-chart-1)' }}>
-                      {formatMoney(order.amountCents, order.currency)}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <OrderStatusBadge status={order.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        )}
-
-        {status === 'success' && hasMore && (
-          <div className="mt-6 flex justify-center">
-            <GhostBtn onClick={loadMore} disabled={loadMoreStatus === 'loading'} className="px-4 py-2">
-              {loadMoreStatus === 'loading' ? <Loader2 className="animate-spin" size={14} /> : null}
-              Load more
-            </GhostBtn>
-          </div>
-        )}
-
-        {loadMoreStatus === 'error' && (
-          <p className="mt-3 text-center text-sm text-red-400 light:text-red-500">
-            Failed to load more orders. Please try again.
-          </p>
-        )}
-      </div>
+    <AppShell slug={slug} activeSection="orders">
+      <PageHeader
+        title={<em>Orders</em>}
+        subtitle={subtitle}
+        actions={
+          <Button
+            variant="secondary"
+            icon={Download}
+            loading={exporting}
+            disabledReason={noOrdersAtAll ? 'There are no orders to export yet.' : undefined}
+            onClick={() => void runExport()}
+          >
+            Export CSV
+          </Button>
+        }
+      />
+      {body()}
     </AppShell>
   )
-}
-
-/* ─── Helpers ──────────────────────────────────────────────────── */
-
-function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-border bg-card ${className}`}>{children}</div>
-}
-
-function GhostBtn({
-  children,
-  onClick,
-  disabled,
-  className = '',
-}: {
-  children: React.ReactNode
-  onClick?: () => void
-  disabled?: boolean
-  className?: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
-    >
-      {children}
-    </button>
-  )
-}
-
-function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div className="mb-8">
-      <h1 className="font-bold leading-none" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '2rem' }}>
-        {title}
-      </h1>
-      {subtitle && <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>}
-    </div>
-  )
-}
-
-function formatMoney(cents: number, currency: string): string {
-  return (cents / 100).toLocaleString(undefined, { style: 'currency', currency })
 }

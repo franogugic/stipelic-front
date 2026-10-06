@@ -15,6 +15,8 @@ export type MenuItem =
       icon?: LucideIcon
       tone?: 'danger'
       disabled?: boolean
+      /** Disables the item and explains why in its tooltip (the Button `disabledReason` pattern). */
+      disabledReason?: string
     } & ({ onSelect: () => void; to?: undefined; href?: undefined } | { to: string; onSelect?: undefined; href?: undefined } | { href: string; external?: boolean; onSelect?: undefined; to?: undefined })
 
 /**
@@ -48,8 +50,10 @@ export function Menu({
 
   const visibleItems = items.filter((item): item is MenuItem => Boolean(item))
 
-  const enabledItems = useCallback(
-    () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])') ?? []),
+  // Disabled items stay in the arrow-key order (like disabled buttons) so their tooltip can explain why;
+  // they never act, because the click guard in renderItem swallows Enter / Space activation.
+  const menuItems = useCallback(
+    () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []),
     [],
   )
 
@@ -66,10 +70,12 @@ export function Menu({
   useLayoutEffect(() => {
     if (!open || !menuRef.current || !triggerRef.current) return
     positionFloating(menuRef.current, triggerRef.current, { align })
-    const targets = enabledItems()
-    const target = initialFocus.current === 'last' ? targets[targets.length - 1] : targets[0]
+    const targets = menuItems()
+    const actionable = targets.filter((item) => item.getAttribute('aria-disabled') !== 'true')
+    const pool = actionable.length > 0 ? actionable : targets
+    const target = initialFocus.current === 'last' ? pool[pool.length - 1] : pool[0]
     target?.focus()
-  }, [open, align, enabledItems])
+  }, [open, align, menuItems])
 
   useEffect(() => {
     if (!open) return
@@ -97,7 +103,7 @@ export function Menu({
   }
 
   const onMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const targets = enabledItems()
+    const targets = menuItems()
     const index = targets.indexOf(document.activeElement as HTMLElement)
     const move = (next: number) => {
       event.preventDefault()
@@ -144,9 +150,11 @@ export function Menu({
         <span>{item.label}</span>
       </>
     )
-    const ariaDisabled = item.disabled ? true : undefined
+    const disabled = item.disabled || Boolean(item.disabledReason)
+    const ariaDisabled = disabled ? true : undefined
+    const tooltip = item.disabledReason ? { 'data-tooltip': item.disabledReason } : {}
     const guard = (event: MouseEvent) => {
-      if (item.disabled) {
+      if (disabled) {
         event.preventDefault()
         event.stopPropagation()
         return false
@@ -155,7 +163,7 @@ export function Menu({
     }
     if (item.to !== undefined) {
       return (
-        <Link className={className} role="menuitem" tabIndex={-1} to={item.to} aria-disabled={ariaDisabled} key={index}
+        <Link className={className} role="menuitem" tabIndex={-1} to={item.to} aria-disabled={ariaDisabled} {...tooltip} key={index}
           onClick={(event) => { if (guard(event)) close() }}>
           {content}
         </Link>
@@ -163,7 +171,7 @@ export function Menu({
     }
     if (item.href !== undefined) {
       return (
-        <a className={className} role="menuitem" tabIndex={-1} href={item.href} aria-disabled={ariaDisabled} key={index}
+        <a className={className} role="menuitem" tabIndex={-1} href={item.href} aria-disabled={ariaDisabled} {...tooltip} key={index}
           {...(item.external ? { target: '_blank', rel: 'noopener' } : {})}
           onClick={(event) => { if (guard(event)) close() }}>
           {content}
@@ -171,7 +179,7 @@ export function Menu({
       )
     }
     return (
-      <button className={className} type="button" role="menuitem" tabIndex={-1} aria-disabled={ariaDisabled} key={index}
+      <button className={className} type="button" role="menuitem" tabIndex={-1} aria-disabled={ariaDisabled} {...tooltip} key={index}
         onClick={(event) => {
           if (!guard(event)) return
           close(true)

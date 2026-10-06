@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28">
+  <title>Luma</title>
   <rect width="28" height="28" rx="8" fill="#CDF24B"/>
-  <g fill="none" stroke="#17160F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="14" cy="8.2" r="2.3"/>
-    <path d="M14 10.5v11"/>
-    <path d="M7.4 15.6a6.6 6.6 0 0 0 13.2 0"/>
-    <path d="M10.6 13.4h6.8"/>
+  <g fill="#17160F">
+    <path d="M6.5 16.6a7.5 7.5 0 0 1 15 0z"/>
+    <rect x="4.5" y="18.4" width="19" height="2.1" rx="1.05"/>
+    <rect x="8.5" y="22" width="11" height="2.1" rx="1.05"/>
   </g>
 </svg>

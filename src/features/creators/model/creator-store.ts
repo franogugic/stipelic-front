@@ -2,9 +2,10 @@ import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
 import {
   cancelCreatorSubscription,
+  continueOnFreePlan as requestContinueOnFreePlan,
   createCreator,
-  getCreatorBillingPortalUrl,
   deleteCurrentCreator,
+  getCreatorBillingPortalUrl,
   getCreatorSettings,
   getCurrentCreator,
   listCreatorPlans,
@@ -48,11 +49,15 @@ type CreatorState = {
   updateSettingsError: string | null
   createStatus: CreatorCreateStatus
   createError: string | null
+  /** API code of a failed create, e.g. `CREATOR_SLUG_TAKEN` or `CREATOR_ALREADY_EXISTS`. */
+  createErrorCode: string | null
   checkoutResult: CreatorSubscriptionCheckoutResult | null
   checkoutStatus: CreatorCheckoutStatus
   checkoutError: string | null
   deleteStatus: CreatorDeleteStatus
   deleteError: string | null
+  /** The API's error code of a failed delete, e.g. WORKSPACE_HAS_BALANCE. */
+  deleteErrorCode: string | null
   cancelSubscriptionStatus: CreatorCancelSubscriptionStatus
   cancelSubscriptionError: string | null
   pollActivationStatus: PollActivationStatus
@@ -68,9 +73,12 @@ type CreatorState = {
     values: UpdateCreatorSettingsRequest,
   ) => Promise<CreatorSettings | null>
   createCreatorProfile: (values: CreateCreatorFormValues) => Promise<CreateCreatorResult | null>
-  startCreatorCheckout: () => Promise<CreatorSubscriptionCheckoutResult | null>
+  /** With `planCode` a Free workspace is upgraded to that plan; without it the pending first payment is started. */
+  startCreatorCheckout: (planCode?: string) => Promise<CreatorSubscriptionCheckoutResult | null>
+  continueOnFreePlan: () => Promise<ContinueOnFreeResult>
   deleteCreatorProfile: () => Promise<boolean>
-  openBillingPortal: () => Promise<void>
+  /** Opens the Stripe billing portal; resolves with an error message when it could not (otherwise the page navigates away). */
+  openBillingPortal: () => Promise<string | null>
   cancelSubscription: () => Promise<boolean>
   pollCreatorActivation: () => Promise<Creator | null>
   resetCreateCreatorFeedback: () => void
@@ -81,6 +89,17 @@ type CreatorState = {
   resetPollActivation: () => void
   reset: () => void
 }
+
+/** The backend's 409 message when Stripe confirmed the payment before "Continue on Free" ran. */
+const PAYMENT_ALREADY_COMPLETED_MESSAGE = 'Payment already completed.'
+
+export type ContinueOnFreeResult =
+  | { outcome: 'free'; creator: Creator }
+  | { outcome: 'paid' }
+  | { outcome: 'not-pending' }
+  | { outcome: 'error'; message: string }
+
+let pendingCurrentCreatorLoad: Promise<Creator | null> | null = null
 
 const initialCreatorState = {
   createdCreator: null,
@@ -96,11 +115,13 @@ const initialCreatorState = {
   updateSettingsError: null,
   createStatus: 'idle' as CreatorCreateStatus,
   createError: null,
+  createErrorCode: null,
   checkoutResult: null,
   checkoutStatus: 'idle' as CreatorCheckoutStatus,
   checkoutError: null,
   deleteStatus: 'idle' as CreatorDeleteStatus,
   deleteError: null,
+  deleteErrorCode: null,
   cancelSubscriptionStatus: 'idle' as CreatorCancelSubscriptionStatus,
   cancelSubscriptionError: null,
   pollActivationStatus: 'idle' as PollActivationStatus,
@@ -127,22 +148,31 @@ export const useCreatorStore = create<CreatorState>((set) => ({
     }
   },
 
-  loadCurrentCreator: async () => {
+  loadCurrentCreator: () => {
+    // Several callers (a page and the app shell) can ask at once; they all share the one request in flight.
+    if (pendingCurrentCreatorLoad) return pendingCurrentCreatorLoad
+
     set({ currentCreatorStatus: 'loading' })
 
-    try {
-      const creator = await getCurrentCreator()
-      const currentCreator = creator ?? null
-      set({
-        currentCreator,
-        createdCreator: currentCreator,
-        currentCreatorStatus: 'success',
-      })
-      return currentCreator
-    } catch {
-      set({ currentCreator: null, currentCreatorStatus: 'error' })
-      return null
-    }
+    pendingCurrentCreatorLoad = (async () => {
+      try {
+        const creator = await getCurrentCreator()
+        const currentCreator = creator ?? null
+        set({
+          currentCreator,
+          createdCreator: currentCreator,
+          currentCreatorStatus: 'success',
+        })
+        return currentCreator
+      } catch {
+        set({ currentCreator: null, currentCreatorStatus: 'error' })
+        return null
+      } finally {
+        pendingCurrentCreatorLoad = null
+      }
+    })()
+
+    return pendingCurrentCreatorLoad
   },
 
   loadCreatorSettings: async (slug) => {
@@ -221,7 +251,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
 
   createCreatorProfile: async (values) => {
-    set({ createStatus: 'submitting', createError: null })
+    set({ createStatus: 'submitting', createError: null, createErrorCode: null })
 
     try {
       const result = await createCreator(values)
@@ -230,13 +260,8 @@ export const useCreatorStore = create<CreatorState>((set) => ({
         createdCreator: creator,
         currentCreator: creator,
         currentCreatorStatus: 'success',
-        checkoutResult: result.requiresPayment
-          ? {
-              requiresPayment: result.requiresPayment,
-              paymentStatus: result.paymentStatus,
-              checkoutUrl: result.checkoutUrl,
-            }
-          : null,
+        // A paid plan's checkout is started separately (startCreatorCheckout).
+        checkoutResult: null,
         createStatus: 'success',
         createError: null,
       })
@@ -247,16 +272,37 @@ export const useCreatorStore = create<CreatorState>((set) => ({
           ? error.message
           : 'We could not create this creator profile. Please try again.'
 
-      set({ createStatus: 'error', createError: message })
+      set({
+        createStatus: 'error',
+        createError: message,
+        createErrorCode: error instanceof ApiError ? (error.code ?? null) : null,
+      })
       return null
     }
   },
 
-  startCreatorCheckout: async () => {
+  continueOnFreePlan: async () => {
+    try {
+      const creator = await requestContinueOnFreePlan()
+      set({ currentCreator: creator, createdCreator: creator, currentCreatorStatus: 'success' })
+      return { outcome: 'free', creator }
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        // The customer paid in the meantime, or the workspace was not waiting for payment at all.
+        return { outcome: error.message === PAYMENT_ALREADY_COMPLETED_MESSAGE ? 'paid' : 'not-pending' }
+      }
+      return {
+        outcome: 'error',
+        message: error instanceof ApiError ? error.message : 'We could not switch you to the Free plan. Please try again.',
+      }
+    }
+  },
+
+  startCreatorCheckout: async (planCode) => {
     set({ checkoutStatus: 'submitting', checkoutError: null })
 
     try {
-      const checkout = await startCreatorSubscriptionCheckout()
+      const checkout = await startCreatorSubscriptionCheckout(planCode)
       set({
         checkoutResult: checkout,
         checkoutStatus: 'success',
@@ -275,7 +321,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
 
   deleteCreatorProfile: async () => {
-    set({ deleteStatus: 'submitting', deleteError: null })
+    set({ deleteStatus: 'submitting', deleteError: null, deleteErrorCode: null })
 
     try {
       await deleteCurrentCreator()
@@ -291,6 +337,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
         currentCreatorStatus: 'success',
         deleteStatus: 'success',
         deleteError: null,
+        deleteErrorCode: null,
       })
       return true
     } catch (error) {
@@ -299,7 +346,11 @@ export const useCreatorStore = create<CreatorState>((set) => ({
           ? error.message
           : 'We could not delete this creator profile. Please try again.'
 
-      set({ deleteStatus: 'error', deleteError: message })
+      set({
+        deleteStatus: 'error',
+        deleteError: message,
+        deleteErrorCode: error instanceof ApiError ? (error.code ?? null) : null,
+      })
       return false
     }
   },
@@ -308,12 +359,9 @@ export const useCreatorStore = create<CreatorState>((set) => ({
     try {
       const url = await getCreatorBillingPortalUrl()
       window.location.assign(url)
+      return null
     } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? error.message
-          : 'Could not open billing portal. Please try again.'
-      console.error(message)
+      return error instanceof ApiError ? error.message : 'Could not open billing portal. Please try again.'
     }
   },
 
@@ -364,13 +412,13 @@ export const useCreatorStore = create<CreatorState>((set) => ({
   },
 
   resetCreateCreatorFeedback: () => {
-    set({ createStatus: 'idle', createError: null })
+    set({ createStatus: 'idle', createError: null, createErrorCode: null })
   },
   resetCreatorCheckoutFeedback: () => {
     set({ checkoutStatus: 'idle', checkoutError: null })
   },
   resetDeleteCreatorFeedback: () => {
-    set({ deleteStatus: 'idle', deleteError: null })
+    set({ deleteStatus: 'idle', deleteError: null, deleteErrorCode: null })
   },
   resetUpdateCreatorSettingsFeedback: () => {
     set({ updateSettingsStatus: 'idle', updateSettingsError: null })

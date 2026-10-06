@@ -1,7 +1,8 @@
 import { useCallback, useId, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-export type TabItem = { key: string; label: string; count?: number }
+export type TabItem = { key: string; label: ReactNode; count?: number }
 
 /**
  * State for `Tabs` + `TabPanel`. With `paramName` the active tab is read from and written to that URL

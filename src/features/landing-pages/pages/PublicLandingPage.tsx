@@ -2,6 +2,7 @@ import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
+import { PublicPageNotFound } from '../components/PublicPageNotFound'
 import { captureEmail, createCheckout, getPublishedLandingPage } from '../api/public-landing-page-api'
 import type {
   CtaContent,
@@ -45,14 +46,7 @@ export function PublicLandingPage() {
     )
   }
 
-  if (status === 'notfound') {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-center px-5">
-        <p className="text-4xl font-bold text-neutral-950">404</p>
-        <p className="text-neutral-500">This page doesn't exist or hasn't been published yet.</p>
-      </div>
-    )
-  }
+  if (status === 'notfound') return <PublicPageNotFound />
 
   if (status === 'error' || !page) {
     return (

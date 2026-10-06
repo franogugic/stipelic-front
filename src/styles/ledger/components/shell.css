@@ -208,7 +208,7 @@
 }
 
 .brand__mark-bg { fill: var(--color-accent); }
-.brand__mark-fg { stroke: var(--color-on-accent); fill: none; }
+.brand__mark-fg { fill: var(--color-on-accent); }
 
 .brand__word {
   font-family: var(--font-display);
@@ -420,3 +420,4 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
 }
+

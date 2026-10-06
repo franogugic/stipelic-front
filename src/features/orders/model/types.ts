@@ -24,6 +24,11 @@ export interface OrderSummary {
   paidOrderCount: number
   totalPaidAmountCents: number
   currency: string | null
+  totalPlatformFeeCents: number
+  netAmountCents: number
+  refundedOrderCount: number
+  /** Every order of the workspace, whatever its status (no filter applies). */
+  totalOrderCount: number
 }
 
 export interface HomeSummary {
@@ -43,4 +48,13 @@ export interface HomeSummary {
   viewsTrend: number[]
   monthlyRevenueTrend: number[]
   totalPlatformFeeCents: number
+}
+
+export type DashboardTrendRange = '30d' | '6m' | '12m'
+
+/** `GET …/orders/dashboard-trends`: revenue and page views per day (30d) or per month (6m, 12m). */
+export interface DashboardTrends {
+  range: DashboardTrendRange
+  granularity: 'day' | 'month'
+  points: Array<{ bucketStart: string; revenueCents: number; views: number }>
 }

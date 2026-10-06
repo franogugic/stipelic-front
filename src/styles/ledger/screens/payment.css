@@ -1,0 +1,33 @@
+/* Confetti (payment success) */
+.confetti {
+  position: absolute;
+  inset: -40px -120px auto;
+  height: 260px;
+  pointer-events: none;
+}
+
+.confetti i {
+  position: absolute;
+  top: 0;
+  left: calc(4% + var(--i) * 6.8%);
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--chart-2);
+  opacity: 0;
+  animation: confetti 2.4s var(--ease-out) calc(var(--i) * 60ms) forwards;
+}
+
+.confetti i:nth-child(3n) { background: var(--color-accent); width: 10px; height: 10px; border-radius: 50%; }
+.confetti i:nth-child(3n + 1) { background: var(--chart-3); }
+.confetti i:nth-child(4n) { background: var(--chart-4); }
+
+@keyframes confetti {
+  0% { opacity: 0; transform: translateY(-20px) rotate(0); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(220px) rotate(calc(var(--i) * 47deg)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+}

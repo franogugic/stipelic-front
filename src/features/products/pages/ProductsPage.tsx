@@ -1,61 +1,49 @@
-import {
-  AlertTriangle,
-  Archive,
-  BookOpen,
-  ExternalLink,
-  Loader2,
-  Package,
-  Pencil,
-  Plus,
-  RotateCcw,
-  Wrench,
-  X,
-} from 'lucide-react'
+import { Archive, Package, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { number } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
-import { Dropdown } from '../../../shared/ui/Dropdown'
-import { ImageUploadField } from '../../../shared/ui/ImageUploadField'
+import {
+  Button,
+  Card,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  SkeletonRows,
+  Switch,
+  useToast,
+} from '../../../shared/ui/ledger'
 import { useCreatorStore } from '../../creators/model/creator-store'
+import { ProductsTable } from '../components/ProductsTable'
 import { useProductStore } from '../model/product-store'
-import type {
-  CreateProductRequest,
-  Product,
-  ProductStatus,
-  ProductType,
-  UpdateProductRequest,
-} from '../model/types'
-
-const PRODUCT_TYPES: { value: ProductType; label: string; icon: typeof Package }[] = [
-  { value: 'Digital', label: 'Digital', icon: Package },
-  { value: 'Service', label: 'Service', icon: Wrench },
-  { value: 'Course',  label: 'Course',  icon: BookOpen },
-]
+import type { Product } from '../model/types'
 
 export function ProductsPage() {
-  const navigate = useNavigate()
-  const { slug } = useParams<{ slug: string }>()
+  const toast = useToast()
+  const { slug = '' } = useParams<{ slug: string }>()
+
   const currentCreator = useCreatorStore((s) => s.currentCreator)
   const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
   const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
   const creatorPlans = useCreatorStore((s) => s.creatorPlans)
   const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
+
   const products = useProductStore((s) => s.products)
   const loadStatus = useProductStore((s) => s.loadStatus)
-  const loadProducts = useProductStore((s) => s.loadProducts)
   const includeArchived = useProductStore((s) => s.includeArchived)
+  const loadProducts = useProductStore((s) => s.loadProducts)
   const setIncludeArchived = useProductStore((s) => s.setIncludeArchived)
+  const archiveProduct = useProductStore((s) => s.archiveProduct)
+  const restoreProduct = useProductStore((s) => s.restoreProduct)
+  const resetArchiveFeedback = useProductStore((s) => s.resetArchiveFeedback)
+  const resetRestoreFeedback = useProductStore((s) => s.resetRestoreFeedback)
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [archivingProduct, setArchivingProduct] = useState<Product | null>(null)
+  const [busyProductId, setBusyProductId] = useState<string | null>(null)
+  const [archiveTarget, setArchiveTarget] = useState<Product | null>(null)
 
-  const isLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
   const creator = currentCreator?.slug === slug ? currentCreator : null
-  const currentPlan = creatorPlans.find((p) => p.code === creator?.planCode)
-  const maxProducts = currentPlan?.limits['max_products'] ?? null
-  const activeProductCount = products.filter((p) => p.status !== 'Archived').length
-  const atLimit = maxProducts !== null && maxProducts >= 0 && activeProductCount >= maxProducts
+  const creatorLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
   useEffect(() => {
     if (currentCreatorStatus === 'idle') void loadCurrentCreator()
@@ -65,502 +53,118 @@ export function ProductsPage() {
     void loadCreatorPlans()
   }, [loadCreatorPlans])
 
+  // Fresh numbers on every visit (and for another workspace's address).
   useEffect(() => {
-    if (slug && loadStatus === 'idle') void loadProducts(slug)
-  }, [slug, loadStatus, loadProducts])
+    if (slug) void loadProducts(slug, useProductStore.getState().includeArchived)
+  }, [slug, loadProducts])
 
-  if (!slug) return null
+  const plan = creatorPlans.find((candidate) => candidate.code === creator?.planCode)
+  const maxProducts = plan?.limits['max_products']
+  const activeProductCount = products.filter((product) => product.status !== 'Archived').length
+  // With "Show archived", archived products come after the live ones (stable, so the API's order is kept within each).
+  const sortedProducts = [...products].sort((a, b) => Number(a.status === 'Archived') - Number(b.status === 'Archived'))
+  const atLimit = maxProducts !== undefined && maxProducts >= 0 && activeProductCount >= maxProducts
+  const limitReason =
+    atLimit && creator
+      ? maxProducts === 1
+        ? `You’ve used your 1 product on the ${creator.planName} plan.`
+        : `You’ve used all ${number(maxProducts)} products on the ${creator.planName} plan.`
+      : undefined
+
+  const archive = async (product: Product) => {
+    setBusyProductId(product.publicId)
+    const ok = await archiveProduct(slug, product.publicId)
+    const error = useProductStore.getState().archiveError
+    resetArchiveFeedback()
+    setBusyProductId(null)
+    if (ok) toast({ tone: 'success', title: 'Product archived' })
+    else toast({ tone: 'danger', title: error ?? 'Something went wrong. Please try again.' })
+  }
+
+  const restore = async (product: Product) => {
+    setBusyProductId(product.publicId)
+    const ok = await restoreProduct(slug, product.publicId)
+    const error = useProductStore.getState().restoreError
+    resetRestoreFeedback()
+    setBusyProductId(null)
+    if (ok) toast({ tone: 'success', title: 'Product restored' })
+    else toast({ tone: 'danger', title: error ?? 'Something went wrong. Please try again.' })
+  }
+
+  const newProductButton = (
+    <Button variant="primary" icon={Plus} disabledReason={limitReason} to={`/app/${slug}/products/new`}>
+      New product
+    </Button>
+  )
+
+  const content = () => {
+    if (loadStatus === 'error') return <ErrorState onRetry={() => void loadProducts(slug, includeArchived)} />
+    if (loadStatus !== 'success') return <SkeletonRows />
+    if (products.length === 0) {
+      return (
+        <EmptyState
+          icon={Package}
+          title="No products yet"
+          text="Create your first product — a download, a course or a service — and sell it from a landing page."
+          action={limitReason ? undefined : { label: 'Create product', icon: Plus, variant: 'primary', to: `/app/${slug}/products/new` }}
+        />
+      )
+    }
+    return (
+      <ProductsTable
+        products={sortedProducts}
+        creatorSlug={slug}
+        currency={creator?.defaultCurrency ?? 'EUR'}
+        busyProductId={busyProductId}
+        restoreDisabledReason={limitReason}
+        onArchive={setArchiveTarget}
+        onRestore={(product) => void restore(product)}
+      />
+    )
+  }
 
   return (
     <AppShell slug={slug} activeSection="products">
-      <div className="px-8 py-8">
+      {creatorLoading ? (
+        <SkeletonRows />
+      ) : !creator ? (
+        <EmptyState title="Workspace not found" text="This address doesn’t match your workspace." />
+      ) : (
+        <>
+          <PageHeader
+            title={<em>Products</em>}
+            subtitle="Everything you sell — delivered to buyers as a link by email."
+            actions={
+              <>
+                <Switch
+                  label="Show archived"
+                  checked={includeArchived}
+                  onChange={(event) => setIncludeArchived(slug, event.target.checked)}
+                />
+                {newProductButton}
+              </>
+            }
+          />
+          <Card title="All products" flush>
+            {content()}
+          </Card>
 
-        {isLoading ? (
-          <div className="flex h-40 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-            <Loader2 className="animate-spin" size={18} />
-            Loading workspace…
-          </div>
-        ) : !creator ? (
-          <div className="rounded-xl border border-border bg-card p-8">
-            <p className="font-semibold text-white light:text-neutral-950">Workspace not found</p>
-            <button
-              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-600"
-              type="button"
-              onClick={() => navigate('/')}
-            >
-              Go home
-            </button>
-          </div>
-        ) : (
-          <div className="grid gap-8">
-            {/* Header */}
-            <PageHeader
-              title="Products"
-              subtitle="Manage your digital products, courses, and services."
-              action={
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Show archived</span>
-                    <button
-                      onClick={() => slug && setIncludeArchived(slug, !includeArchived)}
-                      className="relative rounded-full transition-colors"
-                      style={{
-                        width: 32,
-                        height: 18,
-                        backgroundColor: includeArchived ? 'var(--color-chart-1)' : 'rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      <div
-                        className="absolute w-3.5 h-3.5 rounded-full bg-white shadow transition-all"
-                        style={{ top: 2, left: includeArchived ? 15 : 2, width: 14, height: 14 }}
-                      />
-                    </button>
-                  </div>
-                  <PrimaryBtn onClick={() => setIsCreateOpen(true)}>
-                    <Plus size={14} /> New Product
-                  </PrimaryBtn>
-                </div>
-              }
-            />
-
-            {atLimit ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-200 light:border-amber-200 light:bg-amber-50 light:text-amber-800">
-                <AlertTriangle size={16} className="shrink-0 text-amber-400 light:text-amber-600" />
-                Plan limit reached. Archive existing products or upgrade your plan.
-              </div>
-            ) : null}
-
-            {loadStatus === 'loading' ? (
-              <div className="flex h-32 items-center justify-center gap-3 text-sm text-white/40 light:text-neutral-400">
-                <Loader2 className="animate-spin" size={16} />
-                Loading products…
-              </div>
-            ) : products.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 bg-card py-20 text-center light:border-neutral-300">
-                <span className="grid size-14 place-items-center rounded-2xl bg-white/10 text-white/40 light:bg-neutral-100 light:text-neutral-400">
-                  <Package size={24} strokeWidth={1.5} />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-white light:text-neutral-950">No products yet</p>
-                  <p className="mt-1 text-sm text-white/40 light:text-neutral-400">
-                    Add a digital product, service, or course to start selling.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  disabled={atLimit}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40"
-                  onClick={() => setIsCreateOpen(true)}
-                >
-                  <Plus size={15} />
-                  Create first product
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {products.map((product) => {
-                  const isArchived = product.status === 'Archived'
-                  return (
-                    <Card key={product.publicId} className={`p-5 relative group ${isArchived ? 'opacity-50' : ''}`}>
-                      <div className="flex items-start justify-between mb-3">
-                        <div
-                          className="w-9 h-9 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: 'color-mix(in srgb, var(--color-chart-1) 15%, transparent)', color: 'var(--color-chart-1)' }}
-                        >
-                          <Package size={16} />
-                        </div>
-                        <StatusBadge status={product.status} />
-                      </div>
-                      <button type="button" onClick={() => setEditingProduct(product)} className="text-left">
-                        <p className="font-semibold text-sm mb-0.5 hover:text-blue-400 transition-colors">{product.name}</p>
-                        <p className="text-xs text-muted-foreground mb-4">{product.type}</p>
-                      </button>
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Price</p>
-                          <p className="text-lg font-black font-mono" style={{ color: 'var(--color-chart-1)' }}>{formatPrice(product.priceCents)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Sales</p>
-                          <p className="text-lg font-black font-mono">{product.paidOrderCount}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5">
-                        {!isArchived ? (
-                          <>
-                            <GhostBtn onClick={() => setEditingProduct(product)} className="flex-1 justify-center text-[11px] py-1">
-                              <Pencil size={10} /> Edit
-                            </GhostBtn>
-                            {product.accessUrl ? (
-                              <a
-                                href={product.accessUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-                                style={{ border: '1px solid rgba(255,255,255,0.08)' }}
-                                title="Access URL"
-                              >
-                                <ExternalLink size={12} />
-                              </a>
-                            ) : null}
-                            <button
-                              type="button"
-                              onClick={() => setArchivingProduct(product)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-                              style={{ border: '1px solid rgba(255,255,255,0.08)' }}
-                              title="Archive"
-                            >
-                              <Archive size={12} />
-                            </button>
-                          </>
-                        ) : (
-                          <RestoreProductButton slug={slug!} product={product} atLimit={atLimit} maxProducts={maxProducts} />
-                        )}
-                      </div>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {isCreateOpen && slug ? (
-        <ProductFormModal slug={slug} onClose={() => setIsCreateOpen(false)} />
-      ) : null}
-      {editingProduct && slug ? (
-        <ProductFormModal slug={slug} product={editingProduct} onClose={() => setEditingProduct(null)} />
-      ) : null}
-      {archivingProduct && slug ? (
-        <ArchiveProductDialog slug={slug} product={archivingProduct} onClose={() => setArchivingProduct(null)} />
-      ) : null}
+          <ConfirmDialog
+            open={archiveTarget !== null}
+            title={`Archive “${archiveTarget?.name ?? ''}”?`}
+            text="It will no longer be available for sale. You can restore it from “Show archived” at any time."
+            confirmLabel="Archive product"
+            tone="danger"
+            icon={Archive}
+            onCancel={() => setArchiveTarget(null)}
+            onConfirm={() => {
+              const target = archiveTarget
+              setArchiveTarget(null)
+              if (target) void archive(target)
+            }}
+          />
+        </>
+      )}
     </AppShell>
   )
-}
-
-/* ─── ProductFormModal ─────────────────────────────────────────── */
-
-function ProductFormModal({
-  slug,
-  product,
-  onClose,
-}: {
-  slug: string
-  product?: Product
-  onClose: () => void
-}) {
-  const isEditing = !!product
-  const createProductFn = useProductStore((s) => s.createProduct)
-  const updateProductFn = useProductStore((s) => s.updateProduct)
-  const createStatus = useProductStore((s) => s.createStatus)
-  const createError = useProductStore((s) => s.createError)
-  const updateStatus = useProductStore((s) => s.updateStatus)
-  const updateError = useProductStore((s) => s.updateError)
-  const resetCreateFeedback = useProductStore((s) => s.resetCreateFeedback)
-  const resetUpdateFeedback = useProductStore((s) => s.resetUpdateFeedback)
-
-  const isSubmitting = createStatus === 'submitting' || updateStatus === 'submitting'
-  const error = isEditing ? updateError : createError
-
-  // Clear any leftover error/status from a previous failed submit (e.g. the user cancelled out of a
-  // failed create, then opened the modal again) — otherwise a stale error banner from that earlier
-  // attempt would flash immediately, before this form has been touched.
-  useEffect(() => {
-    if (isEditing) resetUpdateFeedback()
-    else resetCreateFeedback()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const [name, setName] = useState(product?.name ?? '')
-  const [description, setDescription] = useState(product?.description ?? '')
-  const [priceCents, setPriceCents] = useState(product ? String(product.priceCents / 100) : '')
-  const [type, setType] = useState<ProductType>(product?.type ?? 'Digital')
-  const [status, setStatus] = useState<ProductStatus>(product?.status ?? 'Draft')
-  const [accessUrl, setAccessUrl] = useState(product?.accessUrl ?? '')
-  const [thumbnailUrl, setThumbnailUrl] = useState(product?.thumbnailUrl ?? '')
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const parsedCents = Math.round(parseFloat(priceCents.replace(',', '.')) * 100)
-    if (isNaN(parsedCents)) return
-
-    if (isEditing && product) {
-      const req: UpdateProductRequest = { name, description, priceCents: parsedCents, type, status, accessUrl, thumbnailUrl }
-      const result = await updateProductFn(slug, product.publicId, req)
-      if (result) { resetUpdateFeedback(); onClose() }
-    } else {
-      const req: CreateProductRequest = { name, description, priceCents: parsedCents, type, accessUrl, thumbnailUrl }
-      const result = await createProductFn(slug, req)
-      if (result) { resetCreateFeedback(); onClose() }
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-5" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-bold" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '1.3rem' }}>
-            {isEditing ? 'Edit Product' : 'Create New Product'}
-          </h2>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X size={16} />
-          </button>
-        </div>
-
-        <form onSubmit={(e) => void handleSubmit(e)}>
-          <div className="space-y-4 mb-5">
-            <ModalField label="Product Name">
-              <input type="text" required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Advanced TypeScript Handbook" className={inputClass} />
-            </ModalField>
-
-            <ModalField label="Type">
-              <Dropdown value={type} onChange={setType} options={PRODUCT_TYPES} />
-            </ModalField>
-
-            <ModalField label="Price (EUR)">
-              <input type="number" min="0" step="0.01" required value={priceCents} onChange={(e) => setPriceCents(e.target.value)} placeholder="49" className={inputClass} />
-            </ModalField>
-
-            <ModalField label="Short Description">
-              <textarea rows={3} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's included…" className={`${inputClass} resize-none`} />
-            </ModalField>
-
-            {isEditing ? (
-              <ModalField label="Status">
-                <Dropdown
-                  value={status}
-                  onChange={setStatus}
-                  options={[
-                    { value: 'Draft', label: 'Draft' },
-                    { value: 'Active', label: 'Active' },
-                  ]}
-                />
-              </ModalField>
-            ) : null}
-
-            <ModalField label="Access URL">
-              <input type="url" value={accessUrl} onChange={(e) => setAccessUrl(e.target.value)} placeholder="https://drive.google.com/…" className={inputClass} />
-            </ModalField>
-
-            <ImageUploadField
-              slug={slug}
-              purpose="ProductThumbnail"
-              label="Thumbnail"
-              value={thumbnailUrl}
-              onChange={setThumbnailUrl}
-            />
-
-            {error ? (
-              <p className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-300 light:bg-red-50 light:text-red-600">{error}</p>
-            ) : null}
-          </div>
-
-          <div className="flex gap-2">
-            <PrimaryBtn className="flex-1 justify-center" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="animate-spin" size={13} /> : <Plus size={13} />}
-              {isEditing ? 'Save Changes' : 'Create Product'}
-            </PrimaryBtn>
-            <GhostBtn onClick={onClose} disabled={isSubmitting}>Cancel</GhostBtn>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-function ModalField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs text-muted-foreground mb-1.5">{label}</label>
-      {children}
-    </div>
-  )
-}
-
-const inputClass = 'w-full px-3 py-2 rounded-lg text-sm bg-secondary text-foreground placeholder:text-muted-foreground/40 focus:outline-none border border-border'
-
-/* ─── ArchiveProductDialog ─────────────────────────────────────── */
-
-function ArchiveProductDialog({ slug, product, onClose }: { slug: string; product: Product; onClose: () => void }) {
-  const archiveProductFn = useProductStore((s) => s.archiveProduct)
-  const archiveStatus = useProductStore((s) => s.archiveStatus)
-  const archiveError = useProductStore((s) => s.archiveError)
-  const resetArchiveFeedback = useProductStore((s) => s.resetArchiveFeedback)
-  const isSubmitting = archiveStatus === 'submitting'
-
-  // Same stale-error guard as ProductFormModal — clear a leftover error from a previously cancelled
-  // archive attempt so it doesn't flash for an unrelated product.
-  useEffect(() => {
-    resetArchiveFeedback()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const handleConfirm = async () => {
-    const ok = await archiveProductFn(slug, product.publicId)
-    if (ok) { resetArchiveFeedback(); onClose() }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-5 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
-        <div className="grid size-11 place-items-center rounded-xl bg-amber-500/15 light:bg-amber-50">
-          <AlertTriangle className="text-amber-400 light:text-amber-600" size={22} />
-        </div>
-        <h2 className="mt-4 text-lg font-semibold text-white light:text-neutral-950">Archive product?</h2>
-        <p className="mt-2 text-sm leading-6 text-white/50 light:text-neutral-500">
-          <span className="font-medium text-white/80 light:text-neutral-800">{product.name}</span> will be archived and hidden from your workspace.
-        </p>
-        {archiveError ? <p className="mt-3 text-sm text-red-300 light:text-red-600">{archiveError}</p> : null}
-        <div className="mt-6 flex gap-3">
-          <button type="button" className="flex h-10 flex-1 items-center justify-center rounded-xl border border-border bg-card text-sm font-medium text-white/70 transition hover:bg-secondary light:text-neutral-700" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-          <button type="button" disabled={isSubmitting} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-accent text-sm font-semibold text-white light:text-neutral-950 transition hover:bg-accent-strong disabled:opacity-40" onClick={() => void handleConfirm()}>
-            {isSubmitting ? <Loader2 className="animate-spin" size={15} /> : null}
-            Archive
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ─── Helpers ──────────────────────────────────────────────────── */
-
-function Card({
-  children,
-  className = '',
-}: {
-  children: React.ReactNode
-  className?: string
-}) {
-  return <div className={`rounded-xl border border-border bg-card ${className}`}>{children}</div>
-}
-
-function GhostBtn({
-  children,
-  onClick,
-  disabled,
-  className = '',
-}: {
-  children: React.ReactNode
-  onClick?: () => void
-  disabled?: boolean
-  className?: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
-    >
-      {children}
-    </button>
-  )
-}
-
-function PageHeader({
-  title,
-  subtitle,
-  action,
-}: {
-  title: string
-  subtitle?: string
-  action?: React.ReactNode
-}) {
-  return (
-    <div className="flex items-start justify-between mb-8">
-      <div>
-        <h1 className="font-bold leading-none" style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '2rem' }}>
-          {title}
-        </h1>
-        {subtitle && <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>}
-      </div>
-      {action}
-    </div>
-  )
-}
-
-function PrimaryBtn({
-  children,
-  onClick,
-  disabled,
-  className = '',
-}: {
-  children: React.ReactNode
-  onClick?: () => void
-  disabled?: boolean
-  className?: string
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
-      style={{ backgroundColor: 'var(--color-chart-1)' }}
-    >
-      {children}
-    </button>
-  )
-}
-
-const PRODUCT_STATUS_STYLES: Record<ProductStatus, { bg: string; color: string }> = {
-  Active: {
-    bg: 'color-mix(in srgb, var(--color-chart-1) 12%, transparent)',
-    color: 'var(--color-chart-1)',
-  },
-  Draft: {
-    bg: 'color-mix(in srgb, var(--color-muted-foreground) 12%, transparent)',
-    color: 'var(--color-muted-foreground)',
-  },
-  Archived: {
-    bg: 'color-mix(in srgb, var(--color-muted-foreground) 12%, transparent)',
-    color: 'var(--color-muted-foreground)',
-  },
-}
-
-function StatusBadge({ status }: { status: ProductStatus }) {
-  const s = PRODUCT_STATUS_STYLES[status]
-  return (
-    <span
-      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-mono"
-      style={{ backgroundColor: s.bg, color: s.color, border: `1px solid color-mix(in srgb, ${s.color} 13%, transparent)` }}
-    >
-      {status}
-    </span>
-  )
-}
-
-function RestoreProductButton({
-  slug,
-  product,
-  atLimit,
-  maxProducts,
-}: {
-  slug: string
-  product: Product
-  atLimit: boolean
-  maxProducts: number | null
-}) {
-  const restoreProductFn = useProductStore((s) => s.restoreProduct)
-  const restoreStatus = useProductStore((s) => s.restoreStatus)
-  const isSubmitting = restoreStatus === 'submitting'
-
-  return (
-    <button
-      type="button"
-      disabled={atLimit || isSubmitting}
-      title={atLimit ? `Plan limit reached (${maxProducts ?? 0}). Archive another product or upgrade your plan to restore this one.` : undefined}
-      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] text-muted-foreground hover:text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-      style={{ border: '1px solid rgba(255,255,255,0.08)' }}
-      onClick={() => void restoreProductFn(slug, product.publicId)}
-    >
-      {isSubmitting ? <Loader2 className="animate-spin" size={10} /> : <RotateCcw size={10} />}
-      Restore
-    </button>
-  )
-}
-
-function formatPrice(cents: number): string {
-  return new Intl.NumberFormat('en-EU', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(cents / 100)
 }

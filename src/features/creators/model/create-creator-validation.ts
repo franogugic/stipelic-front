@@ -1,7 +1,6 @@
 import type { CreateCreatorFormValues } from './types'
 import { creatorConstraints } from './creator-constraints'
 
-export type CreatorStep = 'identity' | 'plan' | 'setup' | 'settings' | 'review'
 export type CreateCreatorFieldName = keyof CreateCreatorFormValues
 
 export type CreateCreatorValidation = {

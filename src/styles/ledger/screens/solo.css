@@ -1,0 +1,87 @@
+/* Solo layout (platform pages outside the app shell) */
+.solo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background:
+    radial-gradient(50rem 26rem at 50% -8%, var(--color-accent-soft), transparent 70%),
+    var(--color-canvas);
+  overflow: hidden;
+}
+
+.solo__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--page-gutter);
+}
+
+.solo__main {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--space-8) var(--space-4) var(--space-16);
+}
+
+.solo__box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  width: min(500px, 100%);
+  text-align: center;
+}
+
+.solo__box--wide {
+  width: min(820px, 100%);
+}
+
+.solo__art {
+  padding: var(--space-10) 0 var(--space-4);
+}
+
+.solo__title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5.5vw, 3.75rem);
+  font-weight: var(--weight-regular);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.solo__title--xl {
+  font-size: clamp(2.75rem, 7vw, 5rem);
+}
+
+.solo__title em {
+  color: var(--color-accent-strong);
+}
+
+.solo__text {
+  max-width: 46ch;
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+
+.solo__card {
+  width: 100%;
+  text-align: left;
+}
+
+.solo__url {
+  height: 32px;
+  font-size: var(--text-sm);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-danger);
+}
+
+.solo__foot {
+  padding: var(--space-5);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}

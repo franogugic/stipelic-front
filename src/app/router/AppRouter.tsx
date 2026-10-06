@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { AdminPayoutsPage } from '../../features/admin/pages/AdminPayoutsPage'
+import { ConfirmEmailChangePage } from '../../features/auth/pages/ConfirmEmailChangePage'
 import { ForgotPasswordPage } from '../../features/auth/pages/ForgotPasswordPage'
 import { HomePage } from '../../features/auth/pages/HomePage'
+import { CheckInboxPage } from '../../features/auth/pages/CheckInboxPage'
 import { LoginPage } from '../../features/auth/pages/LoginPage'
 import { RegisterPage } from '../../features/auth/pages/RegisterPage'
 import { ResetPasswordPage } from '../../features/auth/pages/ResetPasswordPage'
@@ -11,16 +13,23 @@ import { CreateCreatorPage } from '../../features/creators/pages/CreateCreatorPa
 import { CreatorPayoutsPage } from '../../features/creators/pages/CreatorPayoutsPage'
 import { CreatorSettingsPage } from '../../features/creators/pages/CreatorSettingsPage'
 import { CreatorWorkspacePage } from '../../features/creators/pages/CreatorWorkspacePage'
-import { PaymentStatusPage } from '../../features/creators/pages/PaymentStatusPage'
+import { PaymentCancelledPage } from '../../features/creators/pages/PaymentCancelledPage'
+import { PaymentSuccessPage } from '../../features/creators/pages/PaymentSuccessPage'
+import { WelcomePage } from '../../features/creators/pages/WelcomePage'
 import { LandingPageAnalyticsPage } from '../../features/landing-pages/pages/LandingPageAnalyticsPage'
 import { LandingPageEditorPage } from '../../features/landing-pages/pages/LandingPageEditorPage'
 import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPagesPage'
 import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSuccessPage'
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
+import { UnsubscribePage } from '../../features/marketing/pages/UnsubscribePage'
+import { NewCampaignPage } from '../../features/marketing/pages/NewCampaignPage'
 import { EmailsPage } from '../../features/marketing/pages/EmailsPage'
 import { SubscribersPage } from '../../features/marketing/pages/SubscribersPage'
+import { ProductDetailPage } from '../../features/products/pages/ProductDetailPage'
+import { ProductFormPage } from '../../features/products/pages/ProductFormPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { OrdersPage } from '../../features/orders/pages/OrdersPage'
+import { NotFoundPage } from '../../shared/ui/NotFoundPage'
 import { AdminRoute } from './AdminRoute'
 import { AuthBootstrap } from './AuthBootstrap'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -45,11 +54,14 @@ export function AppRouter() {
       <Route element={<AuthBootstrap />}>
         <Route path="/p/:creatorSlug/:pageSlug/success" element={<OrderSuccessPage />} />
         <Route path="/p/:creatorSlug/:pageSlug" element={<PublicLandingPage />} />
+        <Route path="/unsubscribe/:token" element={<UnsubscribePage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/confirm-email-change" element={<ConfirmEmailChangePage />} />
+        <Route path="/check-inbox" element={<CheckInboxPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/payment/success" element={<PaymentStatusPage status="success" />} />
-        <Route path="/payment/cancel" element={<PaymentStatusPage status="cancel" />} />
+        <Route path="/payment/success" element={<PaymentSuccessPage />} />
+        <Route path="/payment/cancel" element={<PaymentCancelledPage />} />
 
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />
@@ -60,14 +72,19 @@ export function AppRouter() {
           <Route path="/" element={<HomePage />} />
           <Route path="/app/:slug" element={<CreatorWorkspacePage />} />
           <Route path="/app/:slug/products" element={<ProductsPage />} />
+          <Route path="/app/:slug/products/new" element={<ProductFormPage />} />
+          <Route path="/app/:slug/products/:productId" element={<ProductDetailPage />} />
+          <Route path="/app/:slug/products/:productId/edit" element={<ProductFormPage />} />
           <Route path="/app/:slug/orders" element={<OrdersPage />} />
           <Route path="/app/:slug/landing-pages" element={<LandingPagesPage />} />
           <Route path="/app/:slug/landing-pages/:pageId" element={<LandingPageAnalyticsPage />} />
           <Route path="/app/:slug/landing-pages/:pageId/edit" element={<LandingPageEditorPage />} />
           <Route path="/app/:slug/emails" element={<EmailsPage />} />
+          <Route path="/app/:slug/emails/new" element={<NewCampaignPage />} />
           <Route path="/app/:slug/subscribers" element={<SubscribersPage />} />
           <Route path="/app/:slug/payouts" element={<CreatorPayoutsPage />} />
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />
+          <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/creators/new" element={<CreateCreatorPage />} />
         </Route>
 
@@ -75,7 +92,7 @@ export function AppRouter() {
           <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   )
