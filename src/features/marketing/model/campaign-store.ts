@@ -38,6 +38,7 @@ type CampaignState = {
   audiencesSlug: string | null
 
   usage: EmailUsage | null
+  usageStatus: LoadStatus
 
   openRateTrend: OpenRateTrend | null
   openRateTrendStatus: LoadStatus
@@ -80,6 +81,7 @@ const initialCampaignState = {
   audiencesSlug: null,
 
   usage: null,
+  usageStatus: 'idle' as LoadStatus,
 
   openRateTrend: null,
   openRateTrendStatus: 'idle' as LoadStatus,
@@ -137,11 +139,13 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   },
 
   loadUsage: async (slug) => {
+    if (get().usage === null) set({ usageStatus: 'loading' })
     try {
       const summary = await getHomeSummary(slug)
-      set({ usage: { sent: summary.emailsSentThisMonth, limit: summary.emailsMonthlyLimit } })
+      set({ usage: { sent: summary.emailsSentThisMonth, limit: summary.emailsMonthlyLimit }, usageStatus: 'success' })
     } catch {
       // Usage is informational; keep whatever was last known rather than blocking the page.
+      if (get().usage === null) set({ usageStatus: 'error' })
     }
   },
 

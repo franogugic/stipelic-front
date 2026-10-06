@@ -1,28 +1,31 @@
-import { Loader2 } from 'lucide-react'
+import { LayoutTemplate, Send } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
-import { Card, PageHeader } from '../../../shared/ui/figma'
+import { Button, EmptyState, PageHeader, SkeletonRows } from '../../../shared/ui/ledger'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
 import { useProductStore } from '../../products/model/product-store'
+import { CampaignsTable } from '../components/CampaignsTable'
+import { EmailUsageCard } from '../components/EmailUsageCard'
 import { NewCampaignCard } from '../components/NewCampaignCard'
+import { OpenRateCard } from '../components/OpenRateCard'
 import { SentCampaignsCard } from '../components/SentCampaignsCard'
-import { OpenRateTrendCard } from '../components/OpenRateTrendCard'
 import { TemplatesCard } from '../components/TemplatesCard'
 import { useCampaignStore } from '../model/campaign-store'
 import { useTemplateStore } from '../model/template-store'
 import type { CampaignListItem } from '../model/types'
 
+const scrollToSection = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
 export function EmailsPage() {
-  const navigate = useNavigate()
-  const { slug } = useParams<{ slug: string }>()
-  const normalizedSlug = slug ?? ''
+  const { slug = '' } = useParams<{ slug: string }>()
 
   const currentCreator = useCreatorStore((s) => s.currentCreator)
   const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
   const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
-  const creator = currentCreator?.slug === normalizedSlug ? currentCreator : null
+  const creator = currentCreator?.slug === slug ? currentCreator : null
+  const creatorLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
   const creatorSettings = useCreatorStore((s) => s.creatorSettings)
   const loadCreatorSettings = useCreatorStore((s) => s.loadCreatorSettings)
@@ -38,9 +41,13 @@ export function EmailsPage() {
 
   const campaigns = useCampaignStore((s) => s.campaigns)
   const campaignsStatus = useCampaignStore((s) => s.campaignsStatus)
+  const campaignsSlug = useCampaignStore((s) => s.campaignsSlug)
   const loadCampaigns = useCampaignStore((s) => s.loadCampaigns)
   const usage = useCampaignStore((s) => s.usage)
+  const usageStatus = useCampaignStore((s) => s.usageStatus)
   const loadUsage = useCampaignStore((s) => s.loadUsage)
+  const openRateTrend = useCampaignStore((s) => s.openRateTrend)
+  const openRateTrendStatus = useCampaignStore((s) => s.openRateTrendStatus)
   const loadOpenRateTrend = useCampaignStore((s) => s.loadOpenRateTrend)
 
   const audienceName = useMemo(() => {
@@ -53,124 +60,91 @@ export function EmailsPage() {
     }
   }, [pages, products])
 
-  const isLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
-
   useEffect(() => {
     if (currentCreatorStatus === 'idle') void loadCurrentCreator()
   }, [currentCreatorStatus, loadCurrentCreator])
 
   useEffect(() => {
-    if (!normalizedSlug) return
-    void loadCreatorSettings(normalizedSlug)
-    void loadPages(normalizedSlug)
-    void loadProducts(normalizedSlug)
-    void loadTemplates(normalizedSlug)
-    void loadCampaigns(normalizedSlug)
-    void loadUsage(normalizedSlug)
-    void loadOpenRateTrend(normalizedSlug)
+    if (!slug) return
+    void loadCreatorSettings(slug)
+    void loadPages(slug)
+    void loadProducts(slug)
+    void loadTemplates(slug)
+    void loadCampaigns(slug)
+    void loadUsage(slug)
+    void loadOpenRateTrend(slug)
     const refetchOnFocus = () => {
-      void loadTemplates(normalizedSlug)
-      void loadCampaigns(normalizedSlug)
-      void loadUsage(normalizedSlug)
-      void loadOpenRateTrend(normalizedSlug)
+      void loadTemplates(slug)
+      void loadCampaigns(slug)
+      void loadUsage(slug)
+      void loadOpenRateTrend(slug)
     }
     window.addEventListener('focus', refetchOnFocus)
     return () => window.removeEventListener('focus', refetchOnFocus)
-  }, [normalizedSlug, loadCreatorSettings, loadPages, loadProducts, loadTemplates, loadCampaigns, loadUsage, loadOpenRateTrend])
+  }, [slug, loadCreatorSettings, loadPages, loadProducts, loadTemplates, loadCampaigns, loadUsage, loadOpenRateTrend])
 
   if (!slug) return null
 
+  // The store keeps the last workspace's list until the new one has loaded; never show it under another address.
+  const listStatus = campaignsSlug === slug || campaignsStatus === 'error' ? campaignsStatus : 'loading'
+
   return (
     <AppShell slug={slug} activeSection="emails">
-      <div className="p-8 text-foreground">
-        {isLoading ? (
-          <div className="flex h-40 items-center justify-center gap-3 text-sm text-muted-foreground">
-            <Loader2 className="animate-spin" size={18} />
-            Loading workspace…
-          </div>
-        ) : !creator ? (
-          <Card className="p-8">
-            <p className="font-semibold">Workspace not found</p>
-            <button
-              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-muted-foreground transition hover:bg-secondary"
-              type="button"
-              onClick={() => navigate('/')}
-            >
-              Go home
-            </button>
-          </Card>
-        ) : (
-          <>
-            <PageHeader title="Email Marketing" subtitle="Send campaigns to your captured subscribers" />
-
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <MonthlyUsageCard usage={usage} />
-              <OpenRateTrendCard className="col-span-2" />
+      {creatorLoading ? (
+        <SkeletonRows />
+      ) : !creator ? (
+        <EmptyState title="Workspace not found" text="This address doesn’t match your workspace." />
+      ) : (
+        <>
+          <PageHeader
+            title={
+              <>
+                Email <em>marketing</em>
+              </>
+            }
+            subtitle="Campaigns to the people who joined your pages."
+            actions={
+              <>
+                <Button variant="secondary" icon={LayoutTemplate} onClick={() => scrollToSection('email-templates')}>
+                  Templates
+                </Button>
+                <Button variant="primary" icon={Send} onClick={() => scrollToSection('email-composer')}>
+                  New campaign
+                </Button>
+              </>
+            }
+          />
+          <div className="dash reveal">
+            <div className="span-5">
+              <EmailUsageCard usage={usage} status={usageStatus} onRetry={() => void loadUsage(slug)} />
             </div>
-
-            <div className="grid grid-cols-5 gap-6 mb-6">
-              <NewCampaignCard className="col-span-3" slug={normalizedSlug} creatorSettings={creatorSettings} />
-              <SentCampaignsCard
-                className="col-span-2"
-                slug={normalizedSlug}
+            <div className="span-7">
+              <OpenRateCard trend={openRateTrend} status={openRateTrendStatus} onRetry={() => void loadOpenRateTrend(slug)} />
+            </div>
+            <div className="span-12">
+              <CampaignsTable
                 campaigns={campaigns}
-                status={campaignsStatus}
+                status={listStatus}
                 audienceName={audienceName}
+                onNewCampaign={() => scrollToSection('email-composer')}
+                onRetry={() => void loadCampaigns(slug)}
               />
             </div>
+          </div>
 
-            <TemplatesCard
-              className="mt-6"
-              slug={normalizedSlug}
-              templates={templates}
-              templatesStatus={templatesStatus}
-              creatorSettings={creatorSettings}
-            />
-          </>
-        )}
-      </div>
+          {/* Until the composer, campaign detail and templates screens replace them, these stay on the page. */}
+          <div className="stack stack--lg mt-10 text-foreground">
+            <div id="email-composer" className="scroll-mt-6">
+              <NewCampaignCard slug={slug} creatorSettings={creatorSettings} />
+            </div>
+            <SentCampaignsCard slug={slug} campaigns={campaigns} status={campaignsStatus} audienceName={audienceName} />
+            <div id="email-templates" className="scroll-mt-6">
+              <TemplatesCard slug={slug} templates={templates} templatesStatus={templatesStatus} creatorSettings={creatorSettings} />
+            </div>
+          </div>
+        </>
+      )}
     </AppShell>
   )
 }
 
-function MonthlyUsageCard({ usage }: { usage: { sent: number; limit: number } | null }) {
-  // The allowance is per calendar month; the next reset is the 1st of the following month (UTC).
-  const now = new Date()
-  const resetsOn = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-
-  const isUnlimited = usage !== null && usage.limit < 0
-  const pct = usage === null || isUnlimited ? 0 : Math.min(100, usage.limit > 0 ? (usage.sent / usage.limit) * 100 : 100)
-  const color = pct > 85 ? 'var(--color-chart-4)' : 'var(--color-chart-1)'
-
-  return (
-    <Card className="p-5">
-      <p className="text-sm font-bold mb-1">Monthly Usage</p>
-      <p className="text-[11px] text-muted-foreground mb-4">Resets {resetsOn}</p>
-      {usage === null ? (
-        <p className="text-[11px] text-muted-foreground">Loading usage…</p>
-      ) : (
-        <>
-          <p className="font-bold mb-3" style={{ fontFamily: 'DM Mono, monospace', fontSize: '1.4rem', color }}>
-            {usage.sent.toLocaleString()}
-            <span className="text-muted-foreground text-base font-normal">
-              /{isUnlimited ? '∞' : usage.limit.toLocaleString()}
-            </span>
-          </p>
-          {!isUnlimited && (
-            <div className="h-1.5 rounded-full w-full mb-2 bg-white/[0.08] light:bg-secondary">
-              <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
-            </div>
-          )}
-          <p className="text-[11px] text-muted-foreground">
-            {isUnlimited ? 'Unlimited' : `${Math.max(0, usage.limit - usage.sent).toLocaleString()} emails remaining`}
-          </p>
-        </>
-      )}
-    </Card>
-  )
-}
