@@ -187,9 +187,14 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
   return (
     <div className="stack stack--lg">
       {banner && (
-        <Alert tone={banner.tone} icon={banner.icon} title={banner.title} live>
+        <Alert
+          tone={banner.tone}
+          icon={banner.icon}
+          title={banner.title}
+          action={<div>{banner.action}</div>}
+          live
+        >
           {banner.text}
-          <div>{banner.action}</div>
         </Alert>
       )}
       <div className="settings-grid">
