@@ -79,3 +79,28 @@
   font-size: var(--text-xs);
   line-height: var(--leading-normal);
 }
+
+.choice__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-muted);
+}
+
+.sending-panel {
+  max-width: 720px;
+}
+
+.sending-panel__icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.sending-panel__icon svg {
+  width: 26px;
+  height: 26px;
+}

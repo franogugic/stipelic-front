@@ -8,7 +8,6 @@ import { useLandingPageStore } from '../../landing-pages/model/landing-page-stor
 import { useProductStore } from '../../products/model/product-store'
 import { CampaignsTable } from '../components/CampaignsTable'
 import { EmailUsageCard } from '../components/EmailUsageCard'
-import { NewCampaignCard } from '../components/NewCampaignCard'
 import { OpenRateCard } from '../components/OpenRateCard'
 import { SentCampaignsCard } from '../components/SentCampaignsCard'
 import { TemplatesCard } from '../components/TemplatesCard'
@@ -108,7 +107,7 @@ export function EmailsPage() {
                 <Button variant="secondary" icon={LayoutTemplate} onClick={() => scrollToSection('email-templates')}>
                   Templates
                 </Button>
-                <Button variant="primary" icon={Send} onClick={() => scrollToSection('email-composer')}>
+                <Button variant="primary" icon={Send} to={`/app/${slug}/emails/new`}>
                   New campaign
                 </Button>
               </>
@@ -126,7 +125,7 @@ export function EmailsPage() {
                 campaigns={campaigns}
                 status={listStatus}
                 audienceName={audienceName}
-                onNewCampaign={() => scrollToSection('email-composer')}
+                newCampaignTo={`/app/${slug}/emails/new`}
                 onRetry={() => void loadCampaigns(slug)}
               />
             </div>
@@ -134,9 +133,6 @@ export function EmailsPage() {
 
           {/* Until the composer, campaign detail and templates screens replace them, these stay on the page. */}
           <div className="stack stack--lg mt-10 text-foreground">
-            <div id="email-composer" className="scroll-mt-6">
-              <NewCampaignCard slug={slug} creatorSettings={creatorSettings} />
-            </div>
             <SentCampaignsCard slug={slug} campaigns={campaigns} status={campaignsStatus} audienceName={audienceName} />
             <div id="email-templates" className="scroll-mt-6">
               <TemplatesCard slug={slug} templates={templates} templatesStatus={templatesStatus} creatorSettings={creatorSettings} />

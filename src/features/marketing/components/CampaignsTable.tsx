@@ -8,13 +8,13 @@ export function CampaignsTable({
   campaigns,
   status,
   audienceName,
-  onNewCampaign,
+  newCampaignTo,
   onRetry,
 }: {
   campaigns: CampaignListItem[]
   status: 'idle' | 'loading' | 'success' | 'error'
   audienceName: (campaign: CampaignListItem) => string
-  onNewCampaign: () => void
+  newCampaignTo: string
   onRetry: () => void
 }) {
   const body = () => {
@@ -27,7 +27,7 @@ export function CampaignsTable({
           icon={Send}
           title="No campaigns yet"
           text="Send your first campaign to the people who joined your pages."
-          action={{ label: 'New campaign', icon: Send, variant: 'primary', onClick: onNewCampaign }}
+          action={{ label: 'New campaign', icon: Send, variant: 'primary', to: newCampaignTo }}
         />
       )
     }

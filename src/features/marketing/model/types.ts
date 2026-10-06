@@ -82,6 +82,14 @@ export type SendCampaignRequest = {
   scheduledAt?: string
 }
 
+/** `monthlyLimit` is negative for an unlimited plan; `remaining` is then meaningless. */
+export type AudiencePreview = {
+  recipientCount: number
+  monthlyLimit: number
+  usedThisMonth: number
+  remaining: number
+}
+
 export type CampaignAudiences = {
   all: { recipientCount: number }
   landingPages: { publicId: string; title: string; recipientCount: number }[]
