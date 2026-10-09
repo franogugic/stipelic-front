@@ -57,7 +57,10 @@ export const MOCK_SUBSCRIBERS = {
   ],
 }
 
-export const FAQ: Array<{ question: string; answer: string }> = [
+export type FaqItem = { question: string; answer: string }
+
+/** `feeText` is the live range of the platform fee across the plans, e.g. "from 10% on Free down to 1% on Plus". */
+export const faqItems = (feeText: string): FaqItem[] => [
   {
     question: 'Do I need to know how to code?',
     answer:
@@ -74,7 +77,7 @@ export const FAQ: Array<{ question: string; answer: string }> = [
   },
   {
     question: 'What does the fee cover?',
-    answer: 'The platform fee is taken per sale and depends on your plan — from 10% on Free down to 1% on Pro Plus.',
+    answer: `The platform fee is taken per sale and depends on your plan${feeText ? ` — ${feeText}` : ''}.`,
   },
   {
     question: 'Can I cancel any time?',
@@ -82,5 +85,5 @@ export const FAQ: Array<{ question: string; answer: string }> = [
   },
 ]
 
-/** Placeholder address from the prototype (`luma.app` is a placeholder domain, TASKS-09 round 2, decision 1). */
-export const SUPPORT_EMAIL = 'support@luma.app'
+/** Support address, set per deployment; empty until there is a real one (the contact links are then hidden). */
+export const SUPPORT_EMAIL = ((import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? '').trim()

@@ -4,6 +4,7 @@ import { useCreatorStore } from '../../creators/model/creator-store'
 import type { CreatorPlan } from '../../creators/model/types'
 import { money, number, percent } from '../../../shared/lib/format'
 import { Badge, Button, ErrorState, SkeletonCards } from '../../../shared/ui/ledger'
+import { activePlansByPrice } from '../model/plan-figures'
 import { useScrollReveal } from '../model/use-page-chrome'
 
 const RECOMMENDED_PLAN_CODE = 'pro'
@@ -71,9 +72,7 @@ export function PricingPlans() {
   // The cards arrive after the first render, so they are observed once the plans are in.
   useScrollReveal(status)
 
-  const activePlans = plans
-    .filter((plan) => plan.status.toLowerCase() === 'active')
-    .sort((a, b) => a.priceCents - b.priceCents)
+  const activePlans = activePlansByPrice(plans)
 
   if (status === 'error' || (status === 'success' && activePlans.length === 0)) {
     return (

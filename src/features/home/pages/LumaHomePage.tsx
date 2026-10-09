@@ -15,6 +15,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react'
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { monogram } from '../../../shared/lib/format'
 import { PRIVACY_URL, TERMS_URL } from '../../../shared/lib/legal-links'
@@ -22,7 +23,9 @@ import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { Avatar, Brand, Button, ThemeToggleButton } from '../../../shared/ui/ledger'
 import { AnalyticsVisual, AudienceVisual, EmailVisual, HeroMock } from '../components/MockVisuals'
 import { PricingPlans } from '../components/PricingPlans'
-import { FAQ, MOCK_COUNTRIES, MOCK_CREATORS, SUPPORT_EMAIL } from '../model/home-content'
+import { useCreatorStore } from '../../creators/model/creator-store'
+import { MOCK_COUNTRIES, MOCK_CREATORS, SUPPORT_EMAIL, faqItems } from '../model/home-content'
+import { feeRange } from '../model/plan-figures'
 import { usePageChrome, useScrollReveal } from '../model/use-page-chrome'
 
 const hasPage = (url: string) => url !== '#'
@@ -32,6 +35,14 @@ export function LumaHomePage() {
   useDocumentTitle('Luma — Sell what you make. Keep what you earn.')
   usePageChrome()
   useScrollReveal(null)
+
+  // The fee figures come from the live plans; the pricing cards load the same list.
+  const plans = useCreatorStore((state) => state.creatorPlans)
+  const loadCreatorPlans = useCreatorStore((state) => state.loadCreatorPlans)
+  useEffect(() => {
+    void loadCreatorPlans()
+  }, [loadCreatorPlans])
+  const fees = feeRange(plans)
 
   return (
     <>
@@ -354,12 +365,14 @@ export function LumaHomePage() {
               <dl className="mk-stats">
                 <div>
                   <dt>Countries</dt>
-                  <dd>11</dd>
+                  <dd>{MOCK_COUNTRIES.length}</dd>
                 </div>
-                <div>
-                  <dt>Fee from</dt>
-                  <dd>1%</dd>
-                </div>
+                {fees && (
+                  <div>
+                    <dt>Fee from</dt>
+                    <dd>{fees.from}</dd>
+                  </div>
+                )}
                 <div>
                   <dt>Code needed</dt>
                   <dd>0</dd>
@@ -457,16 +470,18 @@ export function LumaHomePage() {
               <h2 className="mk-h2" id="faq-title">
                 Good <em>questions.</em>
               </h2>
-              <p className="mk-head__lead">
-                Something else? Write to{' '}
-                <a className="link" href={`mailto:${SUPPORT_EMAIL}`}>
-                  {SUPPORT_EMAIL}
-                </a>{' '}
-                — a person answers.
-              </p>
+              {SUPPORT_EMAIL && (
+                <p className="mk-head__lead">
+                  Something else? Write to{' '}
+                  <a className="link" href={`mailto:${SUPPORT_EMAIL}`}>
+                    {SUPPORT_EMAIL}
+                  </a>{' '}
+                  — a person answers.
+                </p>
+              )}
             </header>
             <div className="mk-faq__list" data-reveal>
-              {FAQ.map((item, index) => (
+              {faqItems(fees?.sentence ?? '').map((item, index) => (
                 <details key={item.question} open={index === 0 ? true : undefined}>
                   <summary>
                     {item.question}
@@ -519,12 +534,14 @@ export function LumaHomePage() {
             <Link to="/register">Create account</Link>
             <Link to="/forgot-password">Forgot password</Link>
           </nav>
-          <nav className="mk-footer__col" aria-label="Legal">
-            <p className="eyebrow">Legal</p>
-            {hasPage(TERMS_URL) && <a href={TERMS_URL}>Terms of Service</a>}
-            {hasPage(PRIVACY_URL) && <a href={PRIVACY_URL}>Privacy Policy</a>}
-            <a href={`mailto:${SUPPORT_EMAIL}`}>Contact</a>
-          </nav>
+          {(hasPage(TERMS_URL) || hasPage(PRIVACY_URL) || SUPPORT_EMAIL) && (
+            <nav className="mk-footer__col" aria-label="Legal">
+              <p className="eyebrow">Legal</p>
+              {hasPage(TERMS_URL) && <a href={TERMS_URL}>Terms of Service</a>}
+              {hasPage(PRIVACY_URL) && <a href={PRIVACY_URL}>Privacy Policy</a>}
+              {SUPPORT_EMAIL && <a href={`mailto:${SUPPORT_EMAIL}`}>Contact</a>}
+            </nav>
+          )}
         </div>
         <div className="mk-wrap mk-footer__bottom">
           <span>© 2026 Luma</span>
