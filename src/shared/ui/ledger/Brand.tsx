@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom'
 
-/** The Luma mark and wordmark, linking to `to`. Markup from the prototype's brandMarkup. */
-export function Brand({ to }: { to: string }) {
-  return (
-    <Link className="brand" to={to} aria-label="Luma home">
+/**
+ * The Luma mark and wordmark, linking to `to`. Markup from the prototype's brandMarkup.
+ * Without `to` it is a plain, non-interactive span, for decorative illustrations of the app.
+ */
+export function Brand({ to }: { to?: string }) {
+  const content = (
+    <>
       <svg className="brand__mark" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
         <rect className="brand__mark-bg" width="28" height="28" rx="8" />
         <g className="brand__mark-fg">
@@ -13,6 +16,12 @@ export function Brand({ to }: { to: string }) {
         </g>
       </svg>
       <span className="brand__word">Luma</span>
+    </>
+  )
+  if (to === undefined) return <span className="brand">{content}</span>
+  return (
+    <Link className="brand" to={to} aria-label="Luma home">
+      {content}
     </Link>
   )
 }
