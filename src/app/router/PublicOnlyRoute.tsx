@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
-import { LoadingPage } from './LoadingPage'
+import { LoadingPage } from '../../shared/ui/LoadingPage'
 
 export function PublicOnlyRoute() {
   const currentUser = useAuthStore((state) => state.currentUser)

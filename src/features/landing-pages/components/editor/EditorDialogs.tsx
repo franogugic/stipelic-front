@@ -1,4 +1,4 @@
-import { Copy, CreditCard, ExternalLink, EyeOff, Gauge, Info, Landmark, Layers, Rocket, TriangleAlert } from 'lucide-react'
+import { Copy, CreditCard, ExternalLink, EyeOff, Gauge, Info, Landmark, Layers, Rocket } from 'lucide-react'
 import { useId } from 'react'
 import { Badge, Button, ConfirmDialog, InputAddon, InputGroup, Meter, Modal, useToast } from '../../../../shared/ui/ledger'
 import { SECTION_KINDS, SINGLE_TYPES, variantsOf } from '../../model/section-library'
@@ -237,48 +237,6 @@ export function PublishedModal({
         </p>
       </div>
     </Modal>
-  )
-}
-
-export function LeaveModal({
-  open,
-  title,
-  saving,
-  onDiscard,
-  onKeepEditing,
-  onSaveAndLeave,
-}: {
-  open: boolean
-  title: string
-  saving: boolean
-  onDiscard: () => void
-  onKeepEditing: () => void
-  onSaveAndLeave: () => void
-}) {
-  return (
-    <Modal
-      open={open}
-      onClose={onKeepEditing}
-      dismissible={!saving}
-      title="Leave without saving?"
-      description={`You have unsaved changes to “${title}”. If you leave now, they’ll be lost.`}
-      icon={TriangleAlert}
-      tone="warning"
-      size="sm"
-      actions={
-        <>
-          <Button variant="danger-ghost" disabled={saving} onClick={onDiscard}>
-            Discard changes
-          </Button>
-          <Button variant="secondary" disabled={saving} onClick={onKeepEditing}>
-            Keep editing
-          </Button>
-          <Button variant="primary" loading={saving} onClick={onSaveAndLeave}>
-            Save and leave
-          </Button>
-        </>
-      }
-    />
   )
 }
 

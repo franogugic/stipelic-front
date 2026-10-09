@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
 import { NotFoundPage } from '../../shared/ui/NotFoundPage'
-import { LoadingPage } from './LoadingPage'
+import { LoadingPage } from '../../shared/ui/LoadingPage'
 
 /** Platform-admin pages. Everyone else gets the not-found page, so the area's existence isn't advertised. */
 export function AdminRoute() {

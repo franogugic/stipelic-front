@@ -26,13 +26,6 @@ button.link {
   border: 0;
 }
 
-/* The prototype centres .modal through the browser's own `dialog:modal { margin: auto }`. The legacy Tailwind
-   preflight (`* { margin: 0 }`, still loaded until every screen is converted) removes it and pins every modal
-   to the top-left corner. Remove together with Tailwind. */
-.modal {
-  margin: auto;
-}
-
 /* Real date labels ("3 Sep") are wider than the prototype's day numbers and would wrap in narrow columns. Only
    every few columns carry a label, so a label may spread into its blank neighbours. */
 .bars__label {
@@ -90,22 +83,4 @@ button.link {
     border-radius: 10px;
     color: var(--lp-text);
   }
-}
-
-/* The legacy Tailwind build (loaded until Unit 5) generates utilities from every class-like word in the source, so
-   `.text-xs`, `.text-sm` and `.text-lg` also exist as Tailwind utilities that set a line-height (and, for `.text-lg`,
-   a font size), and its base layer shrinks `small` to 80 %. The prototype's `.text-xs` / `.text-sm` set only a
-   font size, `.text-lg` does not exist, and `small` keeps the browser's `smaller`. Remove together with Tailwind. */
-.text-xs,
-.text-sm {
-  line-height: inherit;
-}
-
-.text-lg {
-  font-size: inherit;
-  line-height: inherit;
-}
-
-small {
-  font-size: smaller;
 }

@@ -1,4 +1,3 @@
-import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { AdminPayoutsPage } from '../../features/admin/pages/AdminPayoutsPage'
 import { ConfirmEmailChangePage } from '../../features/auth/pages/ConfirmEmailChangePage'
@@ -38,22 +37,9 @@ import { HomeRoute } from './HomeRoute'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
 
-// Development-only component catalogue; the dynamic import is dropped from production builds.
-const StyleguidePage = import.meta.env.DEV ? lazy(() => import('../../dev/styleguide/StyleguidePage')) : null
-
 export function AppRouter() {
   return (
     <Routes>
-      {StyleguidePage && (
-        <Route
-          path="/__styleguide"
-          element={
-            <Suspense fallback={null}>
-              <StyleguidePage />
-            </Suspense>
-          }
-        />
-      )}
       <Route element={<AuthBootstrap />}>
         <Route path="/p/:creatorSlug/:pageSlug/success" element={<OrderSuccessPage />} />
         <Route path="/p/:creatorSlug/:pageSlug" element={<PublicLandingPage />} />

@@ -15,8 +15,8 @@ import {
   Textarea,
   useToast,
 } from '../../../shared/ui/ledger'
-import { useLeaveGuard } from '../../landing-pages/lib/use-leave-guard'
-import { LeaveModal } from '../../landing-pages/components/editor/EditorDialogs'
+import { useLeaveGuard } from '../../../shared/lib/use-leave-guard'
+import { LeaveModal } from '../../../shared/ui/LeaveModal'
 import type { CreatorSettings } from '../../creators/model/types'
 import {
   BODY_MAX_LENGTH,
