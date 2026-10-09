@@ -22,6 +22,7 @@ import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSucces
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
 import { UnsubscribePage } from '../../features/marketing/pages/UnsubscribePage'
 import { CampaignDetailPage } from '../../features/marketing/pages/CampaignDetailPage'
+import { TemplateEditorPage } from '../../features/marketing/pages/TemplateEditorPage'
 import { TemplatesPage } from '../../features/marketing/pages/TemplatesPage'
 import { NewCampaignPage } from '../../features/marketing/pages/NewCampaignPage'
 import { EmailsPage } from '../../features/marketing/pages/EmailsPage'
@@ -85,6 +86,8 @@ export function AppRouter() {
           <Route path="/app/:slug/emails" element={<EmailsPage />} />
           <Route path="/app/:slug/emails/new" element={<NewCampaignPage />} />
           <Route path="/app/:slug/emails/templates" element={<TemplatesPage />} />
+          <Route path="/app/:slug/emails/templates/new" element={<TemplateEditorPage />} />
+          <Route path="/app/:slug/emails/templates/:templateId" element={<TemplateEditorPage />} />
           <Route path="/app/:slug/emails/campaigns/:campaignId" element={<CampaignDetailPage />} />
           <Route path="/app/:slug/subscribers" element={<SubscribersPage />} />
           <Route path="/app/:slug/payouts" element={<CreatorPayoutsPage />} />

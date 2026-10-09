@@ -1,7 +1,7 @@
 import { CalendarClock, CircleAlert, Info, Package, PanelsTopLeft, Send, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { date, dateTime, number, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { EmailPreview } from '../../../shared/ui/EmailPreview'
@@ -48,7 +48,8 @@ export function NewCampaignPage() {
   const creator = currentCreator?.slug === slug ? currentCreator : null
   const creatorLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
-  const composer = useCampaignComposer({ slug })
+  const [searchParams] = useSearchParams()
+  const composer = useCampaignComposer({ slug, initialTemplateId: searchParams.get('template') })
   const { content, recipientCount, remaining, overLimit } = composer
 
   // The reset date shown in the over-limit note is measured from when the page opened.

@@ -32,7 +32,7 @@ import { FailedRecipientsCard } from '../components/FailedRecipientsCard'
 import { useCampaignStore } from '../model/campaign-store'
 import { isCampaignComplete } from '../model/campaign-progress'
 import { userTimezone } from '../model/schedule'
-import type { CampaignDetail } from '../model/types'
+import type { AudiencePreview, CampaignDetail } from '../model/types'
 import { useAudienceName } from '../model/use-audience-name'
 
 const POLL_INTERVAL_MS = 3000
@@ -117,19 +117,22 @@ export function CampaignDetailPage() {
     }
   }, [complete, slug, campaignId, key])
 
-  // A scheduled campaign has no recipients yet; show how many people the audience has right now.
-  const scheduledAudience = campaign?.status === 'Scheduled' ? campaign : null
-  const audienceType = scheduledAudience?.audienceType ?? null
-  const audienceTarget = scheduledAudience?.targetPublicId ?? null
-  const sizeKey = `${key}|${audienceType}|${audienceTarget}`
-  const [audienceSize, setAudienceSize] = useState<{ key: string; count: number | null } | null>(null)
+  // The audience's size right now (a scheduled campaign has no recipients yet) and the sends left this month (a resend
+  // uses them), both from the same preview.
+  const needsPreview = campaign !== null && (campaign.status === 'Scheduled' || (campaign.status === 'Queued' && campaign.failedCount > 0))
+  const audienceType = needsPreview ? campaign.audienceType : null
+  const audienceTarget = needsPreview ? campaign.targetPublicId : null
+  const previewKey = `${key}|${audienceType}|${audienceTarget}`
+  const [previewResult, setPreviewResult] = useState<{ key: string; data: AudiencePreview | null } | null>(null)
   useEffect(() => {
     if (!audienceType) return
     getAudiencePreview(slug, audienceType, audienceTarget)
-      .then((preview) => setAudienceSize({ key: sizeKey, count: preview.recipientCount }))
-      .catch(() => setAudienceSize({ key: sizeKey, count: null }))
-  }, [slug, audienceType, audienceTarget, sizeKey])
-  const currentAudienceSize = audienceSize?.key === sizeKey ? audienceSize.count : null
+      .then((data) => setPreviewResult({ key: previewKey, data }))
+      .catch(() => setPreviewResult({ key: previewKey, data: null }))
+  }, [slug, audienceType, audienceTarget, previewKey])
+  const preview = previewResult?.key === previewKey ? previewResult.data : null
+  const currentAudienceSize = campaign?.status === 'Scheduled' ? (preview?.recipientCount ?? null) : null
+  const sendsLeft = preview && preview.monthlyLimit >= 0 ? preview.remaining : null
 
   const failedCount = campaign?.failedCount ?? 0
   const showFailed = campaign?.status === 'Queued' && failedCount > 0
@@ -339,7 +342,11 @@ export function CampaignDetailPage() {
           dismissible={resendFailedStatus !== 'submitting'}
           size="sm"
           title={`Resend to ${plural(campaign.failedCount, 'failed recipient')}?`}
-          description={`We’ll try the ${number(campaign.failedCount)} addresses that failed once more. Addresses that don’t exist will probably fail again. It doesn’t use your monthly sends — failed emails were already refunded.`}
+          description={`We’ll try the ${number(campaign.failedCount)} addresses that failed once more. Addresses that don’t exist will probably fail again. ${
+            sendsLeft === null
+              ? 'This counts against your monthly sends.'
+              : `This uses ${number(campaign.failedCount)} of your ${number(sendsLeft)} remaining sends.`
+          }`}
           icon={RotateCw}
           tone="accent"
           actions={

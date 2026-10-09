@@ -28,8 +28,8 @@ function audienceOptions(audiences: CampaignAudiences | null) {
   ]
 }
 
-/** State and rules of the "new campaign" form. */
-export function useCampaignComposer({ slug }: { slug: string }) {
+/** State and rules of the "new campaign" form. `initialTemplateId` starts the form from that template once it is loaded. */
+export function useCampaignComposer({ slug, initialTemplateId = null }: { slug: string; initialTemplateId?: string | null }) {
   const audiences = useCampaignStore((s) => s.audiences)
   const audiencesStatus = useCampaignStore((s) => s.audiencesStatus)
   const loadAudiences = useCampaignStore((s) => s.loadAudiences)
@@ -40,6 +40,8 @@ export function useCampaignComposer({ slug }: { slug: string }) {
 
   const allTemplates = useTemplateStore((s) => s.templates)
   const loadTemplates = useTemplateStore((s) => s.loadTemplates)
+  const templatesStatus = useTemplateStore((s) => s.templatesStatus)
+  const templatesSlug = useTemplateStore((s) => s.templatesSlug)
   const templates = useMemo(() => allTemplates.filter((t) => t.status === 'Active'), [allTemplates])
 
   // `null` = the user has not picked yet, so the first audience that has recipients is used.
@@ -126,6 +128,14 @@ export function useCampaignComposer({ slug }: { slug: string }) {
     },
     [templates],
   )
+
+  // Opened from "Use in a campaign": fill the form from that template as soon as the list is known. A template that
+  // is archived or gone is simply not applied. (State is adjusted while rendering, not in an effect.)
+  const [initialHandled, setInitialHandled] = useState(false)
+  if (!initialHandled && initialTemplateId && templatesSlug === slug && templatesStatus === 'success') {
+    setInitialHandled(true)
+    if (templates.some((t) => t.publicId === initialTemplateId)) applyTemplate(initialTemplateId)
+  }
 
   // Picking a template over content the user has edited asks first; over untouched content it just applies.
   const requestTemplate = useCallback(

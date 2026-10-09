@@ -109,7 +109,7 @@ export function TemplatesPage() {
     template.status === 'Active'
       ? [
           { label: 'Edit', icon: Pencil, to: editorPath(template) },
-          { label: 'Use in a campaign', icon: Send, to: `/app/${slug}/emails/new` },
+          { label: 'Use in a campaign', icon: Send, to: `/app/${slug}/emails/new?template=${template.publicId}` },
           'separator',
           {
             label: 'Archive',

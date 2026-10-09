@@ -9,9 +9,7 @@ import { useProductStore } from '../../products/model/product-store'
 import { CampaignsTable } from '../components/CampaignsTable'
 import { EmailUsageCard } from '../components/EmailUsageCard'
 import { OpenRateCard } from '../components/OpenRateCard'
-import { TemplatesCard } from '../components/TemplatesCard'
 import { useCampaignStore } from '../model/campaign-store'
-import { useTemplateStore } from '../model/template-store'
 import { useAudienceName } from '../model/use-audience-name'
 
 export function EmailsPage() {
@@ -23,15 +21,8 @@ export function EmailsPage() {
   const creator = currentCreator?.slug === slug ? currentCreator : null
   const creatorLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
-  const creatorSettings = useCreatorStore((s) => s.creatorSettings)
-  const loadCreatorSettings = useCreatorStore((s) => s.loadCreatorSettings)
-
   const loadPages = useLandingPageStore((s) => s.loadPages)
   const loadProducts = useProductStore((s) => s.loadProducts)
-
-  const templates = useTemplateStore((s) => s.templates)
-  const templatesStatus = useTemplateStore((s) => s.templatesStatus)
-  const loadTemplates = useTemplateStore((s) => s.loadTemplates)
 
   const campaigns = useCampaignStore((s) => s.campaigns)
   const campaignsStatus = useCampaignStore((s) => s.campaignsStatus)
@@ -52,22 +43,19 @@ export function EmailsPage() {
 
   useEffect(() => {
     if (!slug) return
-    void loadCreatorSettings(slug)
     void loadPages(slug)
     void loadProducts(slug)
-    void loadTemplates(slug)
     void loadCampaigns(slug)
     void loadUsage(slug)
     void loadOpenRateTrend(slug)
     const refetchOnFocus = () => {
-      void loadTemplates(slug)
       void loadCampaigns(slug)
       void loadUsage(slug)
       void loadOpenRateTrend(slug)
     }
     window.addEventListener('focus', refetchOnFocus)
     return () => window.removeEventListener('focus', refetchOnFocus)
-  }, [slug, loadCreatorSettings, loadPages, loadProducts, loadTemplates, loadCampaigns, loadUsage, loadOpenRateTrend])
+  }, [slug, loadPages, loadProducts, loadCampaigns, loadUsage, loadOpenRateTrend])
 
   if (!slug) return null
 
@@ -116,13 +104,6 @@ export function EmailsPage() {
                 newCampaignTo={`/app/${slug}/emails/new`}
                 onRetry={() => void loadCampaigns(slug)}
               />
-            </div>
-          </div>
-
-          {/* Stays on the page until the templates screens replace it. */}
-          <div className="stack stack--lg mt-10 text-foreground">
-            <div>
-              <TemplatesCard slug={slug} templates={templates} templatesStatus={templatesStatus} creatorSettings={creatorSettings} />
             </div>
           </div>
         </>
