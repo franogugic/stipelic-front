@@ -112,6 +112,7 @@ export function NewTemplateModal({
                   />
                   <StarterPreview starter={starter} />
                   <span className="choice__title">{starter.name}</span>
+                  <span className="choice__text">{starter.description}</span>
                 </label>
               ))}
               <label className="choice starter">

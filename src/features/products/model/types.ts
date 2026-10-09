@@ -14,6 +14,8 @@ export type Product = {
   updatedAt: string
   revenueCents: number
   paidOrderCount: number
+  /** Paid orders per calendar month for the last 6 months, oldest first, the current month last. */
+  salesTrend: number[]
 }
 
 type ProductFields = {

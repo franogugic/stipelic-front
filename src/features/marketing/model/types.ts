@@ -25,6 +25,7 @@ export type SaveTemplateRequest = {
 export type EmailTemplateStarter = {
   key: string
   name: string
+  description: string
   subject: string
   bodyText: string
   ctaLabel: string | null

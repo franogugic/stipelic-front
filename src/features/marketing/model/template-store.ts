@@ -4,7 +4,6 @@ import {
   archiveTemplate,
   createTemplate,
   getEmailTemplateStarters,
-  getTemplate,
   listTemplates,
   restoreTemplate,
   updateTemplate,
@@ -20,9 +19,6 @@ type TemplateState = {
   templatesSlug: string | null
   templatesRevalidating: boolean
 
-  currentTemplate: EmailTemplate | null
-  currentTemplateStatus: LoadStatus
-
   saveTemplateStatus: SubmitStatus
   saveTemplateError: string | null
 
@@ -37,8 +33,6 @@ type TemplateState = {
 
   loadTemplates: (slug: string) => Promise<void>
   loadStarters: (slug: string) => Promise<void>
-  loadTemplate: (slug: string, templatePublicId: string) => Promise<void>
-  clearCurrentTemplate: () => void
   saveTemplate: (
     slug: string,
     templatePublicId: string | null,
@@ -56,9 +50,6 @@ const initialTemplateState = {
   templatesStatus: 'idle' as LoadStatus,
   templatesSlug: null,
   templatesRevalidating: false,
-
-  currentTemplate: null,
-  currentTemplateStatus: 'idle' as LoadStatus,
 
   saveTemplateStatus: 'idle' as SubmitStatus,
   saveTemplateError: null,
@@ -98,16 +89,6 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
     }
   },
 
-  loadTemplate: async (slug, templatePublicId) => {
-    set({ currentTemplateStatus: 'loading' })
-    try {
-      const template = await getTemplate(slug, templatePublicId)
-      set({ currentTemplate: template, currentTemplateStatus: 'success' })
-    } catch {
-      set({ currentTemplateStatus: 'error' })
-    }
-  },
-
   loadStarters: async (slug) => {
     if (get().startersStatus === 'loading' || get().startersStatus === 'success') return
     set({ startersStatus: 'loading' })
@@ -119,17 +100,13 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
     }
   },
 
-  clearCurrentTemplate: () => {
-    set({ currentTemplate: null, currentTemplateStatus: 'idle' })
-  },
-
   saveTemplate: async (slug, templatePublicId, request) => {
     set({ saveTemplateStatus: 'submitting', saveTemplateError: null })
     try {
       const template = templatePublicId
         ? await updateTemplate(slug, templatePublicId, request)
         : await createTemplate(slug, request)
-      set({ saveTemplateStatus: 'success', saveTemplateError: null, currentTemplate: template })
+      set({ saveTemplateStatus: 'success', saveTemplateError: null })
       void get().loadTemplates(slug)
       return template
     } catch (error) {

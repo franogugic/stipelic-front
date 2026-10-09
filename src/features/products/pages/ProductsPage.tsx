@@ -1,7 +1,6 @@
-import { Archive, Package, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { number } from '../../../shared/lib/format'
+import { Archive, CalendarClock, GraduationCap, LayoutGrid, List, Package, Plus, Download, Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
   Button,
@@ -10,18 +9,46 @@ import {
   EmptyState,
   ErrorState,
   PageHeader,
+  PlanLimit,
   SkeletonRows,
   Switch,
   useToast,
 } from '../../../shared/ui/ledger'
+import { number } from '../../../shared/lib/format'
 import { useCreatorStore } from '../../creators/model/creator-store'
+import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
+import { ProductCard } from '../components/ProductCard'
+import { ProductSummary } from '../components/ProductSummary'
 import { ProductsTable } from '../components/ProductsTable'
+import { sellingPagesOf } from '../model/catalogue'
 import { useProductStore } from '../model/product-store'
 import type { Product } from '../model/types'
 
+const TYPES: Array<[string, string]> = [
+  ['all', 'All'],
+  ['digital', 'Digital'],
+  ['course', 'Course'],
+  ['service', 'Service'],
+]
+
+const VIEW_KEY = 'products-view'
+type View = 'grid' | 'list'
+
+/** The remembered grid/list choice; the URL wins when it has one. Storage can be unavailable. */
+function storedView(): View | null {
+  try {
+    const value = window.localStorage.getItem(VIEW_KEY)
+    return value === 'list' || value === 'grid' ? value : null
+  } catch {
+    return null
+  }
+}
+
+/** The products catalogue: an overview, filters, and the products as cards or a table. */
 export function ProductsPage() {
   const toast = useToast()
   const { slug = '' } = useParams<{ slug: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const currentCreator = useCreatorStore((s) => s.currentCreator)
   const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
@@ -31,16 +58,17 @@ export function ProductsPage() {
 
   const products = useProductStore((s) => s.products)
   const loadStatus = useProductStore((s) => s.loadStatus)
-  const includeArchived = useProductStore((s) => s.includeArchived)
   const loadProducts = useProductStore((s) => s.loadProducts)
-  const setIncludeArchived = useProductStore((s) => s.setIncludeArchived)
   const archiveProduct = useProductStore((s) => s.archiveProduct)
   const restoreProduct = useProductStore((s) => s.restoreProduct)
   const resetArchiveFeedback = useProductStore((s) => s.resetArchiveFeedback)
   const resetRestoreFeedback = useProductStore((s) => s.resetRestoreFeedback)
+  const pages = useLandingPageStore((s) => s.pages)
+  const loadPages = useLandingPageStore((s) => s.loadPages)
 
   const [busyProductId, setBusyProductId] = useState<string | null>(null)
   const [archiveTarget, setArchiveTarget] = useState<Product | null>(null)
+  const [query, setQuery] = useState('')
 
   const creator = currentCreator?.slug === slug ? currentCreator : null
   const creatorLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
@@ -53,23 +81,64 @@ export function ProductsPage() {
     void loadCreatorPlans()
   }, [loadCreatorPlans])
 
-  // Fresh numbers on every visit (and for another workspace's address).
+  // Fresh numbers on every visit (and for another workspace's address). Archived products are always loaded, so the
+  // "Show archived" switch and the counts are client-side.
   useEffect(() => {
-    if (slug) void loadProducts(slug, useProductStore.getState().includeArchived)
-  }, [slug, loadProducts])
+    if (!slug) return
+    void loadProducts(slug, true)
+    void loadPages(slug)
+  }, [slug, loadProducts, loadPages])
+
+  const typeParam = searchParams.get('type')
+  const type = TYPES.some(([key]) => key === typeParam) ? (typeParam as string) : 'all'
+  const showArchived = searchParams.get('archived') === '1'
+  const viewParam = searchParams.get('view')
+  const view: View = viewParam === 'list' || viewParam === 'grid' ? viewParam : (storedView() ?? 'grid')
+
+  const updateParams = (changes: Record<string, string | null>) =>
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        for (const [key, value] of Object.entries(changes)) {
+          if (value === null) next.delete(key)
+          else next.set(key, value)
+        }
+        return next
+      },
+      { replace: true },
+    )
+
+  const chooseView = (next: View) => {
+    try {
+      window.localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      // The choice still lives in the URL.
+    }
+    updateParams({ view: next === 'grid' ? null : next })
+  }
 
   const plan = creatorPlans.find((candidate) => candidate.code === creator?.planCode)
   const maxProducts = plan?.limits['max_products']
-  const activeProductCount = products.filter((product) => product.status !== 'Archived').length
-  // With "Show archived", archived products come after the live ones (stable, so the API's order is kept within each).
-  const sortedProducts = [...products].sort((a, b) => Number(a.status === 'Archived') - Number(b.status === 'Archived'))
-  const atLimit = maxProducts !== undefined && maxProducts >= 0 && activeProductCount >= maxProducts
+  const currency = creator?.defaultCurrency ?? 'EUR'
+  const liveCount = products.filter((product) => product.status !== 'Archived').length
+  const atLimit = maxProducts !== undefined && maxProducts >= 0 && liveCount >= maxProducts
   const limitReason =
     atLimit && creator
       ? maxProducts === 1
-        ? `You’ve used your 1 product on the ${creator.planName} plan.`
-        : `You’ve used all ${number(maxProducts)} products on the ${creator.planName} plan.`
+        ? `You’ve used your 1 product on the ${creator.planName} plan. Upgrade to add more.`
+        : `You’ve used all ${number(maxProducts)} products on the ${creator.planName} plan. Upgrade to add more.`
       : undefined
+
+  const inScope = useMemo(() => products.filter((product) => showArchived || product.status !== 'Archived'), [products, showArchived])
+  const countOf = (key: string) => inScope.filter((product) => key === 'all' || product.type.toLowerCase() === key).length
+  const byType = inScope.filter((product) => type === 'all' || product.type.toLowerCase() === type)
+  const best = byType
+    .filter((product) => product.status === 'Active' && product.revenueCents > 0)
+    .sort((a, b) => b.revenueCents - a.revenueCents)[0]
+  const ordered = best ? [best, ...byType.filter((product) => product !== best)] : byType
+  const needle = query.trim().toLowerCase()
+  const visible = needle ? ordered.filter((product) => product.name.toLowerCase().includes(needle)) : ordered
+  const sellingPages = (product: Product) => sellingPagesOf(product, pages)
 
   const archive = async (product: Product) => {
     setBusyProductId(product.publicId)
@@ -87,7 +156,7 @@ export function ProductsPage() {
     const error = useProductStore.getState().restoreError
     resetRestoreFeedback()
     setBusyProductId(null)
-    if (ok) toast({ tone: 'success', title: 'Product restored' })
+    if (ok) toast({ tone: 'success', title: 'Product restored', message: `${product.name} is back as a draft.` })
     else toast({ tone: 'danger', title: error ?? 'Something went wrong. Please try again.' })
   }
 
@@ -97,29 +166,135 @@ export function ProductsPage() {
     </Button>
   )
 
-  const content = () => {
-    if (loadStatus === 'error') return <ErrorState onRetry={() => void loadProducts(slug, includeArchived)} />
+  const header = (
+    <PageHeader
+      title={<em>Products</em>}
+      subtitle="What you sell — each one is delivered to the buyer as a link by email."
+      actions={newProductButton}
+    />
+  )
+
+  const catalogue = () => {
+    if (loadStatus === 'error') return <ErrorState onRetry={() => void loadProducts(slug, true)} />
     if (loadStatus !== 'success') return <SkeletonRows />
     if (products.length === 0) {
       return (
-        <EmptyState
-          icon={Package}
-          title="No products yet"
-          text="Create your first product — a download, a course or a service — and sell it from a landing page."
-          action={limitReason ? undefined : { label: 'Create product', icon: Plus, variant: 'primary', to: `/app/${slug}/products/new` }}
-        />
+        <section className="card">
+          <EmptyState
+            icon={Package}
+            title="No products yet"
+            text="Add your first product, then sell it from a landing page. Buyers get your access link by email the moment they pay."
+            action={limitReason ? undefined : { label: 'Create product', icon: Plus, variant: 'primary', to: `/app/${slug}/products/new` }}
+          />
+          <div className="product-kinds">
+            {(
+              [
+                [Download, 'Digital', 'Presets, templates, e-books, files'],
+                [GraduationCap, 'Course', 'Video lessons and programmes'],
+                [CalendarClock, 'Service', 'Calls, reviews, consultations'],
+              ] as const
+            ).map(([Glyph, title, text]) => (
+              <div className="product-kind" key={title}>
+                <span className="product-kind__icon">
+                  <Glyph />
+                </span>
+                <strong>{title}</strong>
+                <span className="text-sm text-secondary">{text}</span>
+              </div>
+            ))}
+          </div>
+        </section>
       )
     }
     return (
-      <ProductsTable
-        products={sortedProducts}
-        creatorSlug={slug}
-        currency={creator?.defaultCurrency ?? 'EUR'}
-        busyProductId={busyProductId}
-        restoreDisabledReason={limitReason}
-        onArchive={setArchiveTarget}
-        onRestore={(product) => void restore(product)}
-      />
+      <div className="stack stack--lg reveal">
+        {atLimit && creator && maxProducts !== undefined && (
+          <PlanLimit noun="products" planName={creator.planName} limit={maxProducts} upgradeTo={`/app/${slug}/settings?tab=billing`} />
+        )}
+        <ProductSummary products={products} currency={currency} planName={creator?.planName ?? ''} productLimit={maxProducts} />
+        <div className="product-toolbar">
+          <div className="search product-toolbar__search">
+            <Search />
+            <input
+              className="input"
+              type="search"
+              placeholder="Search products"
+              aria-label="Search products"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
+          <div className="segmented" role="radiogroup" aria-label="Product type">
+            {TYPES.map(([key, label]) => (
+              <label className="segmented__option" key={key}>
+                <input
+                  type="radio"
+                  name="product-type"
+                  value={key}
+                  checked={type === key}
+                  onChange={() => updateParams({ type: key === 'all' ? null : key })}
+                />
+                <span className="segmented__label">
+                  {label}
+                  <span className="tab__count">{countOf(key)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <Switch
+            label="Show archived"
+            checked={showArchived}
+            onChange={(event) => updateParams({ archived: event.target.checked ? '1' : null })}
+          />
+          <div className="segmented product-toolbar__view" role="radiogroup" aria-label="View">
+            <label className="segmented__option" data-tooltip="Grid">
+              <input type="radio" name="product-view" value="grid" aria-label="Grid view" checked={view === 'grid'} onChange={() => chooseView('grid')} />
+              <span className="segmented__label">
+                <LayoutGrid />
+              </span>
+            </label>
+            <label className="segmented__option" data-tooltip="List">
+              <input type="radio" name="product-view" value="list" aria-label="List view" checked={view === 'list'} onChange={() => chooseView('list')} />
+              <span className="segmented__label">
+                <List />
+              </span>
+            </label>
+          </div>
+        </div>
+        {visible.length === 0 ? (
+          <p className="product-results text-sm text-muted">No products match your search.</p>
+        ) : view === 'list' ? (
+          <Card flush>
+            <ProductsTable
+              products={visible}
+              creatorSlug={slug}
+              currency={currency}
+              sellingPagesOf={sellingPages}
+              busyProductId={busyProductId}
+              restoreDisabledReason={limitReason}
+              onArchive={setArchiveTarget}
+              onRestore={(product) => void restore(product)}
+            />
+          </Card>
+        ) : (
+          <div className="product-grid">
+            {visible.map((product) => (
+              <ProductCard
+                key={product.publicId}
+                product={product}
+                creatorSlug={slug}
+                currency={currency}
+                sellingPages={sellingPages(product)}
+                featured={product === best && type === 'all'}
+                busy={busyProductId === product.publicId}
+                restoreDisabledReason={limitReason}
+                onArchive={setArchiveTarget}
+                onRestore={(item) => void restore(item)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -131,30 +306,14 @@ export function ProductsPage() {
         <EmptyState title="Workspace not found" text="This address doesn’t match your workspace." />
       ) : (
         <>
-          <PageHeader
-            title={<em>Products</em>}
-            subtitle="Everything you sell — delivered to buyers as a link by email."
-            actions={
-              <>
-                <Switch
-                  label="Show archived"
-                  checked={includeArchived}
-                  onChange={(event) => setIncludeArchived(slug, event.target.checked)}
-                />
-                {newProductButton}
-              </>
-            }
-          />
-          <Card title="All products" flush>
-            {content()}
-          </Card>
-
+          {header}
+          {catalogue()}
           <ConfirmDialog
             open={archiveTarget !== null}
             title={`Archive “${archiveTarget?.name ?? ''}”?`}
-            text="It will no longer be available for sale. You can restore it from “Show archived” at any time."
+            text="It can’t be bought anymore and leaves your product list. Past orders and buyers’ access links keep working. You can restore it any time."
             confirmLabel="Archive product"
-            tone="danger"
+            tone="warning"
             icon={Archive}
             onCancel={() => setArchiveTarget(null)}
             onConfirm={() => {
