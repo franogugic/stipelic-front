@@ -3,22 +3,19 @@ import { useEffect, useState } from 'react'
 import { number, plural, time } from '../../../shared/lib/format'
 import { Button, Meter, PageHeader } from '../../../shared/ui/ledger'
 import { getCampaign } from '../api/campaigns-api'
+import { isCampaignComplete } from '../model/campaign-progress'
 import type { CampaignDetail } from '../model/types'
 
 const POLL_INTERVAL_MS = 3000
 
-/** Done when everything was either delivered or failed — or the campaign left the Queued state altogether. */
-const isComplete = (campaign: CampaignDetail) =>
-  campaign.status !== 'Queued' || campaign.sentCount + campaign.failedCount >= campaign.recipientCount
-
 /** What follows "Send now": the campaign's delivery, polled every 3 s until it is complete. */
 export function SendingPanel({ slug, initial }: { slug: string; initial: CampaignDetail }) {
   const [campaign, setCampaign] = useState(initial)
-  const complete = isComplete(campaign)
+  const complete = isCampaignComplete(campaign)
   const id = initial.publicId
 
   useEffect(() => {
-    if (isComplete(initial)) return
+    if (isCampaignComplete(initial)) return
     let active = true
     let timer: ReturnType<typeof setTimeout> | undefined
     const poll = async () => {
@@ -26,7 +23,7 @@ export function SendingPanel({ slug, initial }: { slug: string; initial: Campaig
         const latest = await getCampaign(slug, id)
         if (!active) return
         setCampaign(latest)
-        if (isComplete(latest)) return
+        if (isCampaignComplete(latest)) return
       } catch {
         // A missed poll is not a failed send; try again on the next tick.
       }
@@ -40,6 +37,7 @@ export function SendingPanel({ slug, initial }: { slug: string; initial: Campaig
   }, [slug, id, initial])
 
   const overview = `/app/${slug}/emails`
+  const detail = `/app/${slug}/emails/campaigns/${id}`
   const subject = `“${campaign.subject}”`
   return (
     <>
@@ -76,7 +74,7 @@ export function SendingPanel({ slug, initial }: { slug: string; initial: Campaig
             </p>
           )}
           <div className="cluster">
-            <Button variant="primary" icon={ArrowRight} to={overview}>
+            <Button variant="primary" icon={ArrowRight} to={detail}>
               View campaign
             </Button>
             <Button variant="ghost" to={overview}>

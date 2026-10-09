@@ -1,5 +1,5 @@
 import { LayoutTemplate, Send } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { Button, EmptyState, PageHeader, SkeletonRows } from '../../../shared/ui/ledger'
@@ -9,11 +9,10 @@ import { useProductStore } from '../../products/model/product-store'
 import { CampaignsTable } from '../components/CampaignsTable'
 import { EmailUsageCard } from '../components/EmailUsageCard'
 import { OpenRateCard } from '../components/OpenRateCard'
-import { SentCampaignsCard } from '../components/SentCampaignsCard'
 import { TemplatesCard } from '../components/TemplatesCard'
 import { useCampaignStore } from '../model/campaign-store'
 import { useTemplateStore } from '../model/template-store'
-import type { CampaignListItem } from '../model/types'
+import { useAudienceName } from '../model/use-audience-name'
 
 const scrollToSection = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
@@ -29,9 +28,7 @@ export function EmailsPage() {
   const creatorSettings = useCreatorStore((s) => s.creatorSettings)
   const loadCreatorSettings = useCreatorStore((s) => s.loadCreatorSettings)
 
-  const pages = useLandingPageStore((s) => s.pages)
   const loadPages = useLandingPageStore((s) => s.loadPages)
-  const products = useProductStore((s) => s.products)
   const loadProducts = useProductStore((s) => s.loadProducts)
 
   const templates = useTemplateStore((s) => s.templates)
@@ -49,15 +46,7 @@ export function EmailsPage() {
   const openRateTrendStatus = useCampaignStore((s) => s.openRateTrendStatus)
   const loadOpenRateTrend = useCampaignStore((s) => s.loadOpenRateTrend)
 
-  const audienceName = useMemo(() => {
-    const lpByPublicId = new Map(pages.map((p) => [p.publicId, p.title]))
-    const productByPublicId = new Map(products.map((p) => [p.publicId, p.name]))
-    return (campaign: CampaignListItem) => {
-      if (campaign.audienceType === 'All') return 'All subscribers'
-      const target = campaign.targetPublicId ?? ''
-      return (campaign.audienceType === 'LandingPage' ? lpByPublicId.get(target) : productByPublicId.get(target)) ?? '—'
-    }
-  }, [pages, products])
+  const audienceName = useAudienceName()
 
   useEffect(() => {
     if (currentCreatorStatus === 'idle') void loadCurrentCreator()
@@ -125,15 +114,15 @@ export function EmailsPage() {
                 campaigns={campaigns}
                 status={listStatus}
                 audienceName={audienceName}
+                slug={slug}
                 newCampaignTo={`/app/${slug}/emails/new`}
                 onRetry={() => void loadCampaigns(slug)}
               />
             </div>
           </div>
 
-          {/* Until the composer, campaign detail and templates screens replace them, these stay on the page. */}
+          {/* Stays on the page until the templates screens replace it. */}
           <div className="stack stack--lg mt-10 text-foreground">
-            <SentCampaignsCard slug={slug} campaigns={campaigns} status={campaignsStatus} audienceName={audienceName} />
             <div id="email-templates" className="scroll-mt-6">
               <TemplatesCard slug={slug} templates={templates} templatesStatus={templatesStatus} creatorSettings={creatorSettings} />
             </div>

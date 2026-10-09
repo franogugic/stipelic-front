@@ -1,19 +1,22 @@
 import { Send } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { date, dateShort, number, percent } from '../../../shared/lib/format'
 import { Card, EmptyState, ErrorState, SkeletonRows, StatusBadge, campaignSendingLabel, campaignStatusKey } from '../../../shared/ui/ledger'
 import type { CampaignListItem } from '../model/types'
 
-/** "Campaigns": the latest campaigns with their delivery numbers. Rows are plain text until there is a detail page. */
+/** "Campaigns": the latest campaigns with their delivery numbers. Each subject opens the campaign. */
 export function CampaignsTable({
   campaigns,
   status,
   audienceName,
+  slug,
   newCampaignTo,
   onRetry,
 }: {
   campaigns: CampaignListItem[]
   status: 'idle' | 'loading' | 'success' | 'error'
   audienceName: (campaign: CampaignListItem) => string
+  slug: string
   newCampaignTo: string
   onRetry: () => void
 }) {
@@ -63,7 +66,9 @@ export function CampaignsTable({
               return (
                 <tr key={campaign.publicId}>
                   <td className="is-lead">
-                    <span className="table__primary">{campaign.subject}</span>
+                    <Link className="table__primary" to={`/app/${slug}/emails/campaigns/${campaign.publicId}`}>
+                      {campaign.subject}
+                    </Link>
                   </td>
                   <td data-label="Audience" className="text-secondary">
                     {audienceName(campaign)}
