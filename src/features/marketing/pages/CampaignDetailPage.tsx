@@ -1,4 +1,4 @@
-import { CalendarClock, CalendarX, CircleAlert, MailCheck, MailOpen, MailX, RotateCw, Users } from 'lucide-react'
+import { CalendarX, CircleAlert, MailCheck, MailOpen, MailX, RotateCw, Users } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useParams } from 'react-router-dom'
@@ -10,6 +10,7 @@ import {
   Alert,
   Button,
   Card,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   KeyValue,
@@ -348,7 +349,6 @@ export function CampaignDetailPage() {
               : `This uses ${number(campaign.failedCount)} of your ${number(sendsLeft)} remaining sends.`
           }`}
           icon={RotateCw}
-          tone="accent"
           actions={
             <>
               <Button variant="secondary" disabled={resendFailedStatus === 'submitting'} onClick={() => setConfirming(null)}>
@@ -366,32 +366,23 @@ export function CampaignDetailPage() {
             </Alert>
           )}
         </Modal>
-        <Modal
+        <ConfirmDialog
           open={confirming === 'cancel'}
-          onClose={() => setConfirming(null)}
-          dismissible={cancelScheduleStatus !== 'submitting'}
-          size="sm"
+          onCancel={() => setConfirming(null)}
+          busy={cancelScheduleStatus === 'submitting'}
           title="Cancel this scheduled campaign?"
-          description={`“${campaign.subject}” won’t be sent${campaign.scheduledAt ? ` on ${dateTime(campaign.scheduledAt)}` : ''}. It stays in your list as Cancelled and nothing counts against your limit.`}
-          icon={CalendarClock}
-          tone="accent"
-          actions={
-            <>
-              <Button variant="secondary" disabled={cancelScheduleStatus === 'submitting'} onClick={() => setConfirming(null)}>
-                Keep scheduled
-              </Button>
-              <Button variant="primary" icon={CalendarX} loading={cancelScheduleStatus === 'submitting'} onClick={() => void confirmCancel()}>
-                Cancel campaign
-              </Button>
-            </>
-          }
+          text={`“${campaign.subject}” won’t be sent${campaign.scheduledAt ? ` on ${dateTime(campaign.scheduledAt)}` : ''}. It stays in your list as Cancelled and nothing counts against your limit.`}
+          icon={CalendarX}
+          confirmLabel="Cancel campaign"
+          cancelLabel="Keep scheduled"
+          onConfirm={() => void confirmCancel()}
         >
           {cancelScheduleError && (
             <Alert tone="danger" icon={CircleAlert} live>
               {cancelScheduleError}
             </Alert>
           )}
-        </Modal>
+        </ConfirmDialog>
       </>
     )
   }
