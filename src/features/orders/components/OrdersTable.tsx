@@ -35,16 +35,17 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
         <tbody>
           {orders.map((order) => {
             const name = order.name?.trim() || null
+            const email = order.email ?? '—'
             return (
               <tr key={order.publicId}>
                 <td className="is-lead">
                   <div className="table__main">
                     <Avatar size="sm" neutral>
-                      {initials(name ?? order.email)}
+                      {initials(name ?? order.email ?? '?')}
                     </Avatar>
                     <div>
-                      <span className="table__primary">{name ?? order.email}</span>
-                      {name && <span className="table__secondary">{order.email}</span>}
+                      <span className="table__primary">{name ?? email}</span>
+                      {name && <span className="table__secondary">{email}</span>}
                     </div>
                   </div>
                 </td>

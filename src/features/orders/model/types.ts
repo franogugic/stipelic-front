@@ -2,7 +2,8 @@ export type OrderStatus = 'Pending' | 'Paid' | 'Failed' | 'Refunded'
 
 export interface Order {
   publicId: string
-  email: string
+  /** Null while Pending: the buyer types it into Stripe Checkout and it arrives with the payment. */
+  email: string | null
   name: string | null
   productName: string
   amountCents: number

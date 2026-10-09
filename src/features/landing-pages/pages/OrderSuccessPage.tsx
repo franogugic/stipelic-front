@@ -122,7 +122,7 @@ export function OrderSuccessPage() {
       ) : (
         <p className="lp__sub">
           Your order of <strong>{receipt.productName}</strong> is confirmed. We’ve sent the download link to{' '}
-          <strong>{receipt.buyerEmail}</strong> — it usually arrives within a minute.
+          <strong>{receipt.buyerEmail ?? 'your email'}</strong> — it usually arrives within a minute.
         </p>
       )}
       {!inactive && (
