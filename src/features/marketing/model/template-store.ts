@@ -6,6 +6,7 @@ import {
   getEmailTemplateStarters,
   getTemplate,
   listTemplates,
+  restoreTemplate,
   updateTemplate,
 } from '../api/templates-api'
 import type { EmailTemplate, EmailTemplateStarter, SaveTemplateRequest } from './types'
@@ -28,6 +29,9 @@ type TemplateState = {
   archiveTemplateStatus: SubmitStatus
   archiveTemplateError: string | null
 
+  restoreTemplateStatus: SubmitStatus
+  restoreTemplateError: string | null
+
   starters: EmailTemplateStarter[]
   startersStatus: LoadStatus
 
@@ -43,6 +47,7 @@ type TemplateState = {
   resetSaveTemplateFeedback: () => void
   archiveTemplateForSlug: (slug: string, templatePublicId: string) => Promise<boolean>
   resetArchiveTemplateFeedback: () => void
+  restoreTemplateForSlug: (slug: string, templatePublicId: string) => Promise<boolean>
   reset: () => void
 }
 
@@ -60,6 +65,9 @@ const initialTemplateState = {
 
   archiveTemplateStatus: 'idle' as SubmitStatus,
   archiveTemplateError: null,
+
+  restoreTemplateStatus: 'idle' as SubmitStatus,
+  restoreTemplateError: null,
 
   starters: [] as EmailTemplateStarter[],
   startersStatus: 'idle' as LoadStatus,
@@ -153,6 +161,21 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
 
   resetArchiveTemplateFeedback: () => {
     set({ archiveTemplateStatus: 'idle', archiveTemplateError: null })
+  },
+
+  restoreTemplateForSlug: async (slug, templatePublicId) => {
+    set({ restoreTemplateStatus: 'submitting', restoreTemplateError: null })
+    try {
+      await restoreTemplate(slug, templatePublicId)
+      set({ restoreTemplateStatus: 'success', restoreTemplateError: null })
+      void get().loadTemplates(slug)
+      return true
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'We could not restore this template. Please try again.'
+      set({ restoreTemplateStatus: 'error', restoreTemplateError: message })
+      return false
+    }
   },
   reset: () => {
     set(initialTemplateState)

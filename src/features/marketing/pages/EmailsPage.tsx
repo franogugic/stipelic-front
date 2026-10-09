@@ -14,8 +14,6 @@ import { useCampaignStore } from '../model/campaign-store'
 import { useTemplateStore } from '../model/template-store'
 import { useAudienceName } from '../model/use-audience-name'
 
-const scrollToSection = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-
 export function EmailsPage() {
   const { slug = '' } = useParams<{ slug: string }>()
 
@@ -93,7 +91,7 @@ export function EmailsPage() {
             subtitle="Campaigns to the people who joined your pages."
             actions={
               <>
-                <Button variant="secondary" icon={LayoutTemplate} onClick={() => scrollToSection('email-templates')}>
+                <Button variant="secondary" icon={LayoutTemplate} to={`/app/${slug}/emails/templates`}>
                   Templates
                 </Button>
                 <Button variant="primary" icon={Send} to={`/app/${slug}/emails/new`}>
@@ -123,7 +121,7 @@ export function EmailsPage() {
 
           {/* Stays on the page until the templates screens replace it. */}
           <div className="stack stack--lg mt-10 text-foreground">
-            <div id="email-templates" className="scroll-mt-6">
+            <div>
               <TemplatesCard slug={slug} templates={templates} templatesStatus={templatesStatus} creatorSettings={creatorSettings} />
             </div>
           </div>

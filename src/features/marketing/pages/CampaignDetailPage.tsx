@@ -26,7 +26,7 @@ import {
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
 import { useProductStore } from '../../products/model/product-store'
-import { getCampaign } from '../api/campaigns-api'
+import { getAudiencePreview, getCampaign } from '../api/campaigns-api'
 import { CampaignStatusAlert } from '../components/CampaignStatusAlert'
 import { FailedRecipientsCard } from '../components/FailedRecipientsCard'
 import { useCampaignStore } from '../model/campaign-store'
@@ -116,6 +116,20 @@ export function CampaignDetailPage() {
       clearTimeout(timer)
     }
   }, [complete, slug, campaignId, key])
+
+  // A scheduled campaign has no recipients yet; show how many people the audience has right now.
+  const scheduledAudience = campaign?.status === 'Scheduled' ? campaign : null
+  const audienceType = scheduledAudience?.audienceType ?? null
+  const audienceTarget = scheduledAudience?.targetPublicId ?? null
+  const sizeKey = `${key}|${audienceType}|${audienceTarget}`
+  const [audienceSize, setAudienceSize] = useState<{ key: string; count: number | null } | null>(null)
+  useEffect(() => {
+    if (!audienceType) return
+    getAudiencePreview(slug, audienceType, audienceTarget)
+      .then((preview) => setAudienceSize({ key: sizeKey, count: preview.recipientCount }))
+      .catch(() => setAudienceSize({ key: sizeKey, count: null }))
+  }, [slug, audienceType, audienceTarget, sizeKey])
+  const currentAudienceSize = audienceSize?.key === sizeKey ? audienceSize.count : null
 
   const failedCount = campaign?.failedCount ?? 0
   const showFailed = campaign?.status === 'Queued' && failedCount > 0
@@ -227,12 +241,12 @@ export function CampaignDetailPage() {
           }
         />
         <div className="stack stack--lg reveal">
-          <CampaignStatusAlert campaign={campaign} zone={zone} />
+          <CampaignStatusAlert campaign={campaign} zone={zone} audienceSize={currentAudienceSize} />
           <div className="grid grid--4">
             <Metric
               label="Recipients"
               icon={Users}
-              value={statusKey === 'scheduled' ? '—' : number(recipients)}
+              value={statusKey === 'scheduled' ? (currentAudienceSize === null ? '—' : number(currentAudienceSize)) : number(recipients)}
               meta={audience}
             />
             <Metric

@@ -1,10 +1,10 @@
 import { Ban, CalendarClock, CircleAlert, Send } from 'lucide-react'
-import { dateTime } from '../../../shared/lib/format'
+import { dateTime, plural } from '../../../shared/lib/format'
 import { Alert, Meter, campaignStatusKey } from '../../../shared/ui/ledger'
 import type { CampaignDetail } from '../model/types'
 
 /** The banner at the top of a campaign: delivery progress, the schedule, the failure reason or the cancellation. */
-export function CampaignStatusAlert({ campaign, zone }: { campaign: CampaignDetail; zone: string }) {
+export function CampaignStatusAlert({ campaign, zone, audienceSize }: { campaign: CampaignDetail; zone: string; audienceSize: number | null }) {
   const key = campaignStatusKey(campaign)
   if (key === 'sending') {
     return (
@@ -20,7 +20,8 @@ export function CampaignStatusAlert({ campaign, zone }: { campaign: CampaignDeta
   if (key === 'scheduled' && campaign.scheduledAt) {
     return (
       <Alert tone="info" icon={CalendarClock} title={`Scheduled for ${dateTime(campaign.scheduledAt)} (your time, ${zone})`}>
-        It goes to everyone in the audience at that moment — the count is worked out when it goes out.
+        It goes to everyone in the audience at that moment
+        {audienceSize === null ? '.' : ` — currently ${plural(audienceSize, 'subscriber')}.`}
       </Alert>
     )
   }
