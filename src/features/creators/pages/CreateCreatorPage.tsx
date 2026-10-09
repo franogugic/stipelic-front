@@ -415,9 +415,10 @@ export function CreateCreatorPage() {
 
 function PlanCard({ plan, checked, onSelect }: { plan: CreatorPlan; checked: boolean; onSelect: () => void }) {
   const limit = (key: string) => plan.limits[key]
-  const count = (key: string) => {
+  const count = (key: string, singular: string, pluralForm = `${singular}s`) => {
     const value = limit(key)
-    return value === undefined || value < 0 ? 'Unlimited' : number(value)
+    if (value === undefined || value < 0) return `Unlimited ${pluralForm}`
+    return `${number(value)} ${value === 1 ? singular : pluralForm}`
   }
 
   return (
@@ -433,10 +434,10 @@ function PlanCard({ plan, checked, onSelect }: { plan: CreatorPlan; checked: boo
       </span>
       <ul className="plan__list" role="list">
         <li>{percent(plan.platformFeeBasisPoints / 100)} fee per sale</li>
-        <li>{count('max_landing_pages')} landing pages</li>
-        <li>{count('max_products')} products</li>
-        <li>{count('max_email_sends_per_month')} emails / month</li>
-        <li>{count('max_contacts')} contacts</li>
+        <li>{count('max_landing_pages', 'landing page')}</li>
+        <li>{count('max_products', 'product')}</li>
+        <li>{count('max_email_sends_per_month', 'email')} / month</li>
+        <li>{count('max_contacts', 'contact')}</li>
       </ul>
     </label>
   )

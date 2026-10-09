@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
 import { initials } from '../lib/format'
-import { HELP_URL, PRIVACY_URL } from '../lib/legal-links'
+import { HELP_URL, PRIVACY_URL, isLinked } from '../lib/legal-links'
 import { Avatar, Brand, Button, ThemeToggleButton } from './ledger'
 
 /**
@@ -24,8 +24,19 @@ export function SoloLayout({ wide, user, children }: { wide?: boolean; user?: bo
         <div className={['solo__box', wide && 'solo__box--wide'].filter(Boolean).join(' ')}>{children}</div>
       </div>
       <footer className="solo__foot">
-        © {new Date().getFullYear()} Luma · <a className="link" href={HELP_URL}>Help</a> ·{' '}
-        <a className="link" href={PRIVACY_URL}>Privacy</a>
+        © {new Date().getFullYear()} Luma
+        {isLinked(HELP_URL) && (
+          <>
+            {' · '}
+            <a className="link" href={HELP_URL}>Help</a>
+          </>
+        )}
+        {isLinked(PRIVACY_URL) && (
+          <>
+            {' · '}
+            <a className="link" href={PRIVACY_URL}>Privacy</a>
+          </>
+        )}
       </footer>
     </div>
   )
