@@ -3,7 +3,6 @@ import { Route, Routes } from 'react-router-dom'
 import { AdminPayoutsPage } from '../../features/admin/pages/AdminPayoutsPage'
 import { ConfirmEmailChangePage } from '../../features/auth/pages/ConfirmEmailChangePage'
 import { ForgotPasswordPage } from '../../features/auth/pages/ForgotPasswordPage'
-import { HomePage } from '../../features/auth/pages/HomePage'
 import { CheckInboxPage } from '../../features/auth/pages/CheckInboxPage'
 import { LoginPage } from '../../features/auth/pages/LoginPage'
 import { RegisterPage } from '../../features/auth/pages/RegisterPage'
@@ -34,6 +33,7 @@ import { OrdersPage } from '../../features/orders/pages/OrdersPage'
 import { NotFoundPage } from '../../shared/ui/NotFoundPage'
 import { AdminRoute } from './AdminRoute'
 import { AuthBootstrap } from './AuthBootstrap'
+import { HomeRoute } from './HomeRoute'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
 
@@ -65,13 +65,14 @@ export function AppRouter() {
         <Route path="/payment/success" element={<PaymentSuccessPage />} />
         <Route path="/payment/cancel" element={<PaymentCancelledPage />} />
 
+        <Route path="/" element={<HomeRoute />} />
+
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
         </Route>
 
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<HomePage />} />
           <Route path="/app/:slug" element={<CreatorWorkspacePage />} />
           <Route path="/app/:slug/products" element={<ProductsPage />} />
           <Route path="/app/:slug/products/new" element={<ProductFormPage />} />
