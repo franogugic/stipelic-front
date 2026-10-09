@@ -126,7 +126,7 @@ export function TemplateEditor({
     ctaUrl: !draft.withButton
       ? null
       : !draft.ctaUrl.trim()
-        ? 'Add the button link.'
+        ? 'Add the link for the button.'
         : isWebUrl(draft.ctaUrl)
           ? null
           : 'Use a link that starts with http:// or https://.',

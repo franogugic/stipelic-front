@@ -156,7 +156,7 @@ export function ProductCard({
               Not on a page yet
             </span>
             {!archived && (
-              <Button variant="ghost" icon={Plus} to={`/app/${creatorSlug}/landing-pages`}>
+              <Button variant="ghost" icon={Plus} to={`/app/${creatorSlug}/landing-pages?create=1&product=${product.publicId}`}>
                 Create page
               </Button>
             )}

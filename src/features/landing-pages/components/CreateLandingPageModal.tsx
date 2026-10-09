@@ -44,12 +44,15 @@ export function CreateLandingPageModal({
   open,
   creatorSlug,
   currency,
+  initialProductId,
   onClose,
   onCreated,
 }: {
   open: boolean
   creatorSlug: string
   currency: string
+  /** Opens on a sales page for this product ("Create page" on a product card). */
+  initialProductId?: string
   onClose: () => void
   onCreated: (page: LandingPage) => void
 }) {
@@ -60,8 +63,8 @@ export function CreateLandingPageModal({
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
   const [slugEdited, setSlugEdited] = useState(false)
-  const [type, setType] = useState<LandingPageType>('LeadGen')
-  const [productId, setProductId] = useState('')
+  const [type, setType] = useState<LandingPageType>(initialProductId ? 'Sales' : 'LeadGen')
+  const [productId, setProductId] = useState(initialProductId ?? '')
   const [errors, setErrors] = useState<Errors>({})
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)

@@ -1,6 +1,6 @@
 import { Archive, PanelsTopLeft, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { number } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
@@ -55,6 +55,10 @@ export function LandingPagesPage() {
   const [createOpen, setCreateOpen] = useState(false)
   // A new key per opening, so the create form always starts empty.
   const [createKey, setCreateKey] = useState(0)
+  const [createProductId, setCreateProductId] = useState<string | undefined>(undefined)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // `?create=1&product=<id>` (from a product card) opens the create form once, with that product chosen.
+  const [handledCreateLink, setHandledCreateLink] = useState(false)
 
   const creator = currentCreator?.slug === slug ? currentCreator : null
   const creatorLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
@@ -85,10 +89,33 @@ export function LandingPagesPage() {
         : `You’ve used all ${number(maxPages)} landing pages on the ${creator.planName} plan.`
       : undefined
 
-  const openCreate = () => {
+  const openCreate = (productId?: string) => {
+    setCreateProductId(productId)
     setCreateKey((key) => key + 1)
     setCreateOpen(true)
   }
+
+  if (!handledCreateLink && creator && searchParams.get('create') === '1') {
+    setHandledCreateLink(true)
+    openCreate(searchParams.get('product') ?? undefined)
+  }
+
+  // The link has done its job; a reload or a share of the address must not reopen the form.
+  useEffect(() => {
+    if (searchParams.get('create') !== null || searchParams.get('product') !== null) {
+      if (handledCreateLink) {
+        setSearchParams(
+          (current) => {
+            const next = new URLSearchParams(current)
+            next.delete('create')
+            next.delete('product')
+            return next
+          },
+          { replace: true },
+        )
+      }
+    }
+  }, [handledCreateLink, searchParams, setSearchParams])
 
   const runAction = async (page: LandingPage, action: PageAction) => {
     const run = { publish: publishPage, unpublish: unpublishPage, archive: archivePage, restore: restorePage }[action]
@@ -112,7 +139,7 @@ export function LandingPagesPage() {
   }
 
   const newPageButton = (
-    <Button variant="primary" icon={Plus} disabledReason={limitReason} onClick={openCreate}>
+    <Button variant="primary" icon={Plus} disabledReason={limitReason} onClick={() => openCreate()}>
       New landing page
     </Button>
   )
@@ -126,7 +153,7 @@ export function LandingPagesPage() {
           icon={PanelsTopLeft}
           title="No landing pages yet"
           text="Create your first page to sell a product or collect emails."
-          action={limitReason ? undefined : { label: 'New landing page', icon: Plus, variant: 'primary', onClick: openCreate }}
+          action={limitReason ? undefined : { label: 'New landing page', icon: Plus, variant: 'primary', onClick: () => openCreate() }}
         />
       )
     }
@@ -183,6 +210,7 @@ export function LandingPagesPage() {
               open={createOpen}
               creatorSlug={slug}
               currency={creator.defaultCurrency}
+              initialProductId={createProductId}
               onClose={() => setCreateOpen(false)}
               onCreated={(page) => navigate(`/app/${slug}/landing-pages/${page.publicId}`)}
             />
