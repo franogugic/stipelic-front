@@ -377,6 +377,7 @@ function EditorContent() {
     pageType: page.type,
     product,
     hasLogo: Boolean(settings?.logoUrl),
+    brandName,
     sections: draft.sections,
     templates,
   }
