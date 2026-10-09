@@ -19,7 +19,7 @@ import type {
   ProductDetailsContent,
   TestimonialsContent,
 } from '../../model/section-content'
-import { SECTION_BACKGROUNDS, kindOf, variantsOf } from '../../model/section-library'
+import { SECTION_BACKGROUNDS, defaultCopyright, kindOf, variantsOf } from '../../model/section-library'
 import type { LandingPageType, SectionTemplate } from '../../model/types'
 import { Wireframe } from '../Wireframe'
 import { AltTextField, FormGroup, NoteAlert, Repeater, TextField } from './fields'
@@ -31,6 +31,8 @@ export type EditorPageContext = {
   pageType: LandingPageType
   product: { publicId: string | null; name: string; priceCents: number; currency: string } | null
   hasLogo: boolean
+  /** The creator's brand name (else the workspace name): what an empty navbar / footer shows. */
+  brandName: string
   sections: DraftSection[]
   templates: SectionTemplate[]
 }
@@ -159,6 +161,7 @@ function NavbarForm({ content, onChange, ctx }: { content: NavbarContent; onChan
         label="Brand name"
         value={content.brandName}
         maxLength={60}
+        placeholder={ctx.brandName}
         hint="Shown next to your logo, or on its own if you have no logo."
         onChange={(brandName) => onChange({ ...content, brandName })}
       />
@@ -381,12 +384,13 @@ function CtaForm({ content, onChange }: { content: CtaContent; onChange: (conten
   )
 }
 
-function FooterForm({ content, onChange }: { content: FooterContent; onChange: (content: FooterContent) => void }) {
+function FooterForm({ content, onChange, ctx }: { content: FooterContent; onChange: (content: FooterContent) => void; ctx: EditorPageContext }) {
   return (
     <TextField
       label="Copyright"
       value={content.copyright}
       maxLength={120}
+      placeholder={defaultCopyright(ctx.brandName)}
       hint="“Made with Luma” is shown next to it."
       onChange={(copyright) => onChange({ copyright })}
     />
@@ -432,7 +436,7 @@ function ContentForm({ section, ctx, dispatch }: { section: DraftSection; ctx: E
     case 'Cta':
       return <CtaForm content={section.content} onChange={set} />
     case 'Footer':
-      return <FooterForm content={section.content} onChange={set} />
+      return <FooterForm content={section.content} onChange={set} ctx={ctx} />
   }
 }
 

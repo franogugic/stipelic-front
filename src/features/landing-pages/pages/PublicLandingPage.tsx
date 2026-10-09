@@ -180,7 +180,7 @@ function MissingPage({ creatorSlug, pageSlug, data }: { creatorSlug: string; pag
 
   return (
     <LandingShell brandColor={brand.color}>
-      <LandingSection ctx={ctx} section={{ key: 'missing-nav', type: 'Navbar', variant: 'simple', background: null, content: { brandName: brand.name, links: [] } }} />
+      <LandingSection ctx={ctx} section={{ key: 'missing-nav', type: 'Navbar', variant: 'simple', background: null, content: { brandName: '', links: [] } }} />
       <section className="lp-sec lp-missing" aria-labelledby="missing-title">
         <span className="lp-missing__icon">
           <Compass />
@@ -221,7 +221,7 @@ function MissingPage({ creatorSlug, pageSlug, data }: { creatorSlug: string; pag
       </section>
       <LandingSection
         ctx={ctx}
-        section={{ key: 'missing-foot', type: 'Footer', variant: 'centered', background: null, content: { copyright: `© ${new Date().getFullYear()} ${brand.name}` } }}
+        section={{ key: 'missing-foot', type: 'Footer', variant: 'centered', background: null, content: { copyright: '' } }}
       />
     </LandingShell>
   )

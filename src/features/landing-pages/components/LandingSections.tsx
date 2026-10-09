@@ -18,7 +18,7 @@ import type {
   SectionContentMap,
   TestimonialsContent,
 } from '../model/section-content'
-import { kindOf } from '../model/section-library'
+import { defaultCopyright, kindOf } from '../model/section-library'
 import type { LandingPageType, ProductType, SectionType } from '../model/types'
 
 // The creator's landing page as the prototype draws it (`renderSection` / SECTION_RENDERERS): used by the public
@@ -99,6 +99,7 @@ function FallbackVisual({ product, shape = 'tall' }: { product: LandingProduct |
 function NavbarSection({ variant, content, ctx }: { variant: string; content: NavbarContent; ctx: LandingContext }) {
   const [open, setOpen] = useState(false)
   const links = content.links.filter((link) => link.label.trim() && hrefTarget(link.href))
+  // New pages leave it empty: the creator's brand (brand name, else the workspace name) shows.
   const brandName = content.brandName || ctx.brand.name
   return (
     <nav className={`lp-nav lp-nav--${variant} ${open ? 'is-open' : ''}`} aria-label={brandName}>
@@ -323,10 +324,10 @@ function CtaSection({ variant, content, ctx }: { variant: string; content: CtaCo
   )
 }
 
-function FooterSection({ variant, content }: { variant: string; content: FooterContent }) {
+function FooterSection({ variant, content, ctx }: { variant: string; content: FooterContent; ctx: LandingContext }) {
   return (
     <div className={`lp-footer lp-footer--${variant}`}>
-      <span>{content.copyright}</span>
+      <span>{content.copyright || defaultCopyright(ctx.brand.name)}</span>
       <Link className="lp-footer__credit" to="/">
         Made with Luma
       </Link>
@@ -353,7 +354,7 @@ function SectionBody({ section, ctx }: { section: RenderedSection; ctx: LandingC
     case 'Cta':
       return <CtaSection variant={section.variant} content={section.content} ctx={ctx} />
     case 'Footer':
-      return <FooterSection variant={section.variant} content={section.content} />
+      return <FooterSection variant={section.variant} content={section.content} ctx={ctx} />
   }
 }
 
