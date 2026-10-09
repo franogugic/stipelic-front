@@ -10,6 +10,8 @@ import { positionFloating } from './floating'
 
 export type MenuItem =
   | 'separator'
+  /** A short explanation at the top of the menu (not an item): why some actions are unavailable. */
+  | { note: string; icon?: LucideIcon }
   | {
       label: string
       icon?: LucideIcon
@@ -142,6 +144,15 @@ export function Menu({
 
   const renderItem = (item: MenuItem, index: number) => {
     if (item === 'separator') return <div className="menu__separator" role="separator" key={index} />
+    if ('note' in item) {
+      const NoteIcon = item.icon
+      return (
+        <p className="menu__note" key={index}>
+          {NoteIcon && <NoteIcon />}
+          <span>{item.note}</span>
+        </p>
+      )
+    }
     const Icon = item.icon
     const className = ['menu__item', item.tone === 'danger' && 'menu__item--danger'].filter(Boolean).join(' ')
     const content = (

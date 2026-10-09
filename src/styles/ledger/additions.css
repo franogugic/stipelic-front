@@ -60,3 +60,34 @@ button.link {
   object-fit: contain;
   object-position: left center;
 }
+
+/* The public page's mobile menu button (the prototype draws it but gives it no open state): on a narrow page the
+   Simple navbar's links drop down below the bar as a card. */
+.lp-nav {
+  position: relative;
+}
+
+@container lp (max-width: 640px) {
+  .lp-nav--simple.is-open .lp-nav__links {
+    position: absolute;
+    top: calc(100% - 8px);
+    right: 6%;
+    left: 6%;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px;
+    border: 1px solid var(--lp-line);
+    border-radius: 16px;
+    background: var(--lp-surface);
+    box-shadow: var(--lp-shadow);
+  }
+
+  .lp-nav--simple.is-open .lp-nav__links a {
+    display: block;
+    padding: 12px 14px;
+    border-radius: 10px;
+    color: var(--lp-text);
+  }
+}
