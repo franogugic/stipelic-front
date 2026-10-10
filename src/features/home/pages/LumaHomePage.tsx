@@ -18,7 +18,7 @@ import {
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { monogram } from '../../../shared/lib/format'
-import { PRIVACY_URL, TERMS_URL } from '../../../shared/lib/legal-links'
+import { PRIVACY_URL, TERMS_URL, isLinked } from '../../../shared/lib/legal-links'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { Avatar, Brand, Button, ThemeToggleButton } from '../../../shared/ui/ledger'
 import { AnalyticsVisual, AudienceVisual, EmailVisual, HeroMock } from '../components/MockVisuals'
@@ -27,8 +27,6 @@ import { useCreatorStore } from '../../creators/model/creator-store'
 import { MOCK_COUNTRIES, MOCK_CREATORS, SUPPORT_EMAIL, faqItems } from '../model/home-content'
 import { feeRange } from '../model/plan-figures'
 import { usePageChrome, useScrollReveal } from '../model/use-page-chrome'
-
-const hasPage = (url: string) => url !== '#'
 
 /** The public marketing page of Luma at `/`, for logged-out visitors. Markup and classes from designer-prototype/app/home.html. */
 export function LumaHomePage() {
@@ -534,11 +532,11 @@ export function LumaHomePage() {
             <Link to="/register">Create account</Link>
             <Link to="/forgot-password">Forgot password</Link>
           </nav>
-          {(hasPage(TERMS_URL) || hasPage(PRIVACY_URL) || SUPPORT_EMAIL) && (
+          {(isLinked(TERMS_URL) || isLinked(PRIVACY_URL) || SUPPORT_EMAIL) && (
             <nav className="mk-footer__col" aria-label="Legal">
               <p className="eyebrow">Legal</p>
-              {hasPage(TERMS_URL) && <a href={TERMS_URL}>Terms of Service</a>}
-              {hasPage(PRIVACY_URL) && <a href={PRIVACY_URL}>Privacy Policy</a>}
+              {isLinked(TERMS_URL) && <a href={TERMS_URL}>Terms of Service</a>}
+              {isLinked(PRIVACY_URL) && <a href={PRIVACY_URL}>Privacy Policy</a>}
               {SUPPORT_EMAIL && <a href={`mailto:${SUPPORT_EMAIL}`}>Contact</a>}
             </nav>
           )}
