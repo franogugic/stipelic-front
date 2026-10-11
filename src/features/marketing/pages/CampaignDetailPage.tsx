@@ -1,9 +1,8 @@
-import { CalendarX, CircleAlert, MailCheck, MailOpen, MailX, RotateCw, Users } from 'lucide-react'
+import { CalendarX, CircleAlert, MailX, RotateCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import type { CSSProperties } from 'react'
 import { useParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
-import { dateTime, number, percent, plural } from '../../../shared/lib/format'
+import { dateTime, number, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { EmailPreview } from '../../../shared/ui/EmailPreview'
 import {
@@ -14,7 +13,6 @@ import {
   EmptyState,
   ErrorState,
   KeyValue,
-  Metric,
   Modal,
   PageHeader,
   SkeletonCards,
@@ -28,9 +26,11 @@ import { useCreatorStore } from '../../creators/model/creator-store'
 import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
 import { useProductStore } from '../../products/model/product-store'
 import { getAudiencePreview, getCampaign } from '../api/campaigns-api'
+import { CampaignResultsBoard } from '../components/CampaignResultsBoard'
 import { CampaignStatusAlert } from '../components/CampaignStatusAlert'
 import { FailedRecipientsCard } from '../components/FailedRecipientsCard'
 import { useCampaignStore } from '../model/campaign-store'
+import { campaignGroup } from '../model/campaign-groups'
 import { isCampaignComplete } from '../model/campaign-progress'
 import { userTimezone } from '../model/schedule'
 import type { AudiencePreview, CampaignDetail } from '../model/types'
@@ -58,6 +58,8 @@ export function CampaignDetailPage() {
 
   const failedRecipients = useCampaignStore((s) => s.failedRecipients)
   const failedRecipientsStatus = useCampaignStore((s) => s.failedRecipientsStatus)
+  const allCampaigns = useCampaignStore((s) => s.campaigns)
+  const loadCampaigns = useCampaignStore((s) => s.loadCampaigns)
   const loadFailedRecipients = useCampaignStore((s) => s.loadFailedRecipients)
   const clearFailedRecipients = useCampaignStore((s) => s.clearFailedRecipients)
   const resendFailedStatus = useCampaignStore((s) => s.resendFailedStatus)
@@ -85,7 +87,8 @@ export function CampaignDetailPage() {
     void loadCreatorSettings(slug)
     void loadPages(slug)
     void loadProducts(slug)
-  }, [slug, loadCreatorSettings, loadPages, loadProducts])
+    void loadCampaigns(slug)
+  }, [slug, loadCreatorSettings, loadPages, loadProducts, loadCampaigns])
 
   useEffect(() => {
     if (!slug || !campaignId) return
@@ -185,9 +188,8 @@ export function CampaignDetailPage() {
     const statusKey = campaignStatusKey(campaign)
     const done = statusKey === 'sent' || statusKey === 'sending' || statusKey === 'failed'
     const recipients = campaign.recipientCount
-    const pending = Math.max(recipients - campaign.sentCount - campaign.failedCount, 0)
-    const share = (count: number) => (recipients ? (count / recipients) * 100 : 0)
-    const openRate = campaign.sentCount > 0 ? (campaign.uniqueOpenCount / campaign.sentCount) * 100 : null
+    // Your other sent campaigns: what "vs your average" compares with.
+    const others = allCampaigns.filter((other) => other.publicId !== campaign.publicId && campaignGroup(other) === 'sent')
     const audience = audienceName(campaign)
     const zone = userTimezone(new Date(campaign.createdAt)).zone
     const when = campaign.queuedAt
@@ -246,83 +248,20 @@ export function CampaignDetailPage() {
         />
         <div className="stack stack--lg reveal">
           <CampaignStatusAlert campaign={campaign} zone={zone} audienceSize={currentAudienceSize} />
-          <div className="grid grid--4">
-            <Metric
-              label="Recipients"
-              icon={Users}
-              value={statusKey === 'scheduled' ? (currentAudienceSize === null ? '—' : number(currentAudienceSize)) : number(recipients)}
-              meta={audience}
-            />
-            <Metric
-              label="Delivered"
-              icon={MailCheck}
-              value={done ? number(campaign.sentCount) : '—'}
-              meta={done ? `${percent(share(campaign.sentCount))} delivery rate` : 'Not sent yet'}
-            />
-            <Metric
-              label="Failed"
-              icon={MailX}
-              value={done ? number(campaign.failedCount) : '—'}
-              meta={done ? `${percent(share(campaign.failedCount))} of recipients` : undefined}
-            />
-            <Metric
-              label="Open rate"
-              icon={MailOpen}
-              value={done && openRate !== null ? percent(openRate) : '—'}
-              meta={done ? plural(campaign.uniqueOpenCount, 'unique open') : undefined}
-            />
-          </div>
-          {done && (
-            <Card title="Delivery">
-              <div className="stackbar">
-                <div
-                  className="stackbar__track"
-                  role="img"
-                  aria-label={`${campaign.sentCount} delivered, ${campaign.failedCount} failed, ${pending} still sending`}
-                >
-                  <span className="stackbar__seg stackbar__seg--success" style={{ '--w': `${share(campaign.sentCount).toFixed(1)}%` } as CSSProperties} />
-                  <span className="stackbar__seg stackbar__seg--danger" style={{ '--w': `${share(campaign.failedCount).toFixed(1)}%` } as CSSProperties} />
-                  <span className="stackbar__seg stackbar__seg--pending" style={{ '--w': `${share(pending).toFixed(1)}%` } as CSSProperties} />
-                </div>
-                <ul className="stackbar__legend" role="list">
-                  <li>
-                    <span className="stackbar__key stackbar__key--success" />
-                    Delivered <strong>{number(campaign.sentCount)}</strong>
-                  </li>
-                  <li>
-                    <span className="stackbar__key stackbar__key--danger" />
-                    Failed <strong>{number(campaign.failedCount)}</strong>
-                  </li>
-                  {pending > 0 && (
-                    <li>
-                      <span className="stackbar__key stackbar__key--pending" />
-                      Still sending <strong>{number(pending)}</strong>
-                    </li>
-                  )}
-                </ul>
-              </div>
-            </Card>
-          )}
+          <CampaignResultsBoard
+            campaign={campaign}
+            audience={audience}
+            recipients={statusKey === 'scheduled' ? currentAudienceSize : recipients}
+            others={others}
+          />
           <div className="dash">
-            <div className="span-7">
+            <div className="span-7 stack">
               <FailedRecipientsCard
                 recipients={showFailed ? failedRecipients : []}
                 status={showFailed ? failedRecipientsStatus : 'success'}
                 empty={failedEmpty}
                 onRetry={() => void loadFailedRecipients(slug, campaignId)}
               />
-            </div>
-            <div className="span-5 stack">
-              <Card title="Message">
-                <EmailPreview
-                  brandName={brandName}
-                  supportEmail={supportEmail}
-                  brandColor={creatorSettings?.primaryColor || '#CDF24B'}
-                  subject={campaign.subject}
-                  body={campaign.bodyText}
-                  button={campaign.ctaLabel ? { label: campaign.ctaLabel } : undefined}
-                />
-              </Card>
               <Card title="Details">
                 <KeyValue
                   items={[
@@ -331,6 +270,18 @@ export function CampaignDetailPage() {
                     ...(supportEmail ? [{ term: 'Reply-to', description: supportEmail }] : []),
                     { term: 'Created', description: dateTime(campaign.createdAt) },
                   ]}
+                />
+              </Card>
+            </div>
+            <div className="span-5">
+              <Card title="Message">
+                <EmailPreview
+                  brandName={brandName}
+                  supportEmail={supportEmail}
+                  brandColor={creatorSettings?.primaryColor || '#CDF24B'}
+                  subject={campaign.subject}
+                  body={campaign.bodyText}
+                  button={campaign.ctaLabel ? { label: campaign.ctaLabel } : undefined}
                 />
               </Card>
             </div>
