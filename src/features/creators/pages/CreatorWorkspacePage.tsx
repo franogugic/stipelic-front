@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Package, Plus, Wallet } from 'lucide-react'
+import { ArrowRight, Package, Plus, Wallet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { date, money, month, number, plural } from '../../../shared/lib/format'
@@ -233,13 +233,6 @@ function Dashboard({
   const feeBasisPoints = plan?.platformFeeBasisPoints ?? null
   const renewsOn = creator.currentPeriodEnd && creator.planCode.toLowerCase() !== 'free' ? creator.currentPeriodEnd : null
 
-  const checklist: Array<[string, boolean]> = [
-    ['Create a product', (summary?.productCount ?? 0) > 0],
-    ['Create a landing page', (summary?.landingPageCount ?? 0) > 0],
-    ['Activate your workspace', creator.status.toLowerCase() === 'active'],
-  ]
-  const doneCount = checklist.filter(([, done]) => done).length
-
   return (
     <div className="dash reveal">
       <article className="card card--feature span-7 hero-rev">
@@ -361,21 +354,6 @@ function Dashboard({
       <div className="span-4">
         <TopPagesCard slug={slug} pages={pages} currency={currency} />
       </div>
-
-      {doneCount < checklist.length && (
-        <div className="span-12">
-          <Card title="Getting started" subtitle={`${doneCount} of ${checklist.length} done`}>
-            <div className="stack stack--sm">
-              {checklist.map(([label, done]) => (
-                <div key={label} className={['checklist__item', done && 'checklist__item--done'].filter(Boolean).join(' ')}>
-                  <span className="checklist__dot">{done && <Check />}</span>
-                  <span className="checklist__label">{label}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

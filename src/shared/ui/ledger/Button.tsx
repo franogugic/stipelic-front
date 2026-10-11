@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, MouseEvent, ReactNode, Ref } from 'react'
 import { Link } from 'react-router-dom'
@@ -11,6 +12,8 @@ type Shared = {
   block?: boolean
   /** Leading icon; the label is then wrapped in a span, as in the prototype (also when `loading` is set). */
   icon?: LucideIcon
+  /** A chevron after the label, for buttons that open a menu. */
+  caret?: boolean
   /** Sets aria-busy; the spinner comes from the CSS. */
   loading?: boolean
   /**
@@ -52,6 +55,7 @@ export function Button(props: ButtonProps) {
     size,
     block,
     icon: Icon,
+    caret,
     loading,
     disabledReason,
     iconOnly,
@@ -97,6 +101,7 @@ export function Button(props: ButtonProps) {
     <>
       {Icon && <Icon />}
       {Icon || loading !== undefined ? <span>{children}</span> : children}
+      {caret && <ChevronDown className="btn__caret" aria-hidden="true" />}
     </>
   )
 
