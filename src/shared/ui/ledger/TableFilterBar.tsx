@@ -13,6 +13,7 @@ export function TableFilterBar({
   onStatus,
   query,
   onQuery,
+  maxLength,
   extra,
 }: {
   /** What the search looks for: "campaigns" → "Search campaigns". */
@@ -23,6 +24,7 @@ export function TableFilterBar({
   onStatus: (key: string) => void
   query: string
   onQuery: (value: string) => void
+  maxLength?: number
   /** Extra controls on the right (a product select). */
   extra?: ReactNode
 }) {
@@ -35,6 +37,7 @@ export function TableFilterBar({
           type="search"
           placeholder={`Search ${noun}`}
           aria-label={`Search ${noun}`}
+          maxLength={maxLength}
           value={query}
           onChange={(event) => onQuery(event.target.value)}
         />

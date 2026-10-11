@@ -1,20 +1,17 @@
-import { Download, Landmark, Percent, Receipt, Undo2, Wallet } from 'lucide-react'
+import { Download, Receipt } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { number } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
   Button,
-  Card,
   EmptyState,
   ErrorState,
-  Metric,
-  Money,
   PageHeader,
-  SearchInput,
   Select,
   SkeletonCards,
   SkeletonRows,
+  TableFilterBar,
   TableFooter,
   useToast,
 } from '../../../shared/ui/ledger'
@@ -23,6 +20,7 @@ import { listLandingPages } from '../../landing-pages/api/landing-pages-api'
 import { listProducts } from '../../products/api/products-api'
 import { exportOrders, getOrderSummary, listOrders } from '../api/orders-api'
 import type { OrderFilters } from '../api/orders-api'
+import { OrdersBoard } from '../components/OrdersBoard'
 import { OrdersTable } from '../components/OrdersTable'
 import type { Order, OrderStatus, OrderSummary } from '../model/types'
 
@@ -30,7 +28,14 @@ const PAGE_SIZE = 12
 const SEARCH_MAX_LENGTH = 100
 const SEARCH_DEBOUNCE_MS = 350
 
-const STATUSES: OrderStatus[] = ['Paid', 'Pending', 'Failed', 'Refunded']
+const STATUS_FILTERS: Array<[string, string]> = [
+  ['all', 'All'],
+  ['paid', 'Paid'],
+  ['pending', 'Pending'],
+  ['failed', 'Failed'],
+  ['refunded', 'Refunded'],
+]
+const STATUS_OF: Record<string, OrderStatus> = { paid: 'Paid', pending: 'Pending', failed: 'Failed', refunded: 'Refunded' }
 
 type Option = { value: string; label: string }
 type Summary = { key: string; summary: OrderSummary | null }
@@ -41,6 +46,14 @@ export function OrdersPage() {
   const { slug = '' } = useParams<{ slug: string }>()
   const toast = useToast()
   const creatorCurrency = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator.defaultCurrency : null))
+  const creator = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator : null))
+  const creatorPlans = useCreatorStore((s) => s.creatorPlans)
+  const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // The status filter lives in the URL, so a filtered list can be linked to.
+  const statusParam = searchParams.get('status') ?? ''
+  const statusKey = STATUS_FILTERS.some(([key]) => key === statusParam) && statusParam !== 'all' ? statusParam : 'all'
+  const status = statusKey === 'all' ? '' : STATUS_OF[statusKey]
 
   const [summary, setSummary] = useState<Summary | null>(null)
   const [productOptions, setProductOptions] = useState<Option[]>([])
@@ -49,7 +62,6 @@ export function OrdersPage() {
   const [search, setSearch] = useState('')
   const [term, setTerm] = useState('')
   const [productId, setProductId] = useState('')
-  const [status, setStatus] = useState('')
   const [pageId, setPageId] = useState('')
   const [attempt, setAttempt] = useState(0)
 
@@ -72,6 +84,10 @@ export function OrdersPage() {
       .then((data) => setSummary({ key: slug, summary: data }))
       .catch(() => setSummary({ key: slug, summary: null }))
   }, [slug])
+
+  useEffect(() => {
+    void loadCreatorPlans()
+  }, [loadCreatorPlans])
 
   useEffect(() => {
     if (!slug) return
@@ -153,12 +169,23 @@ export function OrdersPage() {
     }
   }
 
+  const setStatusFilter = (key: string) =>
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (key === 'all') next.delete('status')
+        else next.set('status', key)
+        return next
+      },
+      { replace: true },
+    )
+
   const clearFilters = () => {
     setSearch('')
     setTerm('')
     setProductId('')
-    setStatus('')
     setPageId('')
+    setStatusFilter('all')
   }
 
   const total = summaryState?.summary?.totalOrderCount
@@ -215,51 +242,56 @@ export function OrdersPage() {
         />
       )
     }
+    const plan = creatorPlans.find((candidate) => candidate.code === creator?.planCode)
+    const statusCount = (key: string) => {
+      if (key === 'all') return data.totalOrderCount
+      if (key === 'paid') return data.paidOrderCount
+      if (key === 'pending') return data.pendingOrderCount
+      if (key === 'failed') return data.failedOrderCount
+      return data.refundedOrderCount
+    }
     return (
-      <>
-        <div className="grid grid--4 reveal" style={{ marginBottom: 'var(--space-6)' }}>
-          <Metric label="Gross revenue" icon={Wallet} value={<Money amountCents={data.totalPaidAmountCents} currency={currency} />} />
-          <Metric label="Platform fees" icon={Percent} value={<Money amountCents={data.totalPlatformFeeCents} currency={currency} />} />
-          <Metric label="Net to you" icon={Landmark} value={<Money amountCents={data.netAmountCents} currency={currency} />} />
-          <Metric label="Refunded" icon={Undo2} value={number(data.refundedOrderCount)} meta="orders" />
-        </div>
-        <Card>
-          <div className="toolbar">
-            <SearchInput
-              placeholder="Search customer or email"
-              aria-label="Search customer or email"
-              maxLength={SEARCH_MAX_LENGTH}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            <Select aria-label="Product" value={productId} onChange={(event) => setProductId(event.target.value)}>
-              <option value="">All products</option>
-              {productOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-            <Select aria-label="Status" value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="">All statuses</option>
-              {STATUSES.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </Select>
-            <Select aria-label="Landing page" value={pageId} onChange={(event) => setPageId(event.target.value)}>
-              <option value="">All pages</option>
-              {pageOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </div>
+      <div className="stack stack--lg reveal">
+        <OrdersBoard
+          summary={data}
+          currency={currency}
+          planName={creator?.planName ?? null}
+          feeBasisPoints={plan?.platformFeeBasisPoints ?? null}
+        />
+        <section className="card" aria-label="Order list">
+          <TableFilterBar
+            noun="customer or email"
+            statuses={STATUS_FILTERS}
+            status={statusKey}
+            count={statusCount}
+            onStatus={setStatusFilter}
+            query={search}
+            onQuery={setSearch}
+            maxLength={SEARCH_MAX_LENGTH}
+            extra={
+              <>
+                <Select aria-label="Product" value={productId} onChange={(event) => setProductId(event.target.value)}>
+                  <option value="">All products</option>
+                  {productOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+                <Select aria-label="Landing page" value={pageId} onChange={(event) => setPageId(event.target.value)}>
+                  <option value="">All pages</option>
+                  {pageOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </>
+            }
+          />
           {list()}
-        </Card>
-      </>
+        </section>
+      </div>
     )
   }
 

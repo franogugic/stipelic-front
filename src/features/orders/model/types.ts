@@ -30,6 +30,21 @@ export interface OrderSummary {
   refundedOrderCount: number
   /** Every order of the workspace, whatever its status (no filter applies). */
   totalOrderCount: number
+  pendingOrderCount: number
+  failedOrderCount: number
+  /** Money returned to buyers: the sum over refunded orders. */
+  refundedAmountCents: number
+  /** The last 12 calendar months in the creator's timezone, oldest first, the current month last. */
+  monthlyTrend: OrderMonthTrend[]
+}
+
+export interface OrderMonthTrend {
+  /** "yyyy-MM" */
+  month: string
+  grossCents: number
+  feeCents: number
+  netCents: number
+  refundedCount: number
 }
 
 export interface HomeSummary {

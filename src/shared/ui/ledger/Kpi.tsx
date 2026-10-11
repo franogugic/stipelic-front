@@ -1,6 +1,7 @@
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { CSSProperties, ReactNode } from 'react'
+import { percent } from '../../lib/format'
 import { Sparkline } from './Sparkline'
 
 /** One KPI cell of a `.board`: label, big value, a meta line, and an optional trend or share bar. */
@@ -62,6 +63,28 @@ export function PointsBadge({
     <span className={`delta delta--${tone}`}>
       {!flat && <Icon />}
       {flat ? '±0' : Math.abs(diff).toFixed(1)} pts
+    </span>
+  )
+}
+
+/** Change since last month, in percent: "New" when there was nothing before, a flat dash when both are zero. */
+export function DeltaBadge({ current, previous }: { current: number; previous: number }) {
+  if (!previous) {
+    return current ? (
+      <span className="delta delta--up">
+        <ArrowUpRight />
+        New
+      </span>
+    ) : (
+      <span className="delta delta--flat">—</span>
+    )
+  }
+  const change = ((current - previous) / previous) * 100
+  const tone = Math.abs(change) < 0.5 ? 'flat' : change > 0 ? 'up' : 'down'
+  return (
+    <span className={`delta delta--${tone}`}>
+      {tone !== 'flat' && (change > 0 ? <ArrowUpRight /> : <ArrowDownRight />)}
+      {percent(Math.abs(change), 0)}
     </span>
   )
 }
