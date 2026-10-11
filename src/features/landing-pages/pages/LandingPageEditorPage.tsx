@@ -18,6 +18,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useReducer, useRef, use
 import { useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { LeaveModal } from '../../../shared/ui/LeaveModal'
 import { time } from '../../../shared/lib/format'
 import { Button, ErrorState, PageHeader, SkeletonBlock, UrlPill, useToast } from '../../../shared/ui/ledger'
 import { useCreatorStore } from '../../creators/model/creator-store'
@@ -28,7 +29,6 @@ import { LandingDropMarker, LandingSection, LandingShell } from '../components/L
 import type { LandingContext, RenderedSection } from '../components/LandingSections'
 import {
   DeleteSectionDialog,
-  LeaveModal,
   PublishBlockedModal,
   PublishedModal,
   SectionPickerModal,
@@ -38,7 +38,7 @@ import type { PublishBlock } from '../components/editor/EditorDialogs'
 import { NothingSelected, SectionForm } from '../components/editor/SectionForm'
 import type { EditorPageContext } from '../components/editor/SectionForm'
 import { SectionsCard } from '../components/editor/SectionsCard'
-import { useLeaveGuard } from '../lib/use-leave-guard'
+import { useLeaveGuard } from '../../../shared/lib/use-leave-guard'
 import { draftReducer, emptyDraft, hasUnsavedLinkTargets, toSaveRequest } from '../model/editor-draft'
 import type { Draft, DraftSection } from '../model/editor-draft'
 import { useLandingPageStore } from '../model/landing-page-store'

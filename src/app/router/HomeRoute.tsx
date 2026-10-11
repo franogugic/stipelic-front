@@ -1,7 +1,7 @@
 import { HomePage } from '../../features/auth/pages/HomePage'
 import { useAuthStore } from '../../features/auth/model/auth-store'
 import { LumaHomePage } from '../../features/home/pages/LumaHomePage'
-import { LoadingPage } from './LoadingPage'
+import { LoadingPage } from '../../shared/ui/LoadingPage'
 
 /**
  * `/`: the marketing homepage for a logged-out visitor, today's redirect (check inbox, workspace or welcome) for a

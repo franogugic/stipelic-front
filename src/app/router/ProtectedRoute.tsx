@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
-import { LoadingPage } from './LoadingPage'
+import { LoadingPage } from '../../shared/ui/LoadingPage'
 
 export function ProtectedRoute() {
   const currentUser = useAuthStore((state) => state.currentUser)
