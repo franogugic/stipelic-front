@@ -64,6 +64,12 @@ export interface HomeSummary {
   viewsTrend: number[]
   monthlyRevenueTrend: number[]
   totalPlatformFeeCents: number
+  /** Paid orders per calendar month, the last 12 (oldest first, the current month last). */
+  monthlyPaidOrderCounts: number[]
+  /** Distinct buyers over paid orders, all time. */
+  customerCount: number
+  refundedOrderCount: number
+  refundedAmountCents: number
 }
 
 export type DashboardTrendRange = '30d' | '6m' | '12m'
