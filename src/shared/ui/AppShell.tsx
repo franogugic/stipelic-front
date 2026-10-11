@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { useDocumentTitle } from '../lib/use-document-title'
+import '../model/palette-store'
 import { Brand, Button, ThemeToggleButton } from './ledger'
 import { NAV_SECTION_LABELS } from './nav-sections'
 import type { NavSection } from './nav-sections'
@@ -86,6 +87,13 @@ export function AppShell({ slug, activeSection, documentTitle, children }: AppSh
   }, [closeDrawer])
 
   useDocumentTitle(documentTitle ?? `${NAV_SECTION_LABELS[activeSection]} · Luma`)
+
+  // Marks the page as signed-in app chrome: only these pages wear the chosen colour palette (see lib/palette.ts).
+  useEffect(() => {
+    const root = document.documentElement
+    root.setAttribute('data-app', '')
+    return () => root.removeAttribute('data-app')
+  }, [])
 
   return (
     <>

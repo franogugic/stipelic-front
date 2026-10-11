@@ -30,6 +30,23 @@
         document.documentElement.dataset.theme = theme
       })()
     </script>
+    <script>
+      // The signed-in app (/app, /admin) may wear a colour palette: its CSS was saved with the choice and is applied
+      // before the first paint. The homepage, auth and creators' public pages never get one.
+      ;(function () {
+        var path = window.location.pathname
+        if (path.indexOf('/app/') !== 0 && path.indexOf('/admin') !== 0) return
+        document.documentElement.setAttribute('data-app', '')
+        try {
+          var css = window.localStorage.getItem('luma.palette.css')
+          if (!css) return
+          var style = document.createElement('style')
+          style.id = 'luma-palette'
+          style.textContent = css
+          document.head.appendChild(style)
+        } catch (e) {}
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

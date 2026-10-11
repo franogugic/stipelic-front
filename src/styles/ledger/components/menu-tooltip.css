@@ -37,6 +37,15 @@
   color: var(--color-text-muted);
 }
 
+.menu__item .menu__check {
+  margin-left: auto;
+  color: var(--color-text);
+}
+
+.menu__item[aria-checked="true"] {
+  font-weight: var(--weight-medium);
+}
+
 .menu__item:hover,
 .menu__item:focus-visible {
   background: var(--color-hover);

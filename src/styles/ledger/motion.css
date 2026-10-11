@@ -51,8 +51,10 @@
 }
 
 /* Staggered entrance for page content blocks */
+/* `backwards`, not `both`: a transform kept alive after the animation would make
+   every child a containing block, and fixed menus inside it would land off-place. */
 .reveal > * {
-  animation: rise-in var(--duration-slow) var(--ease-out) both;
+  animation: rise-in var(--duration-slow) var(--ease-out) backwards;
 }
 
 .reveal > *:nth-child(2) { animation-delay: 40ms; }
