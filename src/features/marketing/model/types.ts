@@ -97,21 +97,6 @@ export type CampaignAudiences = {
   products: { publicId: string; name: string; recipientCount: number }[]
 }
 
-export type OpenRateTrendPoint = {
-  // "yyyy-MM" (UTC)
-  month: string
-  // Ratio 0–1, null when nothing was delivered that month.
-  rate: number | null
-  sent: number
-  opens: number
-}
-
-export type OpenRateTrend = {
-  points: OpenRateTrendPoint[]
-  currentRate: number | null
-  averageRate: number | null
-}
-
 export type FailedRecipient = {
   email: string
   lastError: string | null
