@@ -136,4 +136,6 @@ export type ContactStats = {
   growth: Array<{ month: string; total: number }>
   /** Landing pages (archived included) with at least one contact, most contacts first. */
   sources: Array<{ landingPagePublicId: string; title: string; count: number }>
+  /** The same 12 months: contacts first captured, and opt-outs recorded, in each. */
+  monthly: Array<{ month: string; joined: number; unsubscribed: number }>
 }

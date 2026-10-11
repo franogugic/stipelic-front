@@ -1,34 +1,39 @@
-import { Download, Send, Trash2, UserCheck, UserPlus, Users, UserX } from 'lucide-react'
+import { Download, Send, Trash2, Users } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { date, month, monthYear, number, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
+  AreaChart,
   Badge,
-  Bars,
   Button,
   Card,
   ConfirmDialog,
   EmptyState,
   ErrorState,
   HBars,
-  Metric,
   PageHeader,
-  SearchInput,
   Select,
   SkeletonCards,
   SkeletonRows,
   StatusBadge,
+  TableFilterBar,
   TableFooter,
   subscriberStatusKey,
   useToast,
 } from '../../../shared/ui/ledger'
 import { deleteContact, exportContacts, getContactStats, searchContacts } from '../api/contacts-api'
+import { SubscribersBoard } from '../components/SubscribersBoard'
 import type { Contact, ContactStats } from '../model/types'
 
 const PAGE_SIZE = 12
 const SEARCH_MAX_LENGTH = 100
 const SEARCH_DEBOUNCE_MS = 350
+const STATUS_FILTERS: Array<[string, string]> = [
+  ['all', 'All'],
+  ['active', 'Active'],
+  ['unsubscribed', 'Unsubscribed'],
+]
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 type Stats = { key: string; stats: ContactStats | null }
@@ -37,7 +42,7 @@ type Results = { key: string; contacts: Contact[]; hasMore: boolean; error: bool
 
 export function SubscribersPage() {
   const { slug = '' } = useParams<{ slug: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const toast = useToast()
 
   const [stats, setStats] = useState<Stats | null>(null)
@@ -55,8 +60,13 @@ export function SubscribersPage() {
   const [deleteTarget, setDeleteTarget] = useState<Contact | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  const filtersActive = Boolean(sourceId || term)
-  const resultsKey = `${slug}|${sourceId}|${term}|${attempt}`
+  // The status filter lives in the URL, so a filtered list can be linked to.
+  const statusParam = searchParams.get('status') ?? ''
+  const statusKey = statusParam === 'active' || statusParam === 'unsubscribed' ? statusParam : 'all'
+  const status = statusKey === 'all' ? undefined : statusKey
+
+  const filtersActive = Boolean(sourceId || term || status)
+  const resultsKey = `${slug}|${sourceId}|${term}|${statusKey}|${attempt}`
 
   const loadStats = useCallback(() => {
     getContactStats(slug)
@@ -78,13 +88,13 @@ export function SubscribersPage() {
   useEffect(() => {
     if (!slug) return
     let current = true
-    searchContacts(slug, { search: term || undefined, landingPageId: sourceId || undefined, limit: PAGE_SIZE })
+    searchContacts(slug, { search: term || undefined, landingPageId: sourceId || undefined, status, limit: PAGE_SIZE })
       .then((page) => current && setResults({ key: resultsKey, contacts: page.contacts, hasMore: page.hasMore, error: false }))
       .catch(() => current && setResults({ key: resultsKey, contacts: [], hasMore: false, error: true }))
     return () => {
       current = false
     }
-  }, [slug, sourceId, term, resultsKey])
+  }, [slug, sourceId, term, status, resultsKey])
 
   const statsState = stats?.key === slug ? stats : null
   const first = results?.key === resultsKey ? results : null
@@ -107,6 +117,7 @@ export function SubscribersPage() {
     searchContacts(slug, {
       search: term || undefined,
       landingPageId: sourceId || undefined,
+      status,
       afterEmail: last.email,
       limit: PAGE_SIZE,
     })
@@ -125,7 +136,7 @@ export function SubscribersPage() {
   const runExport = async () => {
     setExporting(true)
     try {
-      await exportContacts(slug, { search: term || undefined, landingPageId: sourceId || undefined })
+      await exportContacts(slug, { search: term || undefined, landingPageId: sourceId || undefined, status })
     } catch (error) {
       toast({
         tone: 'danger',
@@ -158,17 +169,27 @@ export function SubscribersPage() {
     }
   }
 
+  const setStatusFilter = (key: string) =>
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (key === 'all') next.delete('status')
+        else next.set('status', key)
+        return next
+      },
+      { replace: true },
+    )
+
   const clearFilters = () => {
     setSearch('')
     setTerm('')
     setSourceId('')
+    setStatusFilter('all')
   }
 
   // With a filter the API has no filtered total, so the count is what is loaded ("+" while there is more).
   const loadedCount = `${number(contacts.length)}${hasMore ? '+' : ''}`
   const showingText = filtersActive || total === undefined ? `Showing ${loadedCount}` : `Showing ${number(contacts.length)} of ${number(total)}`
-  const resultsCount = filtersActive || total === undefined ? contacts.length : total
-  const resultsText = hasMore && filtersActive ? `${loadedCount} results` : plural(resultsCount, 'result')
 
   const list = () => {
     if (!first) return <SkeletonRows count={6} />
@@ -189,9 +210,9 @@ export function SubscribersPage() {
           <table className="table table--stack">
             <thead>
               <tr>
-                <th scope="col">Email</th>
-                <th scope="col">Sources</th>
-                <th scope="col">Joined</th>
+                <th scope="col">Subscriber</th>
+                <th scope="col">Joined on</th>
+                <th scope="col">Date</th>
                 <th scope="col">Status</th>
                 <th scope="col" className="is-actions">
                   <span className="sr-only">Actions</span>
@@ -204,7 +225,7 @@ export function SubscribersPage() {
                   <td className="is-lead">
                     <span className="table__primary">{contact.email}</span>
                   </td>
-                  <td data-label="Sources">
+                  <td data-label="Joined on">
                     <div className="cluster cluster--sm">
                       {contact.sourceList.map((source) => (
                         <Badge tone="outline" key={source.landingPagePublicId}>
@@ -213,7 +234,7 @@ export function SubscribersPage() {
                       ))}
                     </div>
                   </td>
-                  <td data-label="Joined" className="num">
+                  <td data-label="Date" className="num">
                     {date(contact.firstCapturedAt)}
                   </td>
                   <td data-label="Status">
@@ -259,44 +280,51 @@ export function SubscribersPage() {
         />
       )
     }
+    const statusCount = (key: string) =>
+      key === 'active' ? data.active : key === 'unsubscribed' ? data.unsubscribed : data.total
     return (
-      <div className="dash reveal">
-        <div className="span-12 grid grid--4">
-          <Metric label="Total" icon={Users} value={number(data.total)} />
-          <Metric label="Active" icon={UserCheck} value={number(data.active)} />
-          <Metric label="New this month" icon={UserPlus} value={number(data.newThisMonth)} />
-          <Metric label="Unsubscribed" icon={UserX} value={number(data.unsubscribed)} />
-        </div>
-        <div className="span-8">
-          <Card title="Growth" subtitle="Total subscribers by month">
-            <Bars
-              values={data.growth.map((point) => point.total)}
-              labels={data.growth.map((point) => month(`${point.month}-15`))}
-              tooltipLabels={data.growth.map((point) => monthYear(`${point.month}-15`))}
-              formatValue={number}
-              label="Total subscribers by month"
-            />
-          </Card>
-        </div>
-        <div className="span-4">
-          <Card title="Sources">
-            {data.sources.length > 0 ? (
-              <HBars rows={data.sources.map((source) => ({ label: source.title, value: source.count, display: number(source.count) }))} />
-            ) : (
-              <p className="text-sm text-muted">No sources yet.</p>
-            )}
-          </Card>
-        </div>
-        <div className="span-12">
-          <Card>
-            <div className="toolbar">
-              <SearchInput
-                placeholder="Search by email"
-                aria-label="Search by email"
-                maxLength={SEARCH_MAX_LENGTH}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
+      <div className="stack stack--lg reveal">
+        <SubscribersBoard stats={data} />
+        <div className="dash">
+          <div className="span-8">
+            <Card title="Growth" subtitle="Everyone subscribed at the end of each month">
+              <AreaChart
+                labels={data.growth.map((point) => month(`${point.month}-15`))}
+                titles={data.growth.map((point) => monthYear(`${point.month}-15`))}
+                values={data.growth.map((point) => point.total)}
+                label="Subscribers at the end of each month"
+                formatValue={(value) => number(Math.round(value))}
+                describe={(value) => plural(Math.round(value), 'subscriber')}
               />
+            </Card>
+          </div>
+          <div className="span-4">
+            <Card title="Where they joined" subtitle="Some joined on more than one page">
+              {data.sources.length > 0 ? (
+                <div className="fill-stack">
+                  <HBars rows={data.sources.map((source) => ({ label: source.title, value: source.count, display: number(source.count) }))} />
+                  <p className="fill-stack__foot">
+                    <span>{plural(data.sources.length, 'page')} collecting emails</span>
+                    <strong>{plural(data.total, 'person', 'people')}</strong>
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted">No sources yet.</p>
+              )}
+            </Card>
+          </div>
+        </div>
+        <section className="card" aria-label="Subscriber list">
+          <TableFilterBar
+            noun="email"
+            statuses={STATUS_FILTERS}
+            status={statusKey}
+            count={statusCount}
+            onStatus={setStatusFilter}
+            query={search}
+            onQuery={setSearch}
+            maxLength={SEARCH_MAX_LENGTH}
+            extra={
               <Select aria-label="Source" value={sourceId} onChange={(event) => setSourceId(event.target.value)}>
                 <option value="">All sources</option>
                 {/* A source from the link that isn't among the pages with contacts still has to be selectable. */}
@@ -309,11 +337,10 @@ export function SubscribersPage() {
                   </option>
                 ))}
               </Select>
-              {first && !first.error && <span className="text-sm text-muted">{resultsText}</span>}
-            </div>
-            {list()}
-          </Card>
-        </div>
+            }
+          />
+          {list()}
+        </section>
       </div>
     )
   }

@@ -18,12 +18,15 @@ export type ContactFilters = {
   search?: string
   /** Public id of the landing page the contact signed up on. */
   landingPageId?: string
+  /** "active" or "unsubscribed"; omitted for everyone. */
+  status?: string
 }
 
 function filterParams(filters: ContactFilters) {
   const params = new URLSearchParams()
   if (filters.search) params.set('search', filters.search)
   if (filters.landingPageId) params.set('landingPageId', filters.landingPageId)
+  if (filters.status) params.set('status', filters.status)
   return params
 }
 
