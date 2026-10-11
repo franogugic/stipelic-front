@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { applyPalette, readStoredPalette, storePalette } from '../lib/palette'
+import { readStoredPalette, storePalette } from '../lib/palette'
 import type { Palette } from '../lib/palette'
 
 type PaletteState = {
@@ -9,9 +9,9 @@ type PaletteState = {
 
 export const usePaletteStore = create<PaletteState>()((set) => {
   const initial = readStoredPalette()
-  // The inline script in index.html applied the stored CSS before the first paint; this keeps it in step with the
-  // derivation in code (a palette tweak in a new release replaces the cached CSS on the first load).
-  applyPalette(initial)
+  // The inline script in index.html applied the stored CSS before the first paint; storing it again rewrites that CSS
+  // from the current derivation, so a palette tweak in a new release never leaves a stale copy behind.
+  storePalette(initial)
   return {
     palette: initial,
     setPalette: (palette) => {

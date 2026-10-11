@@ -8,18 +8,38 @@ import {
   ConfirmDialog,
   EmptyState,
   ErrorState,
+  FilterBar,
   PageHeader,
   SkeletonCards,
-  Switch,
   useToast,
 } from '../../../shared/ui/ledger'
+import type { FilterView } from '../../../shared/ui/ledger'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { CreateLandingPageModal } from '../components/CreateLandingPageModal'
 import { LandingPageTile } from '../components/LandingPageTile'
+import { PagesTable } from '../components/PagesTable'
 import { useLandingPageStore } from '../model/landing-page-store'
 import type { LandingPage } from '../model/types'
 
 type PageAction = 'publish' | 'unpublish' | 'archive' | 'restore'
+
+const PAGE_TYPES: Array<[string, string]> = [
+  ['all', 'All'],
+  ['sales', 'Sales'],
+  ['lead', 'Lead capture'],
+]
+
+const VIEW_KEY = 'landing-pages-view'
+
+/** The remembered grid/list choice; the URL wins when it has one. Storage can be unavailable. */
+function storedView(): FilterView | null {
+  try {
+    const value = window.localStorage.getItem(VIEW_KEY)
+    return value === 'list' || value === 'grid' ? value : null
+  } catch {
+    return null
+  }
+}
 
 const SUCCESS_TITLES: Record<PageAction, string> = {
   publish: 'Page published',
@@ -41,9 +61,7 @@ export function LandingPagesPage() {
 
   const pages = useLandingPageStore((s) => s.pages)
   const listStatus = useLandingPageStore((s) => s.listStatus)
-  const includeArchived = useLandingPageStore((s) => s.includeArchived)
   const loadPages = useLandingPageStore((s) => s.loadPages)
-  const setIncludeArchived = useLandingPageStore((s) => s.setIncludeArchived)
   const publishPage = useLandingPageStore((s) => s.publishPage)
   const unpublishPage = useLandingPageStore((s) => s.unpublishPage)
   const archivePage = useLandingPageStore((s) => s.archivePage)
@@ -73,14 +91,52 @@ export function LandingPagesPage() {
 
   // Fresh numbers on every visit (and for another workspace's address).
   useEffect(() => {
-    if (slug) void loadPages(slug, useLandingPageStore.getState().includeArchived)
+    if (slug) void loadPages(slug, true)
   }, [slug, loadPages])
+
+  // Type, archived and view live in the URL (so a filtered list can be linked to); the search box filters in place.
+  const typeParam = searchParams.get('type')
+  const type = PAGE_TYPES.some(([key]) => key === typeParam) ? (typeParam as string) : 'all'
+  const showArchived = searchParams.get('archived') === '1'
+  const viewParam = searchParams.get('view')
+  const view: FilterView = viewParam === 'list' || viewParam === 'grid' ? viewParam : (storedView() ?? 'grid')
+  const [query, setQuery] = useState('')
+
+  const updateParams = (changes: Record<string, string | null>) =>
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        for (const [key, value] of Object.entries(changes)) {
+          if (value === null) next.delete(key)
+          else next.set(key, value)
+        }
+        return next
+      },
+      { replace: true },
+    )
+
+  const chooseView = (next: FilterView) => {
+    try {
+      window.localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      // The choice still lives in the URL.
+    }
+    updateParams({ view: next === 'grid' ? null : next })
+  }
 
   const plan = creatorPlans.find((candidate) => candidate.code === creator?.planCode)
   const maxPages = plan?.limits['max_landing_pages']
   const activePageCount = pages.filter((page) => page.status !== 'Archived').length
-  // With "Show archived", archived pages come after the live ones (stable, so the API's order is kept within each).
-  const sortedPages = [...pages].sort((a, b) => Number(a.status === 'Archived') - Number(b.status === 'Archived'))
+  // Archived pages are always loaded, so "Show archived" and the counts are client-side. They come after the live
+  // ones (stable, so the API's order is kept within each).
+  const inScope = pages
+    .filter((page) => showArchived || page.status !== 'Archived')
+    .sort((a, b) => Number(a.status === 'Archived') - Number(b.status === 'Archived'))
+  const typeKey = (page: LandingPage) => (page.type === 'Sales' ? 'sales' : 'lead')
+  const countOf = (key: string) => inScope.filter((page) => key === 'all' || typeKey(page) === key).length
+  const byType = inScope.filter((page) => type === 'all' || typeKey(page) === type)
+  const needle = query.trim().toLowerCase()
+  const visiblePages = needle ? byType.filter((page) => page.title.toLowerCase().includes(needle)) : byType
   const atLimit = maxPages !== undefined && maxPages >= 0 && activePageCount >= maxPages
   const limitReason =
     atLimit && creator
@@ -124,7 +180,13 @@ export function LandingPagesPage() {
     const error = useLandingPageStore.getState().mutateError
     resetMutateFeedback()
     setBusyPageId(null)
-    if (ok) toast({ tone: 'success', title: SUCCESS_TITLES[action] })
+    if (ok) {
+      toast({
+        tone: 'success',
+        title: SUCCESS_TITLES[action],
+        message: action === 'restore' ? `${page.title} is back as a draft.` : undefined,
+      })
+    }
     else toast({ tone: 'danger', title: error ?? 'Something went wrong. Please try again.' })
   }
 
@@ -145,7 +207,7 @@ export function LandingPagesPage() {
   )
 
   const content = () => {
-    if (listStatus === 'error') return <ErrorState onRetry={() => void loadPages(slug, includeArchived)} />
+    if (listStatus === 'error') return <ErrorState onRetry={() => void loadPages(slug, true)} />
     if (listStatus !== 'success') return <SkeletonCards count={3} />
     if (pages.length === 0) {
       return (
@@ -157,21 +219,59 @@ export function LandingPagesPage() {
         />
       )
     }
+    const pageActions = {
+      onTogglePublish: (page: LandingPage) => void runAction(page, page.status === 'Published' ? 'unpublish' : 'publish'),
+      onArchive: (page: LandingPage) => setArchiveTarget(page),
+      onRestore: (page: LandingPage) => void runAction(page, 'restore'),
+      onCopyLink: (page: LandingPage) => void copyLink(page),
+    }
+    const currency = creator?.defaultCurrency ?? 'EUR'
     return (
-      <div className="tiles reveal">
-        {sortedPages.map((page) => (
-          <LandingPageTile
-            key={page.publicId}
-            page={page}
-            creatorSlug={slug}
-            currency={creator?.defaultCurrency ?? 'EUR'}
-            busy={busyPageId === page.publicId}
-            onTogglePublish={() => void runAction(page, page.status === 'Published' ? 'unpublish' : 'publish')}
-            onArchive={() => setArchiveTarget(page)}
-            onRestore={() => void runAction(page, 'restore')}
-            onCopyLink={() => void copyLink(page)}
-          />
-        ))}
+      <div className="stack stack--lg reveal">
+        <FilterBar
+          noun="pages"
+          types={PAGE_TYPES}
+          type={type}
+          count={countOf}
+          onType={(key) => updateParams({ type: key === 'all' ? null : key })}
+          query={query}
+          onQuery={setQuery}
+          showArchived={showArchived}
+          onShowArchived={(value) => updateParams({ archived: value ? '1' : null })}
+          view={view}
+          onView={chooseView}
+        />
+        {visiblePages.length > 0 &&
+          (view === 'list' ? (
+            <PagesTable
+              pages={visiblePages}
+              creatorSlug={slug}
+              currency={currency}
+              busyPageId={busyPageId}
+              {...pageActions}
+            />
+          ) : (
+            <div className="tiles">
+              {visiblePages.map((page) => (
+                <LandingPageTile
+                  key={page.publicId}
+                  page={page}
+                  creatorSlug={slug}
+                  currency={currency}
+                  busy={busyPageId === page.publicId}
+                  onTogglePublish={() => pageActions.onTogglePublish(page)}
+                  onArchive={() => pageActions.onArchive(page)}
+                  onRestore={() => pageActions.onRestore(page)}
+                  onCopyLink={() => pageActions.onCopyLink(page)}
+                />
+              ))}
+            </div>
+          ))}
+        {visiblePages.length === 0 && (
+          <p className="filter-results text-sm text-muted">
+            {byType.length > 0 ? 'No pages match your search.' : 'No pages of this type yet.'}
+          </p>
+        )}
       </div>
     )
   }
@@ -191,16 +291,7 @@ export function LandingPagesPage() {
               </>
             }
             subtitle="Pages that sell your products and collect emails."
-            actions={
-              <>
-                <Switch
-                  label="Show archived"
-                  checked={includeArchived}
-                  onChange={(event) => setIncludeArchived(slug, event.target.checked)}
-                />
-                {newPageButton}
-              </>
-            }
+            actions={newPageButton}
           />
           {content()}
 

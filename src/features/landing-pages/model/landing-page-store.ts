@@ -37,7 +37,6 @@ type LandingPageState = {
   includeArchived: boolean
 
   loadPages: (slug: string, includeArchived?: boolean) => Promise<void>
-  setIncludeArchived: (slug: string, includeArchived: boolean) => void
   loadPage: (slug: string, pageId: string) => Promise<void>
   loadTemplates: (slug: string) => Promise<void>
   createPage: (slug: string, request: CreateLandingPageRequest) => Promise<LandingPage | null>
@@ -74,11 +73,6 @@ export const useLandingPageStore = create<LandingPageState>((set, get) => ({
     } catch {
       set({ listStatus: 'error' })
     }
-  },
-
-  setIncludeArchived: (slug, includeArchived) => {
-    set({ listStatus: 'idle', includeArchived })
-    void useLandingPageStore.getState().loadPages(slug, includeArchived)
   },
 
   loadPage: async (slug, pageId) => {
