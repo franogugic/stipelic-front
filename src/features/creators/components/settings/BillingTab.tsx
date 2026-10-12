@@ -228,7 +228,7 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
               <Button variant="accent" icon={ArrowUpRight} loading={portalOpening} onClick={changePlan}>
                 Change plan
               </Button>
-              {paid && !isCancelling && status === 'active' && (
+              {paid && !isCancelling && (status === 'active' || status === 'past_due') && (
                 <button className="btn billing__cancel" type="button" onClick={() => setConfirmCancel(true)}>
                   Cancel subscription
                 </button>

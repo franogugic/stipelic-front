@@ -25,7 +25,6 @@ type ProductState = {
   updateProduct: (slug: string, productId: string, request: UpdateProductRequest) => Promise<Product | null>
   archiveProduct: (slug: string, productId: string) => Promise<boolean>
   restoreProduct: (slug: string, productId: string) => Promise<boolean>
-  setIncludeArchived: (slug: string, includeArchived: boolean) => void
   resetCreateFeedback: () => void
   resetUpdateFeedback: () => void
   resetArchiveFeedback: () => void
@@ -60,11 +59,6 @@ export const useProductStore = create<ProductState>((set) => ({
       const message = err instanceof ApiError ? err.message : 'Failed to load products.'
       set({ loadStatus: 'error', loadError: message })
     }
-  },
-
-  setIncludeArchived: (slug, includeArchived) => {
-    set({ loadStatus: 'idle', includeArchived })
-    void useProductStore.getState().loadProducts(slug, includeArchived)
   },
 
   createProduct: async (slug, request) => {

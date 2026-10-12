@@ -1,6 +1,6 @@
-import { Loader2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
+import { LoadingPage } from '../../../shared/ui/LoadingPage'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { useAuthStore } from '../model/auth-store'
 
@@ -28,9 +28,5 @@ export function HomePage() {
     return <Navigate to="/welcome" replace />
   }
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-950">
-      <Loader2 className="animate-spin text-white/20" size={22} />
-    </div>
-  )
+  return <LoadingPage />
 }

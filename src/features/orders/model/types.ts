@@ -2,7 +2,8 @@ export type OrderStatus = 'Pending' | 'Paid' | 'Failed' | 'Refunded'
 
 export interface Order {
   publicId: string
-  email: string
+  /** Null while Pending: the buyer types it into Stripe Checkout and it arrives with the payment. */
+  email: string | null
   name: string | null
   productName: string
   amountCents: number
@@ -29,6 +30,21 @@ export interface OrderSummary {
   refundedOrderCount: number
   /** Every order of the workspace, whatever its status (no filter applies). */
   totalOrderCount: number
+  pendingOrderCount: number
+  failedOrderCount: number
+  /** Money returned to buyers: the sum over refunded orders. */
+  refundedAmountCents: number
+  /** The last 12 calendar months in the creator's timezone, oldest first, the current month last. */
+  monthlyTrend: OrderMonthTrend[]
+}
+
+export interface OrderMonthTrend {
+  /** "yyyy-MM" */
+  month: string
+  grossCents: number
+  feeCents: number
+  netCents: number
+  refundedCount: number
 }
 
 export interface HomeSummary {
@@ -48,6 +64,12 @@ export interface HomeSummary {
   viewsTrend: number[]
   monthlyRevenueTrend: number[]
   totalPlatformFeeCents: number
+  /** Paid orders per calendar month, the last 12 (oldest first, the current month last). */
+  monthlyPaidOrderCounts: number[]
+  /** Distinct buyers over paid orders, all time. */
+  customerCount: number
+  refundedOrderCount: number
+  refundedAmountCents: number
 }
 
 export type DashboardTrendRange = '30d' | '6m' | '12m'

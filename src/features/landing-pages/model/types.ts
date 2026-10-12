@@ -102,6 +102,7 @@ export type PeriodStats = {
 export type EmailCaptureItem = {
   email: string
   capturedAt: string
+  unsubscribed: boolean
 }
 
 export type LandingPageAnalytics = {
@@ -116,31 +117,6 @@ export type LandingPageAnalytics = {
   purchaseCount: number
   totalRevenueCents: number
   currency: string | null
-}
-
-export type TimeSeriesPeriod =
-  | 'Today'
-  | 'Week'
-  | 'Month'
-  | 'ThreeMonths'
-  | 'SixMonths'
-  | 'Year'
-  | 'AllTime'
-
-export type TimeSeriesPoint = {
-  bucketStart: string
-  viewCount: number
-  uniqueVisitors: number
-  captureCount: number
-  purchaseCount: number
-  revenueCents: number
-}
-
-export type TimeSeriesResponse = {
-  period: string
-  bucketUnit: string
-  currency: string | null
-  points: TimeSeriesPoint[]
 }
 
 export type CreateLandingPageRequest = {

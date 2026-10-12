@@ -1,4 +1,4 @@
-import { CreditCard, Palette, TriangleAlert, User } from 'lucide-react'
+import { CreditCard, Palette, SwatchBook, TriangleAlert, User } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -12,6 +12,7 @@ import {
   useTabs,
 } from '../../../shared/ui/ledger'
 import type { TabItem } from '../../../shared/ui/ledger'
+import { AppearanceTab } from '../components/settings/AppearanceTab'
 import { BillingTab } from '../components/settings/BillingTab'
 import { BrandTab } from '../components/settings/BrandTab'
 import { DangerTab } from '../components/settings/DangerTab'
@@ -26,6 +27,15 @@ const TAB_ITEMS: TabItem[] = [
       <>
         <User />
         Profile
+      </>
+    ),
+  },
+  {
+    key: 'appearance',
+    label: (
+      <>
+        <SwatchBook />
+        Appearance
       </>
     ),
   },
@@ -126,6 +136,9 @@ export function CreatorSettingsPage() {
         <Tabs {...tabs.tablistProps} className="settings__tabs" />
         <TabPanel tabs={tabs} value="profile">
           <ProfileTab />
+        </TabPanel>
+        <TabPanel tabs={tabs} value="appearance">
+          <AppearanceTab slug={slug} />
         </TabPanel>
         <TabPanel tabs={tabs} value="brand">
           <BrandTab slug={slug} settings={creatorSettings} currency={creator.defaultCurrency} />

@@ -19,7 +19,9 @@ export function validateLoginForm(values: LoginFormValues): LoginValidation {
     fieldErrors.email = 'Email can be up to 100 characters.'
   }
 
-  if (values.password.length < 8) {
+  if (values.password.length === 0) {
+    fieldErrors.password = 'Enter your password.'
+  } else if (values.password.length < 8) {
     fieldErrors.password = 'Password needs at least 8 characters.'
   }
 

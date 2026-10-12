@@ -8,8 +8,8 @@ export type OrderReceipt = {
   /** "Pending" until the payment webhook has arrived, then "Paid" (or "Refunded" / "Failed"). */
   status: string
   buyerFirstName: string | null
-  /** Masked by the API, e.g. "a•••@gmail.com". */
-  buyerEmail: string
+  /** Masked by the API, e.g. "a•••@gmail.com". Null while Pending (it arrives with the payment). */
+  buyerEmail: string | null
   productName: string
   amountCents: number
   currency: string

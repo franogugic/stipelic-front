@@ -50,3 +50,10 @@ export function archiveTemplate(slug: string, templatePublicId: string) {
     { method: 'POST' },
   ).then(unwrapApiResponse)
 }
+
+export function restoreTemplate(slug: string, templatePublicId: string) {
+  return apiRequest<ApiResponse<EmailTemplate>>(
+    `/api/creators/${encodeURIComponent(slug)}/email-templates/${encodeURIComponent(templatePublicId)}/restore`,
+    { method: 'POST' },
+  ).then(unwrapApiResponse)
+}

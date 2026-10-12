@@ -225,17 +225,24 @@ function EmailCard({ email, verified }: { email: string; verified: boolean }) {
             {verified && <StatusBadge kind="subscriber" value="active" label="Verified" />}
           </div>
           {pending && (
-            <Alert tone="warning" icon={Hourglass} title="Waiting for confirmation" live>
-              We sent a link to <strong>{pending.newEmail}</strong>. Your email stays {email} until you click it. The
-              link expires on {dateTime(pending.expiresAt)}.
-              <div className="cluster cluster--sm">
-                <Button variant="secondary" icon={RotateCw} loading={busy === 'resend'} onClick={() => void resend()}>
-                  Resend link
-                </Button>
-                <Button variant="ghost" loading={busy === 'cancel'} onClick={() => void cancel()}>
-                  Cancel change
-                </Button>
-              </div>
+            <Alert
+              tone="warning"
+              icon={Hourglass}
+              title="Waiting for confirmation"
+              live
+              action={
+                <div className="cluster cluster--sm">
+                  <Button variant="secondary" icon={RotateCw} loading={busy === 'resend'} onClick={() => void resend()}>
+                    Resend link
+                  </Button>
+                  <Button variant="ghost" loading={busy === 'cancel'} onClick={() => void cancel()}>
+                    Cancel change
+                  </Button>
+                </div>
+              }
+            >
+              We sent a link to <strong>{pending.newEmail}</strong>. Your email stays {email} until you click it. The link
+              expires on {dateTime(pending.expiresAt)}.
             </Alert>
           )}
           <div>

@@ -2,8 +2,6 @@ import { apiRequest } from '../../../shared/api/http-client'
 import type {
   CreateProductRequest,
   Product,
-  ProductAnalytics,
-  ProductAnalyticsRange,
   UpdateProductRequest,
 } from '../model/types'
 
@@ -48,17 +46,6 @@ export async function restoreProduct(slug: string, productId: string): Promise<P
   const res = await apiRequest<ApiResponse<Product>>(
     `/api/creators/${slug}/products/${productId}/restore`,
     { method: 'POST' },
-  )
-  return res.data
-}
-
-export async function getProductAnalytics(
-  slug: string,
-  productId: string,
-  range: ProductAnalyticsRange,
-): Promise<ProductAnalytics> {
-  const res = await apiRequest<ApiResponse<ProductAnalytics>>(
-    `/api/creators/${slug}/products/${productId}/analytics?range=${range}`,
   )
   return res.data
 }

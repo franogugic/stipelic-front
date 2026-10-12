@@ -1,13 +1,11 @@
 import {
   ArrowLeft,
-  ArrowRight,
   Check,
   ExternalLink,
   Eye,
   EyeOff,
   Layers,
   LoaderCircle,
-  Lock,
   Monitor,
   Pencil,
   Rocket,
@@ -20,16 +18,17 @@ import { useCallback, useEffect, useId, useLayoutEffect, useReducer, useRef, use
 import { useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
 import { AppShell } from '../../../shared/ui/AppShell'
+import { LeaveModal } from '../../../shared/ui/LeaveModal'
 import { time } from '../../../shared/lib/format'
 import { Button, ErrorState, PageHeader, SkeletonBlock, UrlPill, useToast } from '../../../shared/ui/ledger'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { listProducts } from '../../products/api/products-api'
 import { getLandingPage, getSectionTemplates, publishLandingPage, saveEditor, unpublishLandingPage } from '../api/landing-pages-api'
+import { BuyButton, LeadForm } from '../components/LandingActions'
 import { LandingDropMarker, LandingSection, LandingShell } from '../components/LandingSections'
 import type { LandingContext, RenderedSection } from '../components/LandingSections'
 import {
   DeleteSectionDialog,
-  LeaveModal,
   PublishBlockedModal,
   PublishedModal,
   SectionPickerModal,
@@ -39,7 +38,7 @@ import type { PublishBlock } from '../components/editor/EditorDialogs'
 import { NothingSelected, SectionForm } from '../components/editor/SectionForm'
 import type { EditorPageContext } from '../components/editor/SectionForm'
 import { SectionsCard } from '../components/editor/SectionsCard'
-import { useLeaveGuard } from '../lib/use-leave-guard'
+import { useLeaveGuard } from '../../../shared/lib/use-leave-guard'
 import { draftReducer, emptyDraft, hasUnsavedLinkTargets, toSaveRequest } from '../model/editor-draft'
 import type { Draft, DraftSection } from '../model/editor-draft'
 import { useLandingPageStore } from '../model/landing-page-store'
@@ -378,6 +377,7 @@ function EditorContent() {
     pageType: page.type,
     product,
     hasLogo: Boolean(settings?.logoUrl),
+    brandName,
     sections: draft.sections,
     templates,
   }
@@ -388,7 +388,11 @@ function EditorContent() {
     brand: { name: brandName, color: brandColor, logoUrl: settings?.logoUrl || null },
     selectedKey: draft.selectedKey,
     renderAction: (label, options) =>
-      page.type === 'Sales' ? <PreviewBuyButton label={label} inverted={options?.inverted} /> : <PreviewLeadForm label={label} inverted={options?.inverted} />,
+      page.type === 'Sales' ? (
+        <BuyButton label={label} inverted={options?.inverted} />
+      ) : (
+        <LeadForm label={label} inverted={options?.inverted} brandName={brandName} />
+      ),
   }
 
   const draggedName = dragTarget ? kindOf(draft.sections.find((section) => section.key === dragTarget.draggedKey)?.type ?? 'Hero').name : ''
@@ -558,36 +562,5 @@ function LandingSectionWithDrop({ section, ctx, dropLabel }: { section: Rendered
       <LandingSection section={section} ctx={ctx} editor />
       {dropLabel && <LandingDropMarker label={dropLabel} />}
     </>
-  )
-}
-
-/** The buy button as visitors see it; in the editor preview it does nothing. */
-function PreviewBuyButton({ label, inverted }: { label: string; inverted?: boolean }) {
-  return (
-    <div className="lp-buy">
-      <span className={`lp__cta ${inverted ? 'lp__cta--inverted' : ''}`}>
-        <span>{label}</span>
-        <ArrowRight />
-      </span>
-      <span className="lp-buy__note">
-        <Lock />
-        Secure card checkout · Instant delivery by email
-      </span>
-    </div>
-  )
-}
-
-/** The email form as visitors see it; in the editor preview it does nothing. */
-function PreviewLeadForm({ label, inverted }: { label: string; inverted?: boolean }) {
-  return (
-    <div className={`lp-form ${inverted ? 'lp-form--inverted' : ''}`}>
-      <div className="lp-form__row">
-        <input className="lp-form__input" type="email" placeholder="you@example.com" aria-label="Email address" readOnly tabIndex={-1} />
-        <span className="lp__cta">
-          <span>{label}</span>
-        </span>
-      </div>
-      <p className="lp-form__note">Free · No spam · Unsubscribe any time</p>
-    </div>
   )
 }

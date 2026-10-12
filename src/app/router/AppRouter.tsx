@@ -1,9 +1,7 @@
-import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { AdminPayoutsPage } from '../../features/admin/pages/AdminPayoutsPage'
 import { ConfirmEmailChangePage } from '../../features/auth/pages/ConfirmEmailChangePage'
 import { ForgotPasswordPage } from '../../features/auth/pages/ForgotPasswordPage'
-import { HomePage } from '../../features/auth/pages/HomePage'
 import { CheckInboxPage } from '../../features/auth/pages/CheckInboxPage'
 import { LoginPage } from '../../features/auth/pages/LoginPage'
 import { RegisterPage } from '../../features/auth/pages/RegisterPage'
@@ -22,6 +20,9 @@ import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPage
 import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSuccessPage'
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
 import { UnsubscribePage } from '../../features/marketing/pages/UnsubscribePage'
+import { CampaignDetailPage } from '../../features/marketing/pages/CampaignDetailPage'
+import { TemplateEditorPage } from '../../features/marketing/pages/TemplateEditorPage'
+import { TemplatesPage } from '../../features/marketing/pages/TemplatesPage'
 import { NewCampaignPage } from '../../features/marketing/pages/NewCampaignPage'
 import { EmailsPage } from '../../features/marketing/pages/EmailsPage'
 import { SubscribersPage } from '../../features/marketing/pages/SubscribersPage'
@@ -32,25 +33,13 @@ import { OrdersPage } from '../../features/orders/pages/OrdersPage'
 import { NotFoundPage } from '../../shared/ui/NotFoundPage'
 import { AdminRoute } from './AdminRoute'
 import { AuthBootstrap } from './AuthBootstrap'
+import { HomeRoute } from './HomeRoute'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
-
-// Development-only component catalogue; the dynamic import is dropped from production builds.
-const StyleguidePage = import.meta.env.DEV ? lazy(() => import('../../dev/styleguide/StyleguidePage')) : null
 
 export function AppRouter() {
   return (
     <Routes>
-      {StyleguidePage && (
-        <Route
-          path="/__styleguide"
-          element={
-            <Suspense fallback={null}>
-              <StyleguidePage />
-            </Suspense>
-          }
-        />
-      )}
       <Route element={<AuthBootstrap />}>
         <Route path="/p/:creatorSlug/:pageSlug/success" element={<OrderSuccessPage />} />
         <Route path="/p/:creatorSlug/:pageSlug" element={<PublicLandingPage />} />
@@ -63,13 +52,14 @@ export function AppRouter() {
         <Route path="/payment/success" element={<PaymentSuccessPage />} />
         <Route path="/payment/cancel" element={<PaymentCancelledPage />} />
 
+        <Route path="/" element={<HomeRoute />} />
+
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
         </Route>
 
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<HomePage />} />
           <Route path="/app/:slug" element={<CreatorWorkspacePage />} />
           <Route path="/app/:slug/products" element={<ProductsPage />} />
           <Route path="/app/:slug/products/new" element={<ProductFormPage />} />
@@ -81,6 +71,10 @@ export function AppRouter() {
           <Route path="/app/:slug/landing-pages/:pageId/edit" element={<LandingPageEditorPage />} />
           <Route path="/app/:slug/emails" element={<EmailsPage />} />
           <Route path="/app/:slug/emails/new" element={<NewCampaignPage />} />
+          <Route path="/app/:slug/emails/templates" element={<TemplatesPage />} />
+          <Route path="/app/:slug/emails/templates/new" element={<TemplateEditorPage />} />
+          <Route path="/app/:slug/emails/templates/:templateId" element={<TemplateEditorPage />} />
+          <Route path="/app/:slug/emails/campaigns/:campaignId" element={<CampaignDetailPage />} />
           <Route path="/app/:slug/subscribers" element={<SubscribersPage />} />
           <Route path="/app/:slug/payouts" element={<CreatorPayoutsPage />} />
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />

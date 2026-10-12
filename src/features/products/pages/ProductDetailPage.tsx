@@ -1,62 +1,51 @@
-import { Calendar, PanelsTopLeft, Pencil, ShoppingBag, Users, Wallet } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChartNoAxesCombined, PackageOpen, PanelsTopLeft, Pencil, Receipt } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
-import { date, dateShort, money, month, monthYear, number } from '../../../shared/lib/format'
+import { date, money, percent, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
-  Bars,
   Button,
   Card,
   EmptyState,
   ErrorState,
-  Metric,
   Money,
   PageHeader,
   ProductTypeBadge,
-  Segmented,
   SkeletonBlock,
-  SkeletonCards,
   SkeletonRows,
   StatusBadge,
+  orderStatusKey,
   pageStatusKey,
   productStatusKey,
   productTypeKey,
 } from '../../../shared/ui/ledger'
+import { getAnalyticsSeries } from '../../analytics/api/series-api'
+import { AnalyticsBoard } from '../../analytics/components/AnalyticsBoard'
+import { PeriodBar } from '../../analytics/components/PeriodBar'
+import { PersonRow } from '../../analytics/components/PersonRow'
+import { metricById, periodById } from '../../analytics/model/series'
+import type { AnalyticsMetric, AnalyticsPeriod, AnalyticsSeries } from '../../analytics/model/types'
 import { useCreatorStore } from '../../creators/model/creator-store'
+import { listLandingPages } from '../../landing-pages/api/landing-pages-api'
+import type { LandingPage } from '../../landing-pages/model/types'
 import { listOrders } from '../../orders/api/orders-api'
-import { OrdersTable } from '../../orders/components/OrdersTable'
 import type { Order } from '../../orders/model/types'
-import { getProductAnalytics, listProducts } from '../api/products-api'
-import type { Product, ProductAnalytics, ProductAnalyticsRange } from '../model/types'
+import { listProducts } from '../api/products-api'
+import type { Product } from '../model/types'
 
 type Load<T> = { status: 'loading' } | { status: 'error'; notFound: boolean } | { status: 'success'; data: T }
+type Keyed<T> = { key: string; load: Load<T> }
+type Loaded = { series: AnalyticsSeries; at: Date }
 
-const LATEST_ORDERS_SHOWN = 4
-const MAX_AXIS_LABELS = 12
-
-const RANGES: Array<{ value: ProductAnalyticsRange; label: string }> = [
-  { value: '30d', label: '30d' },
-  { value: '3m', label: '3m' },
-  { value: '6m', label: '6m' },
-  { value: '1y', label: '1y' },
-]
-
+const LATEST_ROWS = 5
+// Products sell less often than pages are viewed, so a month and revenue are the useful defaults.
+const DEFAULT_PERIOD: AnalyticsPeriod = '30d'
+const DEFAULT_METRIC: AnalyticsMetric = 'revenue'
 const LOADING = { status: 'loading' } as const
 
 function failed(error: unknown): Load<never> {
   return { status: 'error', notFound: error instanceof ApiError && error.status === 404 }
-}
-
-/** Axis labels follow the bucket size (days → "3 Sep", months → "Sep"); the tooltips name the bucket in full. */
-function bucketLabels(points: ProductAnalytics['points'], granularity: ProductAnalytics['granularity']) {
-  const step = Math.max(1, Math.ceil(points.length / MAX_AXIS_LABELS))
-  return {
-    axis: points.map((point, index) =>
-      index % step === 0 ? (granularity === 'month' ? month(point.bucketStart) : dateShort(point.bucketStart)) : '',
-    ),
-    tooltips: points.map((point) => (granularity === 'month' ? monthYear(point.bucketStart) : date(point.bucketStart))),
-  }
 }
 
 /** The prototype's `SCREENS['product-detail']`. */
@@ -64,12 +53,16 @@ export function ProductDetailPage() {
   const { slug = '', productId = '' } = useParams<{ slug: string; productId: string }>()
   const productKey = `${slug}/${productId}`
   const creatorCurrency = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator.defaultCurrency : null))
+  const [params, setParams] = useSearchParams()
+  const period = periodById(params.get('period'), DEFAULT_PERIOD)
+  const metric = metricById(params.get('metric'), DEFAULT_METRIC).id
 
   // Results are tagged with the product they were loaded for, so a late response never shows on another product.
-  const [product, setProduct] = useState<{ key: string; load: Load<Product> } | null>(null)
-  const [orders, setOrders] = useState<{ key: string; load: Load<Order[]> } | null>(null)
-  const [analytics, setAnalytics] = useState<Record<string, Load<ProductAnalytics>>>({})
-  const [range, setRange] = useState<ProductAnalyticsRange>('1y')
+  const [product, setProduct] = useState<Keyed<Product> | null>(null)
+  const [orders, setOrders] = useState<Keyed<Order[]> | null>(null)
+  const [lastSale, setLastSale] = useState<Keyed<string | null> | null>(null)
+  const [pages, setPages] = useState<Keyed<LandingPage[]> | null>(null)
+  const [series, setSeries] = useState<Record<string, Load<Loaded>>>({})
 
   const loadProduct = useCallback(() => {
     // The store's list may leave archived products out, so the product comes straight from the API.
@@ -81,18 +74,31 @@ export function ProductDetailPage() {
       .catch((error: unknown) => setProduct({ key: productKey, load: failed(error) }))
   }, [slug, productId, productKey])
 
-  const loadOrders = useCallback(() => {
-    listOrders(slug, { productId, limit: LATEST_ORDERS_SHOWN })
+  const loadLists = useCallback(() => {
+    listOrders(slug, { productId, limit: LATEST_ROWS })
       .then((page) => setOrders({ key: productKey, load: { status: 'success', data: page.orders } }))
       .catch((error: unknown) => setOrders({ key: productKey, load: failed(error) }))
+    listOrders(slug, { productId, status: 'Paid', limit: 1 })
+      .then((page) =>
+        setLastSale({ key: productKey, load: { status: 'success', data: page.orders[0]?.paidAt ?? page.orders[0]?.createdAt ?? null } }),
+      )
+      .catch((error: unknown) => setLastSale({ key: productKey, load: failed(error) }))
+    listLandingPages(slug)
+      .then((all) =>
+        setPages({
+          key: productKey,
+          load: { status: 'success', data: all.filter((page) => page.productPublicId === productId && page.status !== 'Archived') },
+        }),
+      )
+      .catch((error: unknown) => setPages({ key: productKey, load: failed(error) }))
   }, [slug, productId, productKey])
 
-  const loadAnalytics = useCallback(
-    (selected: ProductAnalyticsRange) => {
-      const key = `${productKey}|${selected}`
-      getProductAnalytics(slug, productId, selected)
-        .then((data) => setAnalytics((current) => ({ ...current, [key]: { status: 'success', data } })))
-        .catch((error: unknown) => setAnalytics((current) => ({ ...current, [key]: failed(error) })))
+  const loadSeries = useCallback(
+    (id: AnalyticsPeriod) => {
+      const key = `${productKey}|${id}`
+      getAnalyticsSeries(slug, 'product', productId, id)
+        .then((data) => setSeries((current) => ({ ...current, [key]: { status: 'success', data: { series: data, at: new Date() } } })))
+        .catch((error: unknown) => setSeries((current) => ({ ...current, [key]: failed(error) })))
     },
     [slug, productId, productKey],
   )
@@ -100,66 +106,119 @@ export function ProductDetailPage() {
   useEffect(() => {
     if (!slug || !productId) return
     loadProduct()
-    loadOrders()
-  }, [slug, productId, loadProduct, loadOrders])
+    loadLists()
+  }, [slug, productId, loadProduct, loadLists])
 
-  // Switching the range refetches the numbers and the chart; a range already loaded for this product is reused.
-  const analyticsKey = `${productKey}|${range}`
-  const hasAnalytics = analyticsKey in analytics
+  // Each period is fetched once per product; going back to one already loaded reuses it.
+  const seriesKey = `${productKey}|${period.id}`
+  const hasSeries = seriesKey in series
   useEffect(() => {
-    if (slug && productId && !hasAnalytics) loadAnalytics(range)
-  }, [slug, productId, range, hasAnalytics, loadAnalytics])
+    if (slug && productId && !hasSeries) loadSeries(period.id)
+  }, [slug, productId, period.id, hasSeries, loadSeries])
+
+  const choose = (changes: { period?: AnalyticsPeriod; metric?: AnalyticsMetric }) => {
+    const next = new URLSearchParams(params)
+    const nextPeriod = changes.period ?? period.id
+    const nextMetric = changes.metric ?? metric
+    if (nextPeriod === DEFAULT_PERIOD) next.delete('period')
+    else next.set('period', nextPeriod)
+    if (nextMetric === DEFAULT_METRIC) next.delete('metric')
+    else next.set('metric', nextMetric)
+    setParams(next, { replace: true })
+  }
+
+  const retry = <T,>(setter: (value: Keyed<T>) => void, load: () => void) => () => {
+    setter({ key: productKey, load: LOADING })
+    load()
+  }
+  const retrySeries = () => {
+    setSeries((current) => ({ ...current, [seriesKey]: LOADING }))
+    loadSeries(period.id)
+  }
 
   const productLoad: Load<Product> = product?.key === productKey ? product.load : LOADING
   const ordersLoad: Load<Order[]> = orders?.key === productKey ? orders.load : LOADING
-  const analyticsLoad: Load<ProductAnalytics> = analytics[analyticsKey] ?? LOADING
-  // The four numbers don't depend on the range: they come from the first range loaded for this product, so
-  // switching the range only puts the chart back to a skeleton.
-  const headline = Object.entries(analytics).find(
-    (entry): entry is [string, { status: 'success'; data: ProductAnalytics }] =>
-      entry[0].startsWith(`${productKey}|`) && entry[1].status === 'success',
-  )?.[1].data
-
-  const retryAll = () => {
-    setProduct({ key: productKey, load: LOADING })
-    setAnalytics((current) => ({ ...current, [analyticsKey]: LOADING }))
-    loadProduct()
-    loadAnalytics(range)
-  }
+  const lastSaleLoad: Load<string | null> = lastSale?.key === productKey ? lastSale.load : LOADING
+  const pagesLoad: Load<LandingPage[]> = pages?.key === productKey ? pages.load : LOADING
+  const seriesLoad: Load<Loaded> = series[seriesKey] ?? LOADING
 
   const listUrl = `/app/${slug}/products`
 
   const body = () => {
-    const notFound =
-      (productLoad.status === 'error' && productLoad.notFound) ||
-      (analyticsLoad.status === 'error' && analyticsLoad.notFound)
-    if (notFound) {
+    if (productLoad.status === 'loading') {
       return (
+        <div className="stack stack--lg">
+          <SkeletonBlock />
+          <SkeletonRows count={4} />
+        </div>
+      )
+    }
+    if (productLoad.status === 'error') {
+      return productLoad.notFound ? (
         <ErrorState
           title="Product not found"
           text="This product doesn’t exist or isn’t part of your workspace."
-          action={{ label: 'Back to products', to: listUrl }}
+          action={{ label: 'Back to products', icon: ArrowLeft, to: listUrl }}
         />
-      )
-    }
-    if (productLoad.status === 'error' || (!headline && analyticsLoad.status === 'error')) return <ErrorState onRetry={retryAll} />
-    if (productLoad.status === 'loading' || !headline) {
-      return (
-        <div className="stack stack--lg">
-          <SkeletonCards count={4} />
-          <SkeletonBlock />
-        </div>
+      ) : (
+        <ErrorState onRetry={retry(setProduct, loadProduct)} />
       )
     }
 
     const item = productLoad.data
-    const stats = headline
     const currency = creatorCurrency ?? 'EUR'
+    const draft = item.status === 'Draft'
+    const sold = item.paidOrderCount > 0
+
+    const boardNode =
+      seriesLoad.status === 'success' ? (
+        <AnalyticsBoard
+          series={seriesLoad.data.series}
+          metric={metric}
+          order={['revenue', 'sales', 'views', 'emails']}
+          name="Product performance"
+          empty={
+            sold
+              ? undefined
+              : draft
+                ? {
+                    icon: PackageOpen,
+                    title: 'Not on sale yet',
+                    text: 'Finish setting it up and add it to a landing page — sales and views show up here.',
+                    action: { label: 'Continue setup', icon: ArrowRight, to: `${listUrl}/${productId}/edit` },
+                  }
+                : {
+                    icon: ChartNoAxesCombined,
+                    title: 'No sales yet',
+                    text: 'Share the page that sells it — revenue, sales and views show up here.',
+                    action: { label: 'Open landing pages', icon: PanelsTopLeft, to: `/app/${slug}/landing-pages` },
+                  }
+          }
+          stats={(totals) => {
+            const extras = seriesLoad.data.series.product
+            const share = extras?.creatorRevenueCents ? (totals.revenueCents / extras.creatorRevenueCents) * 100 : 0
+            return [
+              ['Visitors who bought', percent(totals.views ? (totals.sales / totals.views) * 100 : 0)],
+              ['Average order', money(totals.sales ? Math.round(totals.revenueCents / totals.sales) : 0, currency)],
+              [
+                'Refunds',
+                extras && extras.refundCount > 0 ? `${extras.refundCount} · ${money(extras.refundedCents, currency)}` : 'None',
+              ],
+              ['Share of your revenue', percent(share)],
+            ]
+          }}
+          onMetric={(next) => choose({ metric: next })}
+        />
+      ) : seriesLoad.status === 'error' ? (
+        <ErrorState onRetry={retrySeries} />
+      ) : (
+        <SkeletonBlock />
+      )
 
     return (
       <>
         <PageHeader
-          eyebrow="Product"
+          eyebrow="Product analytics"
           title={item.name}
           subtitle={item.description}
           actions={
@@ -178,87 +237,109 @@ export function ProductDetailPage() {
           }
         />
         <div className="stack stack--lg reveal">
-          <div className="grid grid--4">
-            <Metric label="Revenue" icon={Wallet} value={<Money amountCents={stats.revenueCents} currency={currency} />} meta="all time" />
-            <Metric
-              label="Sales"
-              icon={ShoppingBag}
-              value={number(stats.salesCount)}
-              meta={`${money(item.priceCents, currency)} each`}
-            />
-            <Metric label="This month" icon={Calendar} value={<Money amountCents={stats.thisMonthRevenueCents} currency={currency} />} />
-            <Metric label="Contacts" icon={Users} value={number(stats.contactCount)} meta="from this product" />
-          </div>
-
-          <Card
-            title="Revenue over time"
-            action={
-              <Segmented
-                label="Range"
-                options={RANGES}
-                value={range}
-                onChange={(value) => setRange(value as ProductAnalyticsRange)}
-              />
-            }
-          >
-            {analyticsLoad.status === 'success' ? (
-              <RevenueBars
-                stats={analyticsLoad.data}
-                formatValue={(cents) => money(cents, currency, { decimals: false })}
-                label={`Revenue, ${range}`}
-              />
-            ) : analyticsLoad.status === 'error' ? (
-              <ErrorState
-                compact
-                onRetry={() => {
-                  setAnalytics((current) => ({ ...current, [analyticsKey]: LOADING }))
-                  loadAnalytics(range)
-                }}
-              />
-            ) : (
-              <SkeletonBlock />
-            )}
-          </Card>
-
-          <div className="grid grid--2">
-            <Card title="Selling pages">
-              {stats.sellingPages.length > 0 ? (
-                <div className="list">
-                  {stats.sellingPages.map((page) => (
-                    <div className="list__row" key={page.publicId}>
-                      <PanelsTopLeft />
-                      <Link className="list__grow table__primary" to={`/app/${slug}/landing-pages/${page.publicId}`}>
-                        {page.title}
-                      </Link>
-                      <StatusBadge kind="page" value={pageStatusKey(page.status)} />
+          <PeriodBar
+            period={period.id}
+            series={seriesLoad.status === 'success' ? seriesLoad.data.series : null}
+            loading={seriesLoad.status === 'loading'}
+            updatedAt={seriesLoad.status === 'success' ? seriesLoad.data.at : new Date()}
+            sinceNote="when you added it"
+            onPeriod={(next) => choose({ period: next })}
+          />
+          {boardNode}
+          <div className="dash">
+            <div className="span-7">
+              <Card
+                title="Latest orders"
+                subtitle={`${plural(item.paidOrderCount, 'paid order')} for this product`}
+                action={
+                  item.paidOrderCount > 0 ? (
+                    <Button variant="ghost" icon={ArrowRight} to={`/app/${slug}/orders`}>
+                      View all
+                    </Button>
+                  ) : undefined
+                }
+              >
+                {ordersLoad.status === 'success' ? (
+                  ordersLoad.data.length > 0 ? (
+                    <div className="list">
+                      {ordersLoad.data.map((order) => (
+                        <PersonRow key={order.publicId} name={order.name ?? order.email ?? 'Customer'} email={order.email}>
+                          <span className="person__value">
+                            <Money amountCents={order.amountCents} currency={order.currency} />
+                          </span>
+                          <span className="cluster cluster--sm">
+                            {order.status !== 'Paid' && <StatusBadge kind="order" value={orderStatusKey(order.status)} />}
+                            <span className="table__secondary">{date(order.createdAt)}</span>
+                          </span>
+                        </PersonRow>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted">
-                  No landing pages sell this product yet.{' '}
-                  <Link className="link" to={`/app/${slug}/landing-pages`}>
-                    Create a landing page
-                  </Link>
-                </p>
-              )}
-            </Card>
-            <Card title="Latest orders" flush>
-              {ordersLoad.status === 'success' ? (
-                ordersLoad.data.length > 0 ? (
-                  <OrdersTable orders={ordersLoad.data} compact />
+                  ) : (
+                    <EmptyState compact icon={Receipt} title="No orders yet" text="Every order for this product appears here." />
+                  )
+                ) : ordersLoad.status === 'error' ? (
+                  <ErrorState compact onRetry={retry(setOrders, loadLists)} />
                 ) : (
-                  <EmptyState compact icon={ShoppingBag} title="No orders yet" text="Sales of this product will show up here." />
-                )
-              ) : ordersLoad.status === 'error' ? (
-                <ErrorState compact onRetry={() => {
-                  setOrders({ key: productKey, load: LOADING })
-                  loadOrders()
-                }} />
-              ) : (
-                <SkeletonRows count={4} />
-              )}
-            </Card>
+                  <SkeletonRows count={4} />
+                )}
+              </Card>
+            </div>
+            <div className="span-5">
+              <Card title="About this product">
+                <div className="fill-stack">
+                  <dl className="kv">
+                    <dt>Price</dt>
+                    <dd>{money(item.priceCents, currency)} · one-time</dd>
+                    <dt>Type</dt>
+                    <dd>
+                      <ProductTypeBadge type={productTypeKey(item.type)} />
+                    </dd>
+                    <dt>Access link</dt>
+                    <dd>
+                      {item.accessUrl ? (
+                        <span className="url-pill">
+                          <span>{item.accessUrl.replace(/^https?:\/\//, '')}</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted">Not added yet</span>
+                      )}
+                    </dd>
+                    <dt>Sold all time</dt>
+                    <dd>
+                      {plural(item.paidOrderCount, 'sale')} · {money(item.revenueCents, currency)}
+                    </dd>
+                    <dt>Last sale</dt>
+                    <dd>{lastSaleLoad.status === 'success' && lastSaleLoad.data ? date(lastSaleLoad.data) : '—'}</dd>
+                    <dt>Created</dt>
+                    <dd>{date(item.createdAt)}</dd>
+                  </dl>
+                  <div className="fill-stack__foot product-pages">
+                    <span className="field__label">Sold on</span>
+                    {pagesLoad.status === 'success' && pagesLoad.data.length > 0 ? (
+                      <div className="list">
+                        {pagesLoad.data.map((page) => (
+                          <Link
+                            className="list__row product-pages__row"
+                            to={`/app/${slug}/landing-pages/${page.publicId}`}
+                            key={page.publicId}
+                          >
+                            <PanelsTopLeft />
+                            <span className="list__grow">{page.title}</span>
+                            <StatusBadge kind="page" value={pageStatusKey(page.status)} />
+                          </Link>
+                        ))}
+                      </div>
+                    ) : pagesLoad.status === 'success' ? (
+                      <p className="text-sm text-muted">Not on a page yet.</p>
+                    ) : pagesLoad.status === 'error' ? (
+                      <ErrorState compact onRetry={retry(setPages, loadLists)} />
+                    ) : (
+                      <SkeletonRows count={2} />
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
       </>
@@ -269,26 +350,5 @@ export function ProductDetailPage() {
     <AppShell slug={slug} activeSection="products" documentTitle="Product · Luma">
       {body()}
     </AppShell>
-  )
-}
-
-function RevenueBars({
-  stats,
-  formatValue,
-  label,
-}: {
-  stats: ProductAnalytics
-  formatValue: (cents: number) => string
-  label: string
-}) {
-  const { axis, tooltips } = bucketLabels(stats.points, stats.granularity)
-  return (
-    <Bars
-      values={stats.points.map((point) => point.revenueCents)}
-      labels={axis}
-      tooltipLabels={tooltips}
-      formatValue={formatValue}
-      label={label}
-    />
   )
 }

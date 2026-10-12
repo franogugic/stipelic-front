@@ -1,4 +1,4 @@
-import { Ellipsis } from 'lucide-react'
+import { Check, Ellipsis } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, MouseEvent } from 'react'
@@ -16,6 +16,8 @@ export type MenuItem =
       label: string
       icon?: LucideIcon
       tone?: 'danger'
+      /** Makes the item one option of a single-choice menu: it shows a check when it is the chosen one. */
+      checked?: boolean
       disabled?: boolean
       /** Disables the item and explains why in its tooltip (the Button `disabledReason` pattern). */
       disabledReason?: string
@@ -34,6 +36,7 @@ export function Menu({
   triggerIcon = Ellipsis,
   triggerVariant,
   triggerSize,
+  caret,
 }: {
   /** Accessible name of the menu (and of the trigger when it has no visible label). */
   label: string
@@ -43,6 +46,8 @@ export function Menu({
   triggerIcon?: LucideIcon
   triggerVariant?: ButtonVariant
   triggerSize?: 'sm' | 'lg'
+  /** A chevron after the trigger's label. */
+  caret?: boolean
 }) {
   const menuId = useId()
   const [open, setOpen] = useState(false)
@@ -55,7 +60,7 @@ export function Menu({
   // Disabled items stay in the arrow-key order (like disabled buttons) so their tooltip can explain why;
   // they never act, because the click guard in renderItem swallows Enter / Space activation.
   const menuItems = useCallback(
-    () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []),
+    () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]') ?? []),
     [],
   )
 
@@ -159,8 +164,11 @@ export function Menu({
       <>
         {Icon && <Icon />}
         <span>{item.label}</span>
+        {item.checked && <Check className="menu__check" aria-hidden="true" />}
       </>
     )
+    const role = item.checked === undefined ? 'menuitem' : 'menuitemradio'
+    const checkedProps = item.checked === undefined ? {} : { 'aria-checked': item.checked }
     const disabled = item.disabled || Boolean(item.disabledReason)
     const ariaDisabled = disabled ? true : undefined
     const tooltip = item.disabledReason ? { 'data-tooltip': item.disabledReason } : {}
@@ -174,7 +182,7 @@ export function Menu({
     }
     if (item.to !== undefined) {
       return (
-        <Link className={className} role="menuitem" tabIndex={-1} to={item.to} aria-disabled={ariaDisabled} {...tooltip} key={index}
+        <Link className={className} role={role} {...checkedProps} tabIndex={-1} to={item.to} aria-disabled={ariaDisabled} {...tooltip} key={index}
           onClick={(event) => { if (guard(event)) close() }}>
           {content}
         </Link>
@@ -182,7 +190,7 @@ export function Menu({
     }
     if (item.href !== undefined) {
       return (
-        <a className={className} role="menuitem" tabIndex={-1} href={item.href} aria-disabled={ariaDisabled} {...tooltip} key={index}
+        <a className={className} role={role} {...checkedProps} tabIndex={-1} href={item.href} aria-disabled={ariaDisabled} {...tooltip} key={index}
           {...(item.external ? { target: '_blank', rel: 'noopener' } : {})}
           onClick={(event) => { if (guard(event)) close() }}>
           {content}
@@ -190,7 +198,7 @@ export function Menu({
       )
     }
     return (
-      <button className={className} type="button" role="menuitem" tabIndex={-1} aria-disabled={ariaDisabled} {...tooltip} key={index}
+      <button className={className} type="button" role={role} {...checkedProps} tabIndex={-1} aria-disabled={ariaDisabled} {...tooltip} key={index}
         onClick={(event) => {
           if (!guard(event)) return
           close(true)
@@ -209,6 +217,7 @@ export function Menu({
           variant={triggerVariant ?? 'secondary'}
           size={triggerSize}
           icon={triggerIcon}
+          caret={caret}
           aria-haspopup="menu"
           aria-expanded={open}
           aria-controls={menuId}

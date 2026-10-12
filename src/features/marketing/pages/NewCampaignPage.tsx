@@ -1,7 +1,7 @@
-import { CalendarClock, CircleAlert, Info, Package, PanelsTopLeft, Send, Users } from 'lucide-react'
+import { ArrowUpRight, CalendarClock, CircleAlert, Info, Package, PanelsTopLeft, Send, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { date, dateTime, number, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { EmailPreview } from '../../../shared/ui/EmailPreview'
@@ -48,7 +48,8 @@ export function NewCampaignPage() {
   const creator = currentCreator?.slug === slug ? currentCreator : null
   const creatorLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
-  const composer = useCampaignComposer({ slug })
+  const [searchParams] = useSearchParams()
+  const composer = useCampaignComposer({ slug, initialTemplateId: searchParams.get('template') })
   const { content, recipientCount, remaining, overLimit } = composer
 
   // The reset date shown in the over-limit note is measured from when the page opened.
@@ -155,7 +156,7 @@ export function NewCampaignPage() {
               <Button variant="primary" icon={CalendarClock} onClick={() => askSchedule(true)}>
                 Schedule after the reset
               </Button>
-              <Button variant="accent" to={`/app/${slug}/settings?tab=billing`}>
+              <Button variant="accent" icon={ArrowUpRight} to={`/app/${slug}/settings?tab=billing`}>
                 Upgrade plan
               </Button>
             </div>
@@ -290,7 +291,7 @@ export function NewCampaignPage() {
                 )}
               </Field>
               <div className="form-row">
-                <Field label="Button text" optional error={attempted && !content.ctaLabel.trim() ? (composer.ctaError ?? undefined) : undefined}>
+                <Field label="Button text" error={attempted && !content.ctaLabel.trim() ? (composer.ctaError ?? undefined) : undefined}>
                   {(control) => (
                     <Input
                       {...control}
@@ -300,7 +301,7 @@ export function NewCampaignPage() {
                     />
                   )}
                 </Field>
-                <Field label="Button URL" optional error={attempted && !content.ctaUrl.trim() ? (composer.ctaError ?? undefined) : undefined}>
+                <Field label="Button URL" error={attempted && !content.ctaUrl.trim() ? (composer.ctaError ?? undefined) : undefined}>
                   {(control) => (
                     <Input
                       {...control}

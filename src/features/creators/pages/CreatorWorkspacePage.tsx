@@ -1,23 +1,9 @@
-import {
-  ArrowRight,
-  Calendar,
-  Check,
-  Crown,
-  Landmark,
-  Package,
-  PanelsTopLeft,
-  Percent,
-  Plus,
-  Receipt,
-  Send,
-  Wallet,
-} from 'lucide-react'
+import { ArrowRight, Package, Plus, Wallet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { date, money, month, number, percent } from '../../../shared/lib/format'
+import { date, money, month, number, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
-  Badge,
   Bars,
   Button,
   Card,
@@ -25,8 +11,6 @@ import {
   EmptyState,
   ErrorState,
   HBars,
-  Meter,
-  Metric,
   Money,
   PageHeader,
   Segmented,
@@ -39,9 +23,14 @@ import { useAuthStore } from '../../auth/model/auth-store'
 import { getDashboardTrends, getHomeSummary } from '../../orders/api/orders-api'
 import { OrdersTable } from '../../orders/components/OrdersTable'
 import type { DashboardTrendRange, DashboardTrends, HomeSummary } from '../../orders/model/types'
+import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
 import { listProducts } from '../../products/api/products-api'
+import type { LandingPage } from '../../landing-pages/model/types'
 import type { Product } from '../../products/model/types'
 import { useCreatorStore } from '../model/creator-store'
+import { PlanUsageCard } from '../components/dashboard/PlanUsageCard'
+import { SalesBoard } from '../components/dashboard/SalesBoard'
+import { TopPagesCard } from '../components/dashboard/TopPagesCard'
 import type { Creator, CreatorPlan } from '../model/types'
 
 type Load<T> = { status: 'loading' } | { status: 'error' } | { status: 'success'; data: T }
@@ -59,11 +48,6 @@ function greeting(now = new Date()) {
   return 'Good evening'
 }
 
-/** A plan limit for display; the API sends -1 for unlimited. */
-function limitText(limit: number | undefined) {
-  return limit === undefined || limit < 0 ? 'Unlimited' : number(limit)
-}
-
 export function CreatorWorkspacePage() {
   const { slug = '' } = useParams<{ slug: string }>()
   const firstName = useAuthStore((s) => s.currentUser?.firstName)
@@ -72,6 +56,8 @@ export function CreatorWorkspacePage() {
   const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
   const creatorPlans = useCreatorStore((s) => s.creatorPlans)
   const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
+  const pages = useLandingPageStore((s) => s.pages)
+  const loadPages = useLandingPageStore((s) => s.loadPages)
 
   const [summary, setSummary] = useState<Load<HomeSummary>>({ status: 'loading' })
   const [products, setProducts] = useState<Product[]>([])
@@ -132,13 +118,14 @@ export function CreatorWorkspacePage() {
     getDashboardTrends(slug, '12m')
       .then((data) => active && setTrends((current) => ({ ...current, '12m': { status: 'success', data } })))
       .catch(() => active && setTrends((current) => ({ ...current, '12m': { status: 'error' } })))
+    void loadPages(slug)
     listProducts(slug)
       .then((list) => active && setProducts(list))
       .catch(() => active && setProducts([]))
     return () => {
       active = false
     }
-  }, [slug])
+  }, [slug, loadPages])
 
   const selectHeroRange = (range: DashboardTrendRange) => {
     setHeroRange(range)
@@ -182,6 +169,7 @@ export function CreatorWorkspacePage() {
               plan={creatorPlans.find((plan) => plan.code === creator.planCode)}
               summary={summary.status === 'success' ? summary.data : null}
               products={products}
+              pages={pages}
               trend12m={trends['12m']}
               heroTrend={trends[heroRange]}
               heroRange={heroRange}
@@ -202,6 +190,7 @@ function Dashboard({
   plan,
   summary,
   products,
+  pages,
   trend12m,
   heroTrend,
   heroRange,
@@ -214,6 +203,7 @@ function Dashboard({
   plan: CreatorPlan | undefined
   summary: HomeSummary | null
   products: Product[]
+  pages: LandingPage[]
   trend12m: Load<DashboardTrends> | undefined
   heroTrend: Load<DashboardTrends> | undefined
   heroRange: DashboardTrendRange
@@ -240,16 +230,8 @@ function Dashboard({
     .sort((a, b) => b.revenueCents - a.revenueCents)
     .map((product) => ({ label: product.name, value: product.revenueCents, display: formatMoney(product.revenueCents) }))
 
-  const feeText = plan ? percent(plan.platformFeeBasisPoints / 100) : '—'
-  const renews =
-    creator.currentPeriodEnd && creator.planCode.toLowerCase() !== 'free' ? ` · renews ${date(creator.currentPeriodEnd)}` : ''
-
-  const checklist: Array<[string, boolean]> = [
-    ['Create a product', (summary?.productCount ?? 0) > 0],
-    ['Create a landing page', (summary?.landingPageCount ?? 0) > 0],
-    ['Activate your workspace', creator.status.toLowerCase() === 'active'],
-  ]
-  const doneCount = checklist.filter(([, done]) => done).length
+  const feeBasisPoints = plan?.platformFeeBasisPoints ?? null
+  const renewsOn = creator.currentPeriodEnd && creator.planCode.toLowerCase() !== 'free' ? creator.currentPeriodEnd : null
 
   return (
     <div className="dash reveal">
@@ -286,27 +268,15 @@ function Dashboard({
         </div>
       </article>
 
-      <div className="span-5 grid grid--2">
-        <Metric
-          label="Products"
-          icon={Package}
-          value={summary ? number(summary.productCount) : '—'}
-          meta={`${limitText(limit('max_products'))} on ${planName}`}
-        />
-        <Metric
-          label="Landing pages"
-          icon={PanelsTopLeft}
-          value={summary ? number(summary.landingPageCount) : '—'}
-          meta={`${limitText(limit('max_landing_pages'))} on ${planName}`}
-        />
-        <Metric
-          label="Emails this month"
-          icon={Send}
-          value={summary ? number(summary.emailsSentThisMonth) : '—'}
-          meta={`of ${limitText(summary?.emailsMonthlyLimit ?? limit('max_email_sends_per_month'))}`}
-        />
-        <Metric label="Platform fee" icon={Percent} value={feeText} meta={`${planName} plan`} />
-      </div>
+      <PlanUsageCard
+        slug={slug}
+        planName={planName}
+        renewsOn={renewsOn}
+        feeBasisPoints={feeBasisPoints}
+        products={{ used: summary?.productCount ?? 0, limit: limit('max_products') }}
+        pages={{ used: summary?.landingPageCount ?? 0, limit: limit('max_landing_pages') }}
+        emails={{ used: summary?.emailsSentThisMonth ?? 0, limit: summary?.emailsMonthlyLimit ?? limit('max_email_sends_per_month') }}
+      />
 
       <div className="span-8">
         <Card
@@ -339,56 +309,28 @@ function Dashboard({
         </Card>
       </div>
       <div className="span-4">
-        <Card title="Revenue by product">
+        <Card title="Revenue by product" subtitle="Paid orders, all time">
           {byProduct.length > 0 ? (
-            <HBars rows={byProduct} />
+            <div className="fill-stack">
+              <HBars rows={byProduct} />
+              <p className="fill-stack__foot">
+                <span>{plural(byProduct.length, 'product')} with sales</span>
+                <strong>{formatMoney(summary?.totalPaidAmountCents ?? 0)}</strong>
+              </p>
+            </div>
           ) : (
             <EmptyState compact title="No sales yet" text="Revenue per product shows up after the first order." />
           )}
         </Card>
       </div>
 
-      <div className="span-12 grid grid--4">
-        {summary ? (
-          <>
-            <Metric
-              label="Best seller"
-              icon={Crown}
-              value={<span className="text-lg">{summary.topProduct?.name ?? '—'}</span>}
-              meta={summary.topProduct ? formatMoney(summary.topProduct.totalCents) : undefined}
-            />
-            <Metric
-              label="Average order"
-              icon={Receipt}
-              value={
-                summary.paidOrderCount > 0 ? (
-                  <Money
-                    amountCents={Math.round(summary.totalPaidAmountCents / summary.paidOrderCount)}
-                    currency={currency}
-                  />
-                ) : (
-                  '—'
-                )
-              }
-              meta={`${number(summary.paidOrderCount)} paid orders`}
-            />
-            <Metric
-              label="This month"
-              icon={Calendar}
-              value={<Money amountCents={thisMonthCents} currency={currency} />}
-              meta={lastMonthCents !== null ? `vs ${formatMoney(lastMonthCents)} last month` : undefined}
-            />
-            <Metric
-              label="Fees paid to platform"
-              icon={Landmark}
-              value={<Money amountCents={summary.totalPlatformFeeCents} currency={currency} />}
-              meta="all time"
-            />
-          </>
-        ) : (
+      {summary ? (
+        <SalesBoard summary={summary} currency={currency} feePercent={feeBasisPoints === null ? null : feeBasisPoints / 100} />
+      ) : (
+        <div className="span-12">
           <SkeletonCards count={4} />
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="span-8">
         <Card
@@ -409,34 +351,8 @@ function Dashboard({
           )}
         </Card>
       </div>
-      <div className="span-4 stack">
-        <Card title={`${planName} plan`} action={<Badge tone="solid-accent">{planName}</Badge>}>
-          <div className="stack stack--md">
-            <Meter label="Landing pages" used={summary?.landingPageCount ?? 0} limit={limit('max_landing_pages')} />
-            <Meter label="Products" used={summary?.productCount ?? 0} limit={limit('max_products')} />
-            <Meter
-              label="Emails this month"
-              used={summary?.emailsSentThisMonth ?? 0}
-              limit={summary?.emailsMonthlyLimit ?? limit('max_email_sends_per_month')}
-            />
-            <p className="text-sm text-secondary">
-              {feeText} fee per sale{renews}
-            </p>
-          </div>
-        </Card>
-        <Card
-          title="Getting started"
-          subtitle={doneCount === checklist.length ? 'All done — nice work' : `${doneCount} of ${checklist.length} done`}
-        >
-          <div className="stack stack--sm">
-            {checklist.map(([label, done]) => (
-              <div key={label} className={['checklist__item', done && 'checklist__item--done'].filter(Boolean).join(' ')}>
-                <span className="checklist__dot">{done && <Check />}</span>
-                <span className="checklist__label">{label}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+      <div className="span-4">
+        <TopPagesCard slug={slug} pages={pages} currency={currency} />
       </div>
     </div>
   )

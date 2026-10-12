@@ -3,3 +3,6 @@
 export const TERMS_URL = '#'
 export const PRIVACY_URL = '#'
 export const HELP_URL = '#'
+
+/** A link is shown only once its page exists (until then the URL is the placeholder `#`). */
+export const isLinked = (url: string) => url !== '#'

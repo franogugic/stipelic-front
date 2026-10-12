@@ -58,5 +58,9 @@ export const SECTION_BACKGROUNDS: Array<{ value: string; label: string }> = [
   { value: '#1C1612', label: 'Ink' },
 ]
 
+/** The footer text when a page leaves its copyright empty (new pages do): the creator's brand and this year. */
+export const defaultCopyright = (brandName: string, year = new Date().getFullYear()) =>
+  `© ${year} ${brandName}. All rights reserved.`
+
 /** Luma's lime: the brand colour of a creator who hasn't picked one. */
 export const DEFAULT_BRAND_COLOR = '#CDF24B'

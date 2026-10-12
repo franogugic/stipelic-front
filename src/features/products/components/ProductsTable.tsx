@@ -1,10 +1,10 @@
-import { Archive, ArchiveRestore, ChartColumn, Pencil } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cover } from '../../../shared/lib/cover'
 import { date, number } from '../../../shared/lib/format'
-import { Menu, Money, ProductTypeBadge, StatusBadge, productStatusKey, productTypeKey } from '../../../shared/ui/ledger'
-import type { MenuItem } from '../../../shared/ui/ledger'
+import { Money, ProductTypeBadge, StatusBadge, productStatusKey, productTypeKey } from '../../../shared/ui/ledger'
+import type { LandingPage } from '../../landing-pages/model/types'
 import type { Product } from '../model/types'
+import { ProductMenu } from './ProductMenu'
 
 /**
  * Products in the prototype's `SCREENS.products` table. Rows stack into labelled blocks on narrow screens
@@ -14,6 +14,7 @@ export function ProductsTable({
   products,
   creatorSlug,
   currency,
+  sellingPagesOf,
   busyProductId,
   restoreDisabledReason,
   onArchive,
@@ -22,6 +23,8 @@ export function ProductsTable({
   products: Product[]
   creatorSlug: string
   currency: string
+  /** A product's sales pages that are not archived. */
+  sellingPagesOf: (product: Product) => LandingPage[]
   /** An action on this product is running: its menu actions are disabled until it settles. */
   busyProductId: string | null
   /** Set when restoring would exceed the plan's product limit. */
@@ -46,6 +49,7 @@ export function ProductsTable({
             <th scope="col" className="is-num">
               Revenue
             </th>
+            <th scope="col">Selling page</th>
             <th scope="col" className="is-actions">
               <span className="sr-only">Actions</span>
             </th>
@@ -54,25 +58,12 @@ export function ProductsTable({
         <tbody>
           {products.map((product) => {
             const detailPath = `/app/${creatorSlug}/products/${product.publicId}`
-            const editPath = `${detailPath}/edit`
             const archived = product.status === 'Archived'
             const busy = busyProductId === product.publicId
             const thumb = cover(product.publicId, product.thumbnailUrl)
-            const items: MenuItem[] = [
-              { label: 'Details', icon: ChartColumn, to: detailPath },
-              {
-                label: 'Edit',
-                icon: Pencil,
-                to: editPath,
-                disabledReason: archived ? 'Restore the product to edit it.' : undefined,
-              },
-              'separator',
-              archived
-                ? { label: 'Restore', icon: ArchiveRestore, onSelect: () => onRestore(product), disabled: busy, disabledReason: restoreDisabledReason }
-                : { label: 'Archive', icon: Archive, tone: 'danger', onSelect: () => onArchive(product), disabled: busy },
-            ]
+            const pages = sellingPagesOf(product)
             return (
-              <tr key={product.publicId} aria-busy={busy || undefined}>
+              <tr key={product.publicId} aria-busy={busy || undefined} className={archived ? 'is-archived' : undefined}>
                 <td className="is-lead">
                   <div className="table__main">
                     <span className={`${thumb.className} cover--thumb`} style={thumb.style} />
@@ -99,8 +90,19 @@ export function ProductsTable({
                 <td data-label="Revenue" className="is-num">
                   <Money amountCents={product.revenueCents} currency={currency} />
                 </td>
+                <td data-label="Page" className="text-secondary">
+                  {pages.length > 0 ? pages[0].title : '—'}
+                </td>
                 <td className="is-actions">
-                  <Menu label={`Actions for ${product.name}`} items={items} />
+                  <ProductMenu
+                    product={product}
+                    creatorSlug={creatorSlug}
+                    sellingPage={pages.find((page) => page.status === 'Published')}
+                    busy={busy}
+                    restoreDisabledReason={restoreDisabledReason}
+                    onArchive={onArchive}
+                    onRestore={onRestore}
+                  />
                 </td>
               </tr>
             )

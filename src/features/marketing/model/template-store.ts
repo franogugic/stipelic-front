@@ -4,8 +4,8 @@ import {
   archiveTemplate,
   createTemplate,
   getEmailTemplateStarters,
-  getTemplate,
   listTemplates,
+  restoreTemplate,
   updateTemplate,
 } from '../api/templates-api'
 import type { EmailTemplate, EmailTemplateStarter, SaveTemplateRequest } from './types'
@@ -19,22 +19,20 @@ type TemplateState = {
   templatesSlug: string | null
   templatesRevalidating: boolean
 
-  currentTemplate: EmailTemplate | null
-  currentTemplateStatus: LoadStatus
-
   saveTemplateStatus: SubmitStatus
   saveTemplateError: string | null
 
   archiveTemplateStatus: SubmitStatus
   archiveTemplateError: string | null
 
+  restoreTemplateStatus: SubmitStatus
+  restoreTemplateError: string | null
+
   starters: EmailTemplateStarter[]
   startersStatus: LoadStatus
 
   loadTemplates: (slug: string) => Promise<void>
   loadStarters: (slug: string) => Promise<void>
-  loadTemplate: (slug: string, templatePublicId: string) => Promise<void>
-  clearCurrentTemplate: () => void
   saveTemplate: (
     slug: string,
     templatePublicId: string | null,
@@ -43,6 +41,7 @@ type TemplateState = {
   resetSaveTemplateFeedback: () => void
   archiveTemplateForSlug: (slug: string, templatePublicId: string) => Promise<boolean>
   resetArchiveTemplateFeedback: () => void
+  restoreTemplateForSlug: (slug: string, templatePublicId: string) => Promise<boolean>
   reset: () => void
 }
 
@@ -52,14 +51,14 @@ const initialTemplateState = {
   templatesSlug: null,
   templatesRevalidating: false,
 
-  currentTemplate: null,
-  currentTemplateStatus: 'idle' as LoadStatus,
-
   saveTemplateStatus: 'idle' as SubmitStatus,
   saveTemplateError: null,
 
   archiveTemplateStatus: 'idle' as SubmitStatus,
   archiveTemplateError: null,
+
+  restoreTemplateStatus: 'idle' as SubmitStatus,
+  restoreTemplateError: null,
 
   starters: [] as EmailTemplateStarter[],
   startersStatus: 'idle' as LoadStatus,
@@ -90,16 +89,6 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
     }
   },
 
-  loadTemplate: async (slug, templatePublicId) => {
-    set({ currentTemplateStatus: 'loading' })
-    try {
-      const template = await getTemplate(slug, templatePublicId)
-      set({ currentTemplate: template, currentTemplateStatus: 'success' })
-    } catch {
-      set({ currentTemplateStatus: 'error' })
-    }
-  },
-
   loadStarters: async (slug) => {
     if (get().startersStatus === 'loading' || get().startersStatus === 'success') return
     set({ startersStatus: 'loading' })
@@ -111,17 +100,13 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
     }
   },
 
-  clearCurrentTemplate: () => {
-    set({ currentTemplate: null, currentTemplateStatus: 'idle' })
-  },
-
   saveTemplate: async (slug, templatePublicId, request) => {
     set({ saveTemplateStatus: 'submitting', saveTemplateError: null })
     try {
       const template = templatePublicId
         ? await updateTemplate(slug, templatePublicId, request)
         : await createTemplate(slug, request)
-      set({ saveTemplateStatus: 'success', saveTemplateError: null, currentTemplate: template })
+      set({ saveTemplateStatus: 'success', saveTemplateError: null })
       void get().loadTemplates(slug)
       return template
     } catch (error) {
@@ -153,6 +138,21 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
 
   resetArchiveTemplateFeedback: () => {
     set({ archiveTemplateStatus: 'idle', archiveTemplateError: null })
+  },
+
+  restoreTemplateForSlug: async (slug, templatePublicId) => {
+    set({ restoreTemplateStatus: 'submitting', restoreTemplateError: null })
+    try {
+      await restoreTemplate(slug, templatePublicId)
+      set({ restoreTemplateStatus: 'success', restoreTemplateError: null })
+      void get().loadTemplates(slug)
+      return true
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'We could not restore this template. Please try again.'
+      set({ restoreTemplateStatus: 'error', restoreTemplateError: message })
+      return false
+    }
   },
   reset: () => {
     set(initialTemplateState)

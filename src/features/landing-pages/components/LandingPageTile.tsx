@@ -1,10 +1,10 @@
-import { Archive, ArchiveRestore, ChartColumn, ExternalLink, Link as LinkIcon, Package, Pencil, Rocket } from 'lucide-react'
+import { Package } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { money, number } from '../../../shared/lib/format'
-import { Menu, PageTypeBadge, StatusBadge, UrlPill, pageStatusKey, pageTypeKey } from '../../../shared/ui/ledger'
-import type { MenuItem } from '../../../shared/ui/ledger'
+import { PageTypeBadge, StatusBadge, UrlPill, pageStatusKey, pageTypeKey } from '../../../shared/ui/ledger'
 import { pageCover } from '../model/page-cover'
 import type { LandingPage } from '../model/types'
+import { PageActionsMenu } from './PageActionsMenu'
 
 /** One landing page in the prototype's `SCREENS['landing-pages']` tile layout. */
 export function LandingPageTile({
@@ -29,36 +29,10 @@ export function LandingPageTile({
 }) {
   const analyticsUrl = `/app/${creatorSlug}/landing-pages/${page.publicId}`
   const publicPath = `/p/${creatorSlug}/${page.slug}`
-  const archived = page.status === 'Archived'
   const cover = pageCover(page)
 
-  const items: MenuItem[] = [
-    { label: 'Edit', icon: Pencil, to: `${analyticsUrl}/edit` },
-    { label: 'Analytics', icon: ChartColumn, to: analyticsUrl },
-    {
-      label: 'Open public page',
-      icon: ExternalLink,
-      href: publicPath,
-      external: true,
-      disabledReason: page.status === 'Published' ? undefined : 'Publish the page to open it.',
-    },
-    { label: 'Copy link', icon: LinkIcon, onSelect: onCopyLink },
-    'separator',
-    ...(archived
-      ? [{ label: 'Restore', icon: ArchiveRestore, onSelect: onRestore, disabled: busy } satisfies MenuItem]
-      : [
-          {
-            label: page.status === 'Published' ? 'Unpublish' : 'Publish',
-            icon: Rocket,
-            onSelect: onTogglePublish,
-            disabled: busy,
-          } satisfies MenuItem,
-          { label: 'Archive', icon: Archive, onSelect: onArchive, tone: 'danger', disabled: busy } satisfies MenuItem,
-        ]),
-  ]
-
   return (
-    <article className="card card--interactive" aria-busy={busy || undefined}>
+    <article className={`card card--interactive${page.status === 'Archived' ? ' is-archived' : ''}`} aria-busy={busy || undefined}>
       <div className="card__body stack stack--md">
         <div className={cover.className} style={cover.style} />
         <div className="cluster cluster--between">
@@ -66,7 +40,15 @@ export function LandingPageTile({
             <PageTypeBadge type={pageTypeKey(page.type)} />
             <StatusBadge kind="page" value={pageStatusKey(page.status)} />
           </div>
-          <Menu label={`Actions for ${page.title}`} items={items} />
+          <PageActionsMenu
+            page={page}
+            creatorSlug={creatorSlug}
+            busy={busy}
+            onTogglePublish={onTogglePublish}
+            onArchive={onArchive}
+            onRestore={onRestore}
+            onCopyLink={onCopyLink}
+          />
         </div>
         <div className="stack stack--xs">
           <h2 className="section-title">

@@ -14,6 +14,8 @@ export type Product = {
   updatedAt: string
   revenueCents: number
   paidOrderCount: number
+  /** Paid orders per calendar month for the last 6 months, oldest first, the current month last. */
+  salesTrend: number[]
 }
 
 type ProductFields = {
@@ -31,17 +33,3 @@ export type WritableProductStatus = Exclude<ProductStatus, 'Archived'>
 export type CreateProductRequest = ProductFields & { status?: WritableProductStatus }
 
 export type UpdateProductRequest = ProductFields & { status?: WritableProductStatus }
-
-export type ProductAnalyticsRange = '30d' | '3m' | '6m' | '1y'
-
-export type ProductAnalytics = {
-  revenueCents: number
-  salesCount: number
-  thisMonthRevenueCents: number
-  contactCount: number
-  /** "day" for 30d, "month" otherwise. */
-  granularity: 'day' | 'month'
-  /** Oldest first, every bucket present; `bucketStart` is "yyyy-MM-dd". */
-  points: Array<{ bucketStart: string; revenueCents: number }>
-  sellingPages: Array<{ publicId: string; title: string; status: 'Draft' | 'Published' | 'Archived' }>
-}

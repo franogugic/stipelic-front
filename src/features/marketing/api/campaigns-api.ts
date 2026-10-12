@@ -6,7 +6,6 @@ import type {
   CampaignDetail,
   CampaignListItem,
   FailedRecipient,
-  OpenRateTrend,
   ResendFailedResult,
   SendCampaignRequest,
 } from '../model/types'
@@ -25,12 +24,6 @@ function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
 export function getCampaignAudiences(slug: string) {
   return apiRequest<ApiResponse<CampaignAudiences>>(
     `/api/creators/${encodeURIComponent(slug)}/campaigns/audiences`,
-  ).then(unwrapApiResponse)
-}
-
-export function getOpenRateTrend(slug: string, months = 6) {
-  return apiRequest<ApiResponse<OpenRateTrend>>(
-    `/api/creators/${encodeURIComponent(slug)}/campaigns/open-rate-trend?months=${months}`,
   ).then(unwrapApiResponse)
 }
 

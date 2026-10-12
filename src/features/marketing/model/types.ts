@@ -25,6 +25,7 @@ export type SaveTemplateRequest = {
 export type EmailTemplateStarter = {
   key: string
   name: string
+  description: string
   subject: string
   bodyText: string
   ctaLabel: string | null
@@ -96,21 +97,6 @@ export type CampaignAudiences = {
   products: { publicId: string; name: string; recipientCount: number }[]
 }
 
-export type OpenRateTrendPoint = {
-  // "yyyy-MM" (UTC)
-  month: string
-  // Ratio 0–1, null when nothing was delivered that month.
-  rate: number | null
-  sent: number
-  opens: number
-}
-
-export type OpenRateTrend = {
-  points: OpenRateTrendPoint[]
-  currentRate: number | null
-  averageRate: number | null
-}
-
 export type FailedRecipient = {
   email: string
   lastError: string | null
@@ -150,4 +136,6 @@ export type ContactStats = {
   growth: Array<{ month: string; total: number }>
   /** Landing pages (archived included) with at least one contact, most contacts first. */
   sources: Array<{ landingPagePublicId: string; title: string; count: number }>
+  /** The same 12 months: contacts first captured, and opt-outs recorded, in each. */
+  monthly: Array<{ month: string; joined: number; unsubscribed: number }>
 }

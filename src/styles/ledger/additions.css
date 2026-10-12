@@ -26,13 +26,6 @@ button.link {
   border: 0;
 }
 
-/* The prototype centres .modal through the browser's own `dialog:modal { margin: auto }`. The legacy Tailwind
-   preflight (`* { margin: 0 }`, still loaded until every screen is converted) removes it and pins every modal
-   to the top-left corner. Remove together with Tailwind. */
-.modal {
-  margin: auto;
-}
-
 /* Real date labels ("3 Sep") are wider than the prototype's day numbers and would wrap in narrow columns. Only
    every few columns carry a label, so a label may spread into its blank neighbours. */
 .bars__label {

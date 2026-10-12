@@ -139,3 +139,10 @@
 .btn[aria-busy="true"] > * {
   visibility: hidden;
 }
+
+.btn .btn__caret {
+  width: 14px;
+  height: 14px;
+  margin-right: -2px;
+  color: var(--color-text-muted);
+}

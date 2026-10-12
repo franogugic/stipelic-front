@@ -169,7 +169,9 @@ export function PlanLimit({
       </span>
       <div className="limit__body">
         <p className="limit__title">
-          You’ve used all {number(limit)} {noun} on the {planName} plan
+          {limit === 1
+            ? `You’ve used your 1 ${noun.replace(/s$/, '')} on the ${planName} plan`
+            : `You’ve used all ${number(limit)} ${noun} on the ${planName} plan`}
         </p>
         <p className="limit__text">Upgrade your plan to add more. Nothing you’ve already published is affected.</p>
         <Meter label={`${noun[0].toUpperCase()}${noun.slice(1)}`} used={limit} limit={limit} />

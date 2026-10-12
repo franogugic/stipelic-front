@@ -1,409 +1,248 @@
-import { Loader2 } from 'lucide-react'
+import { ArrowRight, Compass, Lock } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
+import { cover } from '../../../shared/lib/cover'
+import { money } from '../../../shared/lib/format'
+import { useDocumentTitle } from '../../../shared/lib/use-document-title'
+import { captureEmail, createCheckout, getCreatorPages, getPublishedLandingPage } from '../api/public-landing-page-api'
+import { BuyButton, LeadForm } from '../components/LandingActions'
+import { LandingSection, LandingShell } from '../components/LandingSections'
+import type { LandingContext, RenderedSection } from '../components/LandingSections'
 import { PublicPageNotFound } from '../components/PublicPageNotFound'
-import { captureEmail, createCheckout, getPublishedLandingPage } from '../api/public-landing-page-api'
-import type {
-  CtaContent,
-  FaqContent,
-  FeaturesContent,
-  FooterContent,
-  GalleryContent,
-  HeroContent,
-  NavbarContent,
-  ProductDetailsContent,
-  TestimonialsContent,
-} from '../model/section-content'
-import type { LandingPageSection, LandingPageType, LandingPageWithSections, SectionType } from '../model/types'
+import { parseSectionContent } from '../model/section-content'
+import { DEFAULT_BRAND_COLOR } from '../model/section-library'
+import type { LandingPageWithSections, PublicCreatorPages } from '../model/types'
 
+type Load =
+  | { status: 'loading' }
+  | { status: 'ready'; page: LandingPageWithSections }
+  /** The page is missing or unpublished (the same to a visitor); `creator` is null when the workspace is unknown too. */
+  | { status: 'missing'; creator: PublicCreatorPages | null }
+  | { status: 'error' }
+
+const toRendered = (page: LandingPageWithSections): RenderedSection[] =>
+  [...page.sections]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(
+      (section) =>
+        ({
+          key: section.publicId,
+          type: section.type,
+          variant: section.variant,
+          background: section.backgroundColor,
+          content: parseSectionContent(section.type, section.contentJson),
+        }) as RenderedSection,
+    )
+
+/** The creator's public page at /p/{creator}/{page}: the sections in the creator's brand, with checkout or sign-up. */
 export function PublicLandingPage() {
-  const { creatorSlug, pageSlug } = useParams<{ creatorSlug: string; pageSlug: string }>()
-
-  const [page, setPage] = useState<LandingPageWithSections | null>(null)
-  const [status, setStatus] = useState<'loading' | 'success' | 'notfound' | 'error'>('loading')
+  const { creatorSlug = '', pageSlug = '' } = useParams<{ creatorSlug: string; pageSlug: string }>()
+  const [load, setLoad] = useState<Load>({ status: 'loading' })
 
   useEffect(() => {
-    if (!creatorSlug || !pageSlug) return
-    getPublishedLandingPage(creatorSlug, pageSlug)
-      .then((data) => { setPage(data); setStatus('success') })
-      .catch((err) => {
-        if (err instanceof ApiError && err.status === 404) setStatus('notfound')
-        else setStatus('error')
-      })
+    let active = true
+    const run = async () => {
+      try {
+        const page = await getPublishedLandingPage(creatorSlug, pageSlug)
+        if (active) setLoad({ status: 'ready', page })
+      } catch (error) {
+        if (!active) return
+        if (!(error instanceof ApiError && error.status === 404)) {
+          setLoad({ status: 'error' })
+          return
+        }
+        try {
+          const creator = await getCreatorPages(creatorSlug)
+          if (active) setLoad({ status: 'missing', creator })
+        } catch {
+          if (active) setLoad({ status: 'missing', creator: null })
+        }
+      }
+    }
+    void run()
+    return () => {
+      active = false
+    }
   }, [creatorSlug, pageSlug])
 
-  if (!creatorSlug || !pageSlug) return null
-
-  if (status === 'loading') {
+  if (load.status === 'missing') {
+    return load.creator ? <MissingPage creatorSlug={creatorSlug} pageSlug={pageSlug} data={load.creator} /> : <PublicPageNotFound />
+  }
+  if (load.status === 'error') return <LoadFailed />
+  if (load.status === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="animate-spin text-neutral-400" size={24} />
-      </div>
+      <LandingShell brandColor={DEFAULT_BRAND_COLOR}>
+        <span className="sr-only" role="status">
+          Loading…
+        </span>
+      </LandingShell>
     )
   }
+  return <LivePage creatorSlug={creatorSlug} pageSlug={pageSlug} page={load.page} />
+}
 
-  if (status === 'notfound') return <PublicPageNotFound />
+function LivePage({ creatorSlug, pageSlug, page }: { creatorSlug: string; pageSlug: string; page: LandingPageWithSections }) {
+  const brand = {
+    name: page.creator?.name ?? '',
+    color: page.creator?.primaryColor || DEFAULT_BRAND_COLOR,
+    logoUrl: page.creator?.logoUrl ?? null,
+  }
+  useDocumentTitle(`${page.title} · ${brand.name || 'Luma'}`)
 
-  if (status === 'error' || !page) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-neutral-500">Something went wrong. Please try again later.</p>
-      </div>
-    )
+  const [redirecting, setRedirecting] = useState(false)
+
+  /** Opens Stripe Checkout; returns the message to show when it can't. */
+  const buy = async (): Promise<string | null> => {
+    setRedirecting(true)
+    try {
+      window.location.assign(await createCheckout(creatorSlug, pageSlug))
+      return null
+    } catch (error) {
+      setRedirecting(false)
+      return error instanceof ApiError && error.status === 409
+        ? 'Checkout isn’t available right now. Please try again later.'
+        : 'We couldn’t open checkout. Please try again.'
+    }
+  }
+
+  // Coming back from Stripe with the browser's Back button restores this page from the cache: drop the overlay.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setRedirecting(false)
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [])
+
+  const signUp = async (email: string): Promise<'success' | 'closed'> => {
+    try {
+      await captureEmail(creatorSlug, pageSlug, email)
+      return 'success'
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) return 'closed'
+      throw error
+    }
+  }
+
+  const ctx: LandingContext = {
+    pageType: page.type,
+    product:
+      page.productName !== null
+        ? {
+            name: page.productName,
+            priceCents: page.productPriceCents ?? 0,
+            currency: page.product?.currency ?? 'EUR',
+            type: page.product?.type ?? null,
+          }
+        : null,
+    brand,
+    renderAction: (label, options) =>
+      page.type === 'Sales' ? (
+        <BuyButton label={label} inverted={options?.inverted} onBuy={buy} />
+      ) : (
+        <LeadForm label={label} inverted={options?.inverted} brandName={brand.name} onSubmit={signUp} />
+      ),
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {page.sections.map((section) => (
-        <PublicSection
-          key={section.publicId}
-          section={section}
-          pageType={page.type}
-          creatorSlug={creatorSlug}
-          pageSlug={pageSlug}
-          productName={page.productName}
-          productPriceCents={page.productPriceCents}
-        />
+    <LandingShell brandColor={brand.color}>
+      {toRendered(page).map((section) => (
+        <LandingSection key={section.key} section={section} ctx={ctx} />
       ))}
-    </div>
+      {redirecting && (
+        <div className="lp-overlay" role="alertdialog" aria-modal="true" aria-labelledby="checkout-title" aria-describedby="checkout-text">
+          <div className="lp-overlay__card">
+            <span className="lp-spinner" aria-hidden="true" />
+            <p className="lp-overlay__title" id="checkout-title">
+              Taking you to secure checkout
+            </p>
+            <p className="lp-overlay__text" id="checkout-text">
+              You’ll pay on Stripe and come straight back here. Please don’t close this tab.
+            </p>
+            <p className="lp-overlay__brand">
+              <Lock />
+              Payments processed by Stripe
+            </p>
+          </div>
+        </div>
+      )}
+    </LandingShell>
   )
 }
 
-/* ─── PublicSection ───────────────────────────────────────────── */
-
-function PublicSection({
-  section,
-  pageType,
-  creatorSlug,
-  pageSlug,
-  productName,
-  productPriceCents,
-}: {
-  section: LandingPageSection
-  pageType: LandingPageType
-  creatorSlug: string
-  pageSlug: string
-  productName: string | null
-  productPriceCents: number | null
-}) {
-  const content = parseJson(section.contentJson)
-
-  switch (section.type as SectionType) {
-    case 'Navbar': {
-      const c = content as Partial<NavbarContent>
-      return (
-        <nav style={{ backgroundColor: section.backgroundColor ?? undefined }} className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
-          <p className="font-bold text-neutral-950">{c.brandName || 'My Brand'}</p>
-          {c.links && c.links.length > 0 ? (
-            <div className="flex gap-6">
-              {c.links.map((link, i) => (
-                <a key={i} href={link.href} className="text-sm text-neutral-600 hover:text-neutral-950 transition">{link.label}</a>
-              ))}
-            </div>
-          ) : null}
-        </nav>
-      )
-    }
-    case 'Footer': {
-      const c = content as Partial<FooterContent>
-      return (
-        <footer style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-10 text-center border-t border-neutral-100">
-          <p className="text-sm text-neutral-400">{c.copyright || '© 2025 My Brand'}</p>
-        </footer>
-      )
-    }
-    case 'Hero': {
-      const c = content as Partial<HeroContent>
-      return (
-        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-24 text-center">
-          <div className="mx-auto max-w-3xl">
-            {c.imageUrl ? (
-              <img src={c.imageUrl} alt="" className="mx-auto mb-8 max-h-96 w-full rounded-2xl object-cover" />
-            ) : null}
-            <h1 className="text-4xl font-bold leading-tight tracking-tight text-neutral-950 sm:text-5xl">
-              {c.heading}
-            </h1>
-            {c.subheading ? (
-              <p className="mx-auto mt-5 max-w-xl text-lg text-neutral-600">{c.subheading}</p>
-            ) : null}
-            <div className="mt-8 flex flex-col items-center gap-4">
-              <CtaButton label={c.ctaText ?? 'Get started'} pageType={pageType} creatorSlug={creatorSlug} pageSlug={pageSlug} />
-            </div>
-          </div>
-        </section>
-      )
-    }
-
-    case 'Features': {
-      const c = content as Partial<FeaturesContent>
-      const items = c.items ?? []
-      return (
-        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-20">
-          <div className="mx-auto max-w-5xl">
-            {c.heading ? (
-              <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
-            ) : null}
-            <div className={`grid gap-8 ${items.length <= 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
-              {items.map((item, i) => (
-                <div key={i} className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <p className="text-lg font-semibold text-neutral-950">{item.title}</p>
-                  <p className="mt-2 text-neutral-500">{item.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )
-    }
-
-    case 'ProductDetails': {
-      const c = content as Partial<ProductDetailsContent>
-      return (
-        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-20">
-          <div className="mx-auto max-w-3xl">
-            {c.imageUrl ? (
-              <img src={c.imageUrl} alt="" className="mb-8 max-h-96 w-full rounded-2xl object-cover" />
-            ) : null}
-            {productName ? (
-              <p className="text-sm font-semibold uppercase tracking-widest text-neutral-400">{productName}</p>
-            ) : null}
-            {c.heading ? (
-              <h2 className="mt-1 text-3xl font-bold text-neutral-950">{c.heading}</h2>
-            ) : null}
-            {c.description ? (
-              <p className="mt-4 text-lg leading-relaxed text-neutral-600">{c.description}</p>
-            ) : null}
-            {c.showPrice ? (
-              <p className="mt-6 text-3xl font-bold text-neutral-950">
-                {productPriceCents != null
-                  ? (productPriceCents / 100).toLocaleString(undefined, { style: 'currency', currency: 'EUR' })
-                  : 'Price on request'}
-              </p>
-            ) : null}
-            {c.bullets && c.bullets.length > 0 ? (
-              <ul className="mt-6 space-y-3">
-                {c.bullets.map((bullet, i) => (
-                  <li key={i} className="flex items-start gap-3 text-neutral-700">
-                    <span className="mt-2 size-2 shrink-0 rounded-full bg-neutral-950" />
-                    {bullet}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        </section>
-      )
-    }
-
-    case 'Testimonials': {
-      const c = content as Partial<TestimonialsContent>
-      const items = c.items ?? []
-      return (
-        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-20">
-          <div className="mx-auto max-w-5xl">
-            {c.heading ? (
-              <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
-            ) : null}
-            <div className={`grid gap-8 ${items.length <= 1 ? 'sm:grid-cols-1' : items.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
-              {items.map((item, i) => (
-                <div key={i} className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <p className="text-neutral-700 italic">"{item.quote}"</p>
-                  <p className="mt-4 font-semibold text-neutral-950">{item.author}</p>
-                  {item.role ? <p className="text-sm text-neutral-500">{item.role}</p> : null}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )
-    }
-
-    case 'Faq': {
-      const c = content as Partial<FaqContent>
-      const items = c.items ?? []
-      return (
-        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-20">
-          <div className="mx-auto max-w-3xl">
-            {c.heading ? (
-              <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
-            ) : null}
-            <div className="space-y-4">
-              {items.map((item, i) => (
-                <div key={i} className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-                  <p className="font-semibold text-neutral-950">{item.question}</p>
-                  <p className="mt-2 text-neutral-600">{item.answer}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )
-    }
-
-    case 'Gallery': {
-      const c = content as Partial<GalleryContent>
-      const imageUrls = c.imageUrls ?? []
-      return (
-        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-20">
-          <div className="mx-auto max-w-5xl">
-            {c.heading ? (
-              <h2 className="mb-12 text-center text-3xl font-bold text-neutral-950">{c.heading}</h2>
-            ) : null}
-            {imageUrls.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {imageUrls.map((url, i) => (
-                  <img key={i} src={url} alt="" className="aspect-square w-full rounded-2xl object-cover" />
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </section>
-      )
-    }
-
-    case 'Cta': {
-      const c = content as Partial<CtaContent>
-      return (
-        <section style={{ backgroundColor: section.backgroundColor ?? undefined }} className="px-6 py-24 text-center">
-          <div className="mx-auto max-w-2xl">
-            <h2 className="text-3xl font-bold text-neutral-950 sm:text-4xl">{c.heading}</h2>
-            {c.subheading ? (
-              <p className="mt-4 text-lg text-neutral-600">{c.subheading}</p>
-            ) : null}
-            <div className="mt-8 flex flex-col items-center gap-4">
-              <CtaButton label={c.buttonText ?? 'Get started'} pageType={pageType} creatorSlug={creatorSlug} pageSlug={pageSlug} />
-            </div>
-          </div>
-        </section>
-      )
-    }
-  }
-}
-
-/* ─── CtaButton ───────────────────────────────────────────────── */
-
-function CtaButton({
-  label,
-  pageType,
-  creatorSlug,
-  pageSlug,
-}: {
-  label: string
-  pageType: LandingPageType
-  creatorSlug: string
-  pageSlug: string
-}) {
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
-  const [checkoutErrorMessage, setCheckoutErrorMessage] = useState<string | null>(null)
-  const [captureErrorMessage, setCaptureErrorMessage] = useState<string | null>(null)
-
-  if (pageType === 'LeadGen') {
-    if (status === 'success') {
-      return (
-        <p className="inline-block rounded-2xl bg-emerald-50 px-6 py-3 text-sm font-medium text-emerald-700">
-          ✓ You're in! Check your inbox.
-        </p>
-      )
-    }
-    return (
-      <div className="mx-auto flex w-full max-w-md flex-col gap-2">
-        <form
-          className="flex flex-col gap-3 sm:flex-row"
-          onSubmit={(e) => {
-            e.preventDefault()
-            setStatus('submitting')
-            setCaptureErrorMessage(null)
-            captureEmail(creatorSlug, pageSlug, email)
-              .then(() => setStatus('success'))
-              .catch((err) => {
-                // Never surface the creator's actual reason (contact-list plan limit) to the visitor —
-                // same principle as the checkout 409 below.
-                setCaptureErrorMessage(
-                  err instanceof ApiError && err.status === 409
-                    ? 'Sign-ups are temporarily closed.'
-                    : 'Something went wrong. Please try again.',
-                )
-                setStatus('error')
-              })
-          }}
-        >
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Your email address"
-            disabled={status === 'submitting'}
-            className="flex-1 rounded-xl border border-neutral-200 px-4 py-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100 disabled:opacity-60"
-          />
-          <button
-            type="submit"
-            disabled={status === 'submitting'}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-6 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
-          >
-            {status === 'submitting' ? <Loader2 className="animate-spin" size={15} /> : null}
-            {label}
-          </button>
-        </form>
-        {status === 'error' ? (
-          <p className="text-center text-sm text-red-500">
-            {captureErrorMessage ?? 'Something went wrong. Please try again.'}
-          </p>
-        ) : null}
-      </div>
-    )
-  }
-
-  // Sales — buy button (Stripe checkout)
-  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+/** A missing or unpublished page of a known creator: their brand, "This page isn't here" and their live pages. */
+function MissingPage({ creatorSlug, pageSlug, data }: { creatorSlug: string; pageSlug: string; data: PublicCreatorPages }) {
+  const brand = { name: data.creator.name, color: data.creator.primaryColor || DEFAULT_BRAND_COLOR, logoUrl: data.creator.logoUrl }
+  useDocumentTitle(`Page not found · ${brand.name}`)
+  const ctx: LandingContext = { pageType: 'LeadGen', product: null, brand, renderAction: () => null }
+  const live = data.pages.filter((page) => page.slug !== pageSlug)
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col items-center gap-2">
-      <input
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Your email address"
-        disabled={status === 'submitting'}
-        className="w-full rounded-xl border border-neutral-200 px-4 py-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100 disabled:opacity-60"
+    <LandingShell brandColor={brand.color}>
+      <LandingSection ctx={ctx} section={{ key: 'missing-nav', type: 'Navbar', variant: 'simple', background: null, content: { brandName: '', links: [] } }} />
+      <section className="lp-sec lp-missing" aria-labelledby="missing-title">
+        <span className="lp-missing__icon">
+          <Compass />
+        </span>
+        <h1 className="lp__title" id="missing-title">
+          This page <em>isn’t here.</em>
+        </h1>
+        <p className="lp__sub">The link may be mistyped, or {brand.name} may have moved or removed this page.</p>
+        {live.length > 0 && (
+          <div className="lp-missing__list">
+            <p className="lp-eyebrow">More from {brand.name}</p>
+            <ul role="list">
+              {live.map((page) => {
+                const art = cover(page.slug, page.thumbnailUrl)
+                return (
+                  <li key={page.slug}>
+                    <Link className="lp-missing__link" to={`/p/${creatorSlug}/${page.slug}`}>
+                      <span className={`${art.className} cover--thumb`} style={art.style} />
+                      <span className="lp-missing__text">
+                        <strong>{page.title}</strong>
+                        <span>
+                          {page.type === 'Sales' && page.productPriceCents !== null
+                            ? money(page.productPriceCents, page.currency ?? 'EUR')
+                            : 'Free'}
+                        </span>
+                      </span>
+                      <ArrowRight />
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
+        <p className="lp-missing__owner">
+          Is this your page? <Link to="/login">Log in to Luma</Link> to check your pages.
+        </p>
+      </section>
+      <LandingSection
+        ctx={ctx}
+        section={{ key: 'missing-foot', type: 'Footer', variant: 'centered', background: null, content: { copyright: '' } }}
       />
-      <button
-        type="button"
-        disabled={!isValidEmail || status === 'submitting'}
-        onClick={() => {
-          setStatus('submitting')
-          setCheckoutErrorMessage(null)
-          createCheckout(creatorSlug, pageSlug, email)
-            .then((checkoutUrl) => { window.location.href = checkoutUrl })
-            .catch((err) => {
-              // Never surface the creator's payout-setup reason to the buyer — a 409 here always
-              // means the creator isn't payout-ready yet, which is not the buyer's problem to see.
-              setCheckoutErrorMessage(
-                err instanceof ApiError && err.status === 409
-                  ? 'This product is temporarily unavailable.'
-                  : 'Something went wrong. Please try again.',
-              )
-              setStatus('error')
-            })
-        }}
-        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-8 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {status === 'submitting' ? <Loader2 className="animate-spin" size={15} /> : null}
-        Buy now
-      </button>
-      {status === 'error' && checkoutErrorMessage ? (
-        <p className="text-sm text-red-500">{checkoutErrorMessage}</p>
-      ) : null}
-      <p className="text-xs text-neutral-400">This is the email address that will receive your product.</p>
-    </div>
+    </LandingShell>
   )
 }
 
-/* ─── Helpers ─────────────────────────────────────────────────── */
-
-function parseJson(json: string): Record<string, unknown> {
-  try { return JSON.parse(json) as Record<string, unknown> } catch { return {} }
+function LoadFailed() {
+  useDocumentTitle('Luma')
+  return (
+    <LandingShell brandColor={DEFAULT_BRAND_COLOR}>
+      <section className="lp-sec lp-missing" aria-labelledby="failed-title">
+        <span className="lp-missing__icon">
+          <Compass />
+        </span>
+        <h1 className="lp__title" id="failed-title">
+          We couldn’t load <em>this page.</em>
+        </h1>
+        <p className="lp__sub">Check your connection and try again.</p>
+        <button className="lp__cta" type="button" onClick={() => window.location.reload()}>
+          <span>Try again</span>
+        </button>
+      </section>
+    </LandingShell>
+  )
 }

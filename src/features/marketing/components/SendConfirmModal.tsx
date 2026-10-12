@@ -55,14 +55,16 @@ export function SendConfirmModal({
         </>
       }
     >
-      <div className="stack">
-        {error && (
+      {error ? (
+        <div className="stack">
           <Alert tone="danger" icon={CircleAlert} live>
             {error}
           </Alert>
-        )}
+          <KeyValue items={items} />
+        </div>
+      ) : (
         <KeyValue items={items} />
-      </div>
+      )}
     </Modal>
   )
 }

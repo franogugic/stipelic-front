@@ -1,0 +1,885 @@
+/* Designer round 4 — analytics boards, filter bar, period bar, usage, palettes. Copied verbatim from
+   designer-prototype/app/css/app.css (only the rules the app did not have yet). */
+/* Side-by-side blocks share one height: each column stretches to the row,
+   and its last card grows to fill it, however much content it has. */
+.dash > [class*="span-"]:not(.grid):not(.card) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dash > [class*="span-"]:not(.grid):not(.card) > :last-child,
+.grid > .stack > .card:last-child {
+  flex: 1;
+}
+
+.dash > .grid {
+  grid-auto-rows: 1fr;
+}
+
+/* A card body whose footer sits at the bottom when the card is stretched */
+.fill-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100%;
+}
+
+.fill-stack__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-divider);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.fill-stack__foot strong {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.span-6 { grid-column: span 6; }
+
+@media (max-width: 1023px) {
+  .span-4, .span-5, .span-6, .span-7, .span-8 { grid-column: span 12; }
+}
+
+.settings-grid--appearance {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+}
+
+/* Palette picker — each option shows its ink, accent and chart hues */
+.palette-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.palette-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  padding: var(--space-1-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.palette-option:hover {
+  border-color: var(--color-border-strong);
+}
+
+.palette-option:has(.palette-option__input:checked) {
+  border-color: var(--color-text);
+  box-shadow: 0 0 0 1px var(--color-text);
+}
+
+.palette-option:has(.palette-option__input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.palette-option__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.palette-option__swatch {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 68px;
+  margin-bottom: var(--space-1-5);
+  padding: var(--space-2-5);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+}
+
+.palette-option__spark {
+  width: 56%;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+}
+
+.palette-option__hues {
+  display: flex;
+  gap: 3px;
+}
+
+.palette-option__hues i {
+  flex: 1;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--hue);
+}
+
+.palette-option__name,
+.palette-option__mood {
+  padding: 0 var(--space-1);
+}
+
+.palette-option__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.palette-option__mood {
+  padding-bottom: var(--space-1);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}
+
+/* Appearance preview — real components wearing the palette */
+.palette-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.palette-preview__hero .sparkline-wrap {
+  --sparkline-height: 56px;
+}
+
+.palette-preview .btn {
+  pointer-events: none;
+}
+
+@media (max-width: 1023px) {
+  .settings-grid,
+  .settings-grid--brand,
+  .settings-grid--appearance {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.filter-bar__search {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.filter-bar .tab__count {
+  margin-left: var(--space-1-5);
+}
+
+.filter-bar__view {
+  margin-left: auto;
+}
+
+/* Table version: sits at the top of a card, above the table */
+.filter-bar--table {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.filter-bar--table .select-wrap {
+  flex: 0 1 200px;
+  margin-left: auto;
+}
+
+@media (max-width: 639px) {
+  .filter-bar__search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .filter-bar .segmented:not(.filter-bar__view) {
+    width: 100%;
+  }
+
+  .filter-bar .segmented:not(.filter-bar__view) .segmented__option {
+    flex: 1;
+  }
+
+  .filter-bar .segmented:not(.filter-bar__view) .segmented__label {
+    justify-content: center;
+  }
+
+  .filter-bar .tab__count {
+    display: none;
+  }
+}
+
+.filter-results {
+  text-align: center;
+}
+
+.card > .filter-results {
+  padding: var(--space-6) var(--space-5);
+}
+
+/* ==========================================================================
+   Analytics board — period bar, KPI cells (optionally the chart's tabs),
+   chart body and a stats strip. Used by page, product, order and campaign
+   analytics so every screen with numbers reads the same way.
+   ========================================================================== */
+.period-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.period-bar__range {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.period-bar__range span {
+  color: var(--color-text-muted);
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.live__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px var(--color-success-soft);
+  animation: pulse 2.4s var(--ease-in-out) infinite;
+}
+
+.board {
+  overflow: hidden;
+}
+
+.board__kpis,
+.board__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.board__kpis {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-5) var(--space-6);
+}
+
+/* A KPI that is also a tab: it picks the metric the chart shows */
+.kpi--tab {
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.kpi + .kpi,
+.board__stat + .board__stat {
+  border-left: 1px solid var(--color-divider);
+}
+
+.kpi--tab::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: transparent;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.kpi--tab:hover {
+  background: var(--color-hover);
+}
+
+.kpi:has(.kpi__input:checked)::after {
+  background: var(--color-text);
+}
+
+.kpi:has(.kpi__input:focus-visible) {
+  box-shadow: inset 0 0 0 2px var(--color-focus);
+}
+
+.kpi__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kpi--tab .metric__label {
+  color: var(--color-text-muted);
+}
+
+.kpi:has(.kpi__input:checked) .metric__label {
+  color: var(--color-text);
+}
+
+.kpi__value {
+  font-family: var(--font-display);
+  font-size: var(--display-md);
+  line-height: 1;
+  letter-spacing: var(--tracking-display);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.kpi__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.kpi__meta strong {
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.board__body {
+  padding: var(--space-5) var(--space-6) var(--space-6);
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.chart-legend__title {
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.chart-legend__keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.chart-legend__key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chart-legend__key::before {
+  content: "";
+  width: 16px;
+  border-top: 2px solid var(--chart-1);
+}
+
+.chart-legend__key--previous::before {
+  border-top: 2px dashed var(--chart-axis);
+}
+
+.board__stats {
+  margin: 0;
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-surface-2);
+}
+
+.board__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-4) var(--space-6);
+}
+
+.board__stat dt {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.board__stat dd {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.person {
+  display: flex;
+  flex-direction: column;
+}
+
+.person__end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.person__value {
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1023px) {
+  .board__kpis,
+  .board__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpi:nth-child(3),
+  .board__stat:nth-child(3) {
+    border-left: 0;
+  }
+
+  .kpi:nth-child(n + 3),
+  .board__stat:nth-child(n + 3) {
+    border-top: 1px solid var(--color-divider);
+  }
+}
+
+@media (max-width: 639px) {
+  .live {
+    margin-left: 0;
+  }
+
+  .kpi,
+  .board__stat,
+  .board__body {
+    padding-right: var(--space-4);
+    padding-left: var(--space-4);
+  }
+
+  .kpi__value {
+    font-size: var(--display-sm);
+  }
+}
+
+.board__kpis:last-child {
+  border-bottom: 0;
+}
+
+/* Strip under the KPIs for a breakdown (order statuses, campaign delivery) */
+.board__foot {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-surface-2);
+}
+
+.board__kpis + .board__foot {
+  border-top: 0;
+}
+
+.stackbar__total {
+  margin-left: auto;
+  color: var(--color-text-muted);
+}
+
+/* KPI trend: a sparkline pinned to the bottom of the cell */
+.kpi__spark {
+  --sparkline-height: 36px;
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+/* KPI share: a thin bar showing the value as part of the whole */
+.kpi__bar {
+  height: 4px;
+  margin-top: auto;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-3);
+  overflow: hidden;
+}
+
+.kpi__bar span {
+  display: block;
+  width: var(--w);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--bar, var(--color-text));
+}
+
+.kpi__bar--success { --bar: var(--color-success-solid); }
+
+.kpi__bar--danger { --bar: var(--color-danger-solid); }
+
+.kpi__bar--accent { --bar: var(--color-accent-strong); }
+
+.kpi__value .kpi__of {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: 0;
+  color: var(--color-text-muted);
+}
+
+/* Email marketing — upcoming campaigns and the open-rate column */
+.upcoming-row {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.upcoming-row > svg {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.upcoming-row:hover .table__primary {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rate-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2-5);
+}
+
+.rate-cell__bar {
+  width: 64px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-3);
+  overflow: hidden;
+}
+
+.rate-cell__bar span {
+  display: block;
+  width: var(--w);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--chart-1);
+}
+
+/* Dashboard — plan usage beside the revenue card */
+.plan-usage .card__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.usage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.usage__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 calc(var(--space-2) * -1);
+  padding: var(--space-2-5) var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.usage__row:hover {
+  background: var(--color-hover);
+}
+
+.usage__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+}
+
+.usage__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.usage__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.usage__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.usage__track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-3);
+  overflow: hidden;
+}
+
+.usage__track span {
+  display: block;
+  width: var(--w);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--usage, var(--color-accent-strong));
+}
+
+.usage__row--warning { --usage: var(--color-warning-solid); }
+
+.usage__row--danger { --usage: var(--color-danger-solid); }
+
+.usage__count {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.usage__count strong {
+  font-family: var(--font-display);
+  font-size: var(--display-sm);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+/* A KPI whose value is a name, not a number (e.g. best seller) */
+.kpi__name {
+  display: block;
+  font-size: var(--display-sm);
+  line-height: 1.1;
+}
+
+/* Dashboard — top pages list */
+.top-page {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.top-page .cover--thumb {
+  width: 40px;
+  border-radius: var(--radius-sm);
+}
+
+.top-page:hover .table__primary {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Product analytics — pages that sell the product */
+.product-pages {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: var(--space-1);
+}
+
+.product-pages__row {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.product-pages__row:hover .list__grow {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.table__url {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Archived landing page tiles recede like archived products */
+.tiles .card.is-archived {
+  background: var(--color-surface-2);
+}
+
+.tiles .card.is-archived .cover {
+  filter: grayscale(0.85);
+  opacity: 0.6;
+}
+
+@media (max-width: 639px) {
+  .board__foot {
+    padding-right: var(--space-4);
+    padding-left: var(--space-4);
+  }
+
+  .stackbar__total {
+    margin-left: 0;
+  }
+}
+
+/* Area chart: y-axis values live in a right-hand gutter, never on the line */
+.area-chart {
+  --gutter: 48px;
+  margin-top: var(--space-4);
+}
+
+.area-chart__plot {
+  position: relative;
+  height: 260px;
+  margin-right: var(--gutter);
+}
+
+.area-chart__grid {
+  position: absolute;
+  top: var(--y);
+  right: 0;
+  left: 0;
+  border-top: 1px dashed var(--chart-grid);
+}
+
+.area-chart__grid--base {
+  border-top-style: solid;
+  border-top-color: var(--color-border);
+}
+
+.area-chart__grid span {
+  position: absolute;
+  top: 0;
+  left: calc(100% + var(--space-3));
+  transform: translateY(-50%);
+  color: var(--chart-axis);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.area-chart__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.area-chart__area {
+  fill: var(--chart-1-fill);
+}
+
+.area-chart__line,
+.area-chart__prev {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.area-chart__line {
+  stroke: var(--chart-1);
+  stroke-width: 2.25;
+}
+
+.area-chart__line--running {
+  stroke-dasharray: 2 5;
+}
+
+.area-chart__prev {
+  stroke: var(--chart-axis);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 5;
+  opacity: 0.7;
+}
+
+.area-chart__dot {
+  position: absolute;
+  top: var(--y);
+  left: var(--x);
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--chart-1);
+  box-shadow: 0 0 0 3px var(--color-surface);
+}
+
+.area-chart__hits {
+  position: absolute;
+  inset: 0;
+}
+
+.area-chart__hits span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--x) - var(--w) / 2);
+  width: var(--w);
+}
+
+.area-chart__hits span:hover {
+  background: linear-gradient(var(--color-border-strong), var(--color-border-strong)) center / 1px 100% no-repeat;
+}
+
+.area-chart__x {
+  position: relative;
+  height: 16px;
+  margin-top: var(--space-2);
+  margin-right: var(--gutter);
+  color: var(--chart-axis);
+  font-size: var(--text-2xs);
+}
+
+.area-chart__x span {
+  position: absolute;
+  left: var(--x);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.area-chart__x .is-start {
+  transform: none;
+}
+
+.area-chart__x .is-end {
+  transform: translateX(-100%);
+}
+
+@media (max-width: 639px) {
+  .area-chart {
+    --gutter: 40px;
+  }
+
+  .area-chart__plot {
+    height: 200px;
+  }
+
+  /* Every other date label on phones, so they never touch */
+  .area-chart__x .is-minor {
+    display: none;
+  }
+}
+
+/* Charts that sit alone in a card grow with it, so side-by-side cards stay level */
+.card__body:has(> .bars:only-child) {
+  display: flex;
+  flex-direction: column;
+}
+
+.card__body > .bars:only-child {
+  flex: 1;
+  height: auto;
+  min-height: 200px;
+}
