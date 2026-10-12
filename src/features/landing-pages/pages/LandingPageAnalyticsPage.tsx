@@ -2,10 +2,9 @@ import { ArrowLeft, ArrowRight, ChartNoAxesCombined, Copy, ExternalLink, MailPlu
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
-import { date, initials, money, percent, plural } from '../../../shared/lib/format'
+import { date, money, percent, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
-  Avatar,
   Button,
   Card,
   EmptyState,
@@ -21,6 +20,7 @@ import {
 } from '../../../shared/ui/ledger'
 import { getAnalyticsSeries } from '../../analytics/api/series-api'
 import { AnalyticsBoard } from '../../analytics/components/AnalyticsBoard'
+import { PersonRow } from '../../analytics/components/PersonRow'
 import { PeriodBar } from '../../analytics/components/PeriodBar'
 import { metricById, periodById } from '../../analytics/model/series'
 import type { AnalyticsMetric, AnalyticsPeriod, AnalyticsSeries } from '../../analytics/model/types'
@@ -299,26 +299,14 @@ function LatestSales({ orders }: { orders: Order[] }) {
   }
   return (
     <div className="list">
-      {orders.map((order) => {
-        const name = order.name ?? order.email ?? 'Customer'
-        return (
-          <div className="list__row" key={order.publicId}>
-            <Avatar size="sm" neutral>
-              {initials(name)}
-            </Avatar>
-            <div className="list__grow person">
-              <span className="table__primary">{name}</span>
-              <span className="table__secondary">{order.email ?? ''}</span>
-            </div>
-            <div className="person__end">
-              <span className="person__value">
-                <Money amountCents={order.amountCents} currency={order.currency} />
-              </span>
-              <span className="table__secondary">{date(order.paidAt ?? order.createdAt)}</span>
-            </div>
-          </div>
-        )
-      })}
+      {orders.map((order) => (
+        <PersonRow key={order.publicId} name={order.name ?? order.email ?? 'Customer'} email={order.email}>
+          <span className="person__value">
+            <Money amountCents={order.amountCents} currency={order.currency} />
+          </span>
+          <span className="table__secondary">{date(order.paidAt ?? order.createdAt)}</span>
+        </PersonRow>
+      ))}
     </div>
   )
 }
@@ -331,18 +319,10 @@ function LatestSignups({ captures, subscribersUrl }: { captures: EmailCaptureIte
     <div className="stack">
       <div className="list">
         {captures.map((capture) => (
-          <div className="list__row" key={`${capture.email}-${capture.capturedAt}`}>
-            <Avatar size="sm" neutral>
-              {capture.email.charAt(0).toUpperCase()}
-            </Avatar>
-            <div className="list__grow person">
-              <span className="table__primary">{capture.email}</span>
-            </div>
-            <div className="person__end">
-              <StatusBadge kind="subscriber" value={subscriberStatusKey(capture.unsubscribed)} />
-              <span className="table__secondary">{date(capture.capturedAt)}</span>
-            </div>
-          </div>
+          <PersonRow key={`${capture.email}-${capture.capturedAt}`} name={capture.email}>
+            <StatusBadge kind="subscriber" value={subscriberStatusKey(capture.unsubscribed)} />
+            <span className="table__secondary">{date(capture.capturedAt)}</span>
+          </PersonRow>
         ))}
       </div>
       <Link className="link text-sm" to={subscribersUrl}>
