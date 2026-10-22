@@ -3,7 +3,7 @@ import { money, number, percent, plural } from '../../../../shared/lib/format'
 import { DeltaBadge, KpiCell, Money } from '../../../../shared/ui/ledger'
 import type { HomeSummary } from '../../../orders/model/types'
 
-/** "Sales at a glance": best seller, average order, this month and all-time revenue, with paid orders, customers, refunds and net. */
+/** "Sales at a glance": best seller, average order, this month and a spare tile, with paid orders, customers, refunds and net. */
 export function SalesBoard({ summary, currency }: { summary: HomeSummary; currency: string }) {
   const revenue = summary.monthlyRevenueTrend
   const counts = summary.monthlyPaidOrderCounts
@@ -51,10 +51,9 @@ export function SalesBoard({ summary, currency }: { summary: HomeSummary; curren
           }
         />
         <KpiCell
-          label="Total revenue"
+          label="To replace"
           icon={Wallet}
-          value={<Money amountCents={total} currency={currency} />}
-          meta={<span>{plural(summary.paidOrderCount, 'paid order')} · all time</span>}
+          value="—"
         />
       </div>
       <dl className="board__stats">

@@ -1,6 +1,6 @@
 import { Landmark, Receipt, Undo2, Wallet } from 'lucide-react'
 import type { CSSProperties } from 'react'
-import { money, number, percent, plural } from '../../../shared/lib/format'
+import { money, number, plural } from '../../../shared/lib/format'
 import { DeltaBadge, KpiCell, Money } from '../../../shared/ui/ledger'
 import type { OrderSummary } from '../model/types'
 
@@ -24,7 +24,6 @@ export function OrdersBoard({ summary, currency }: { summary: OrderSummary; curr
   }
   const total = summary.totalOrderCount
   const share = (count: number) => (total > 0 ? ((count / total) * 100).toFixed(1) : '0.0')
-  const netShare = summary.totalPaidAmountCents > 0 ? (summary.netAmountCents / summary.totalPaidAmountCents) * 100 : 0
   const values = (pick: (month: (typeof trend)[number]) => number) => trend.map(pick)
 
   return (
@@ -48,17 +47,10 @@ export function OrdersBoard({ summary, currency }: { summary: OrderSummary; curr
           label="Net to you"
           icon={Landmark}
           value={<Money amountCents={summary.netAmountCents} currency={currency} />}
-          meta={<span>{percent(netShare)} of gross</span>}
+          meta={<span>To replace</span>}
           spark={trend.length > 1 ? { values: values((month) => month.netCents), label: 'Net to you, last 12 months' } : undefined}
         />
-        <KpiCell
-          label="Average order"
-          icon={Receipt}
-          value={
-            summary.paidOrderCount > 0 ? <Money amountCents={Math.round(summary.totalPaidAmountCents / summary.paidOrderCount)} currency={currency} /> : '—'
-          }
-          meta={<span>{plural(summary.paidOrderCount, 'paid order')}</span>}
-        />
+        <KpiCell label="To replace" icon={Receipt} value="—" />
         <KpiCell
           label="Refunded"
           icon={Undo2}

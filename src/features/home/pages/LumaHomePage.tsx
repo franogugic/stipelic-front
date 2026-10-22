@@ -434,7 +434,7 @@ export function LumaHomePage() {
             <header className="mk-head mk-head--center" data-reveal>
               <p className="eyebrow">Pricing</p>
               <h2 className="mk-h2" id="pricing-title">
-                Simple plans. <em>Upgrade</em> as you grow.
+                Simple plans. <em>To replace</em>
               </h2>
               <p className="mk-head__lead">
                 Start free. Upgrade when your sales make it worth it — every plan includes pages, checkout, email and payouts.

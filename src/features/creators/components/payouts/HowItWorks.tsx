@@ -2,7 +2,7 @@ import { Card } from '../../../../shared/ui/ledger'
 
 const STEPS: Array<[number: string, title: string, text: string]> = [
   ['1', 'A customer pays', 'Card payment through Stripe checkout.'],
-  ['2', 'Your share is added', 'Each paid order adds its net amount to your balance.'],
+  ['2', 'To replace', 'To replace'],
   ['3', 'Money reaches you', 'Stripe pays out to your bank automatically.'],
 ]
 
