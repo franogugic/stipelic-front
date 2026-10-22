@@ -10,7 +10,10 @@ import { validateLoginForm } from '../model/login-validation'
 import type { LoginFieldName } from '../model/login-validation'
 import type { LoginFormValues } from '../model/types'
 
-const initialValues: LoginFormValues = { email: '', password: '' }
+// Local development only: prefilled from .env.development.local (never loaded by a production build).
+const initialValues: LoginFormValues = import.meta.env.DEV
+  ? { email: import.meta.env.VITE_DEV_LOGIN_EMAIL ?? '', password: import.meta.env.VITE_DEV_LOGIN_PASSWORD ?? '' }
+  : { email: '', password: '' }
 
 export function LoginPage() {
   const location = useLocation()
