@@ -1,6 +1,7 @@
 import { downloadFile } from '../../../shared/api/download'
 import { apiRequest } from '../../../shared/api/http-client'
-import type { ContactStats, ContactsPage } from '../model/types'
+import type { AnalyticsPeriod } from '../../analytics/model/types'
+import type { ContactPeriodStats, ContactStats, ContactsPage } from '../model/types'
 
 type ApiResponse<TData> = {
   statusCode: number
@@ -45,6 +46,13 @@ export function getContactStats(slug: string) {
   return apiRequest<ApiResponse<ContactStats>>(`/api/creators/${encodeURIComponent(slug)}/contacts/stats`).then(
     unwrapApiResponse,
   )
+}
+
+/** The overview with the growth cut to one period (creator timezone). */
+export function getContactPeriodStats(slug: string, period: AnalyticsPeriod) {
+  return apiRequest<ApiResponse<ContactPeriodStats>>(
+    `/api/creators/${encodeURIComponent(slug)}/contacts/stats?${new URLSearchParams({ period })}`,
+  ).then(unwrapApiResponse)
 }
 
 /** Removes the contact from the workspace's pages; an opt-out on record stays. */

@@ -1,8 +1,9 @@
 import { Landmark, Receipt, Undo2, Wallet } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { money, number, plural } from '../../../shared/lib/format'
-import { DeltaBadge, KpiCell, Money } from '../../../shared/ui/ledger'
-import type { OrderSummary } from '../model/types'
+import { KpiCell, Money } from '../../../shared/ui/ledger'
+import { periodPhrase } from '../../analytics/model/series'
+import type { OrderPeriodSummary } from '../model/types'
 
 const SEGMENTS: Array<[key: 'paid' | 'pending' | 'failed' | 'refunded', tone: string, label: string]> = [
   ['paid', 'success', 'Paid'],
@@ -11,11 +12,11 @@ const SEGMENTS: Array<[key: 'paid' | 'pending' | 'failed' | 'refunded', tone: st
   ['refunded', 'info', 'Refunded'],
 ]
 
-/** The money board above the orders list: gross, net, average order and refunds with 12-month trends, and orders by status. */
-export function OrdersBoard({ summary, currency }: { summary: OrderSummary; currency: string }) {
-  const trend = summary.monthlyTrend
-  const thisMonth = trend[trend.length - 1]
-  const lastMonth = trend[trend.length - 2]
+/** The money board above the orders list: gross, net, a spare tile and refunds for one period, each with the
+ * period's chart buckets, and the period's orders by status. */
+export function OrdersBoard({ summary, currency }: { summary: OrderPeriodSummary; currency: string }) {
+  const trend = summary.buckets
+  const phrase = periodPhrase(summary.period)
   const counts = {
     paid: summary.paidOrderCount,
     pending: summary.pendingOrderCount,
@@ -33,22 +34,15 @@ export function OrdersBoard({ summary, currency }: { summary: OrderSummary; curr
           label="Gross revenue"
           icon={Wallet}
           value={<Money amountCents={summary.totalPaidAmountCents} currency={currency} />}
-          meta={
-            thisMonth && lastMonth ? (
-              <>
-                <DeltaBadge current={thisMonth.grossCents} previous={lastMonth.grossCents} />
-                <span>{money(thisMonth.grossCents, currency)} this month</span>
-              </>
-            ) : undefined
-          }
-          spark={trend.length > 1 ? { values: values((month) => month.grossCents), label: 'Gross revenue, last 12 months' } : undefined}
+          meta={<span>{plural(summary.paidOrderCount, 'paid order')}</span>}
+          spark={trend.length > 1 ? { values: values((month) => month.grossCents), label: `Gross revenue, ${phrase}` } : undefined}
         />
         <KpiCell
           label="Net to you"
           icon={Landmark}
           value={<Money amountCents={summary.netAmountCents} currency={currency} />}
           meta={<span>To replace</span>}
-          spark={trend.length > 1 ? { values: values((month) => month.netCents), label: 'Net to you, last 12 months' } : undefined}
+          spark={trend.length > 1 ? { values: values((month) => month.netCents), label: `Net to you, ${phrase}` } : undefined}
         />
         <KpiCell label="To replace" icon={Receipt} value="—" />
         <KpiCell
@@ -56,7 +50,7 @@ export function OrdersBoard({ summary, currency }: { summary: OrderSummary; curr
           icon={Undo2}
           value={number(summary.refundedOrderCount)}
           meta={<span>{money(summary.refundedAmountCents, currency)} returned to buyers</span>}
-          spark={trend.length > 1 ? { values: values((month) => month.refundedCount), label: 'Refunded orders, last 12 months' } : undefined}
+          spark={trend.length > 1 ? { values: values((month) => month.refundedCount), label: `Refunded orders, ${phrase}` } : undefined}
         />
       </div>
       <div className="board__foot">

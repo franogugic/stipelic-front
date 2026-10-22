@@ -1,6 +1,7 @@
 import { downloadFile } from '../../../shared/api/download'
 import { apiRequest } from '../../../shared/api/http-client'
-import type { DashboardTrendRange, DashboardTrends, HomeSummary, OrdersPage, OrderSummary } from '../model/types'
+import type { AnalyticsPeriod } from '../../analytics/model/types'
+import type { DashboardTrendRange, DashboardTrends, HomeSummary, OrderPeriodSummary, OrdersPage, OrderSummary } from '../model/types'
 
 type ApiResponse<T> = { statusCode: number; message: string; code: string; data: T }
 
@@ -49,6 +50,14 @@ export function exportOrders(slug: string, filters: OrderFilters): Promise<void>
 
 export async function getOrderSummary(slug: string): Promise<OrderSummary> {
   const res = await apiRequest<ApiResponse<OrderSummary>>(`/api/creators/${slug}/orders/summary`)
+  return res.data
+}
+
+/** The totals and chart buckets of one period (creator timezone). */
+export async function getOrderPeriodSummary(slug: string, period: AnalyticsPeriod): Promise<OrderPeriodSummary> {
+  const res = await apiRequest<ApiResponse<OrderPeriodSummary>>(
+    `/api/creators/${slug}/orders/summary?${new URLSearchParams({ period })}`,
+  )
   return res.data
 }
 

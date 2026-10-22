@@ -1,13 +1,18 @@
 import { Eye, MailPlus, ShoppingBag, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { dateShort, month, monthYear, money, number } from '../../../shared/lib/format'
-import type { AnalyticsBucket, AnalyticsMetric, AnalyticsPeriod, AnalyticsSeries, AnalyticsTotals } from './types'
+import type { AnalyticsBucket, AnalyticsMetric, AnalyticsPeriod, AnalyticsSeries, AnalyticsStep, AnalyticsTotals } from './types'
 
-export const PERIODS: Array<{ id: AnalyticsPeriod; label: string; days: number; compare: string | null; step: string }> = [
-  { id: 'today', label: 'Today', days: 1, compare: 'same time yesterday', step: 'hour' },
-  { id: '7d', label: 'Last 7 days', days: 7, compare: 'previous 7 days', step: 'day' },
-  { id: '30d', label: 'Last 30 days', days: 30, compare: 'previous 30 days', step: 'day' },
-  { id: 'all', label: 'All time', days: 365, compare: null, step: 'month' },
+/** The one period menu of every chart. `compare` is the previous period's name (null: nothing to compare with). */
+export const PERIODS: Array<{ id: AnalyticsPeriod; label: string; compare: string | null; step: AnalyticsStep }> = [
+  { id: 'today', label: 'Today', compare: 'same time yesterday', step: 'hour' },
+  { id: '7d', label: 'Last 7 days', compare: 'previous 7 days', step: 'day' },
+  { id: '15d', label: 'Last 15 days', compare: 'previous 15 days', step: 'day' },
+  { id: '30d', label: 'Last 30 days', compare: 'previous 30 days', step: 'day' },
+  { id: '2m', label: 'Last 2 months', compare: 'previous 2 months', step: 'week' },
+  { id: '3m', label: 'Last 3 months', compare: 'previous 3 months', step: 'week' },
+  { id: '6m', label: 'Last 6 months', compare: 'previous 6 months', step: 'week' },
+  { id: 'all', label: 'All time', compare: null, step: 'month' },
 ]
 
 export const METRICS: Array<{ id: AnalyticsMetric; label: string; icon: LucideIcon; unit?: [string, string] }> = [
@@ -19,6 +24,30 @@ export const METRICS: Array<{ id: AnalyticsMetric; label: string; icon: LucideIc
 
 export const periodById = (id: string | null, fallback: AnalyticsPeriod): (typeof PERIODS)[number] =>
   PERIODS.find((period) => period.id === id) ?? PERIODS.find((period) => period.id === fallback) ?? PERIODS[1]
+
+/** "Last 30 days" → "last 30 days"; "Today" and "All time" stay readable mid-sentence the same way. */
+export const periodPhrase = (id: AnalyticsPeriod) => periodById(id, '30d').label.toLowerCase()
+
+/** Labels and tooltip titles for bucket starts of any step ("yyyy-MM-ddTHH:mm", creator-local). A week runs seven days
+ * from its start; the last one is cut at `end` (the period's end, as creator-local wall time) when that comes earlier. */
+export function bucketLabels(starts: string[], step: AnalyticsStep, end?: Date) {
+  const dates = starts.map(wallTime)
+  if (step === 'hour') {
+    const labels = dates.map((value) => hourLabel(value.getHours()))
+    return { labels, titles: dates.map((value) => `${hourLabel(value.getHours())}–${hourLabel(value.getHours() + 1)}`) }
+  }
+  if (step === 'month') return { labels: dates.map((value) => month(value)), titles: dates.map((value) => monthYear(value)) }
+  if (step === 'week') {
+    return {
+      labels: dates.map((value) => dateShort(value)),
+      titles: dates.map((value) => {
+        const last = new Date(value.getFullYear(), value.getMonth(), value.getDate() + 6)
+        return `${dateShort(value)} – ${dateShort(end && end < last ? end : last)}`
+      }),
+    }
+  }
+  return { labels: dates.map((value) => dateShort(value)), titles: dates.map((value) => dateShort(value)) }
+}
 
 export const metricById = (id: string | null, fallback: AnalyticsMetric) =>
   METRICS.find((metric) => metric.id === id) ?? METRICS.find((metric) => metric.id === fallback) ?? METRICS[0]
@@ -76,20 +105,15 @@ export function chartOf(series: AnalyticsSeries, metric: AnalyticsMetric) {
       previous: series.previousBuckets ? pick(series.previousBuckets) : null,
     }
   }
-  if (series.step === 'month') {
-    const dates = series.buckets.map((bucket) => wallTime(bucket.start))
-    return {
-      labels: dates.map((value) => month(value)),
-      titles: dates.map((value) => monthYear(value)),
-      values: pick(series.buckets),
-      previous: null,
-    }
-  }
-  const dates = series.buckets.map((bucket) => wallTime(bucket.start))
+  const { labels, titles } = bucketLabels(
+    series.buckets.map((bucket) => bucket.start),
+    series.step,
+    inZone(series.range.to, series.timezone),
+  )
   return {
-    labels: dates.map((value) => dateShort(value)),
-    titles: dates.map((value) => dateShort(value)),
+    labels,
+    titles,
     values: pick(series.buckets),
-    previous: series.previousBuckets ? pick(series.previousBuckets) : null,
+    previous: series.step !== 'month' && series.previousBuckets ? pick(series.previousBuckets) : null,
   }
 }

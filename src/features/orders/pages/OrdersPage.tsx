@@ -20,7 +20,7 @@ import { listLandingPages } from '../../landing-pages/api/landing-pages-api'
 import { listProducts } from '../../products/api/products-api'
 import { exportOrders, getOrderSummary, listOrders } from '../api/orders-api'
 import type { OrderFilters } from '../api/orders-api'
-import { OrdersBoard } from '../components/OrdersBoard'
+import { OrdersPeriodBoard } from '../components/OrdersPeriodBoard'
 import { OrdersTable } from '../components/OrdersTable'
 import type { Order, OrderStatus, OrderSummary } from '../model/types'
 
@@ -244,7 +244,7 @@ export function OrdersPage() {
     }
     return (
       <div className="stack stack--lg reveal">
-        <OrdersBoard summary={data} currency={currency} />
+        <OrdersPeriodBoard slug={slug} currency={currency} />
         <section className="card" aria-label="Order list">
           <TableFilterBar
             noun="customer or email"

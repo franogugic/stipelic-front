@@ -1,8 +1,7 @@
-import { Calendar } from 'lucide-react'
 import { date, dateShort, time } from '../../../shared/lib/format'
-import { Menu } from '../../../shared/ui/ledger'
 import { PERIODS, inZone } from '../model/series'
-import type { AnalyticsPeriod, AnalyticsSeries } from '../model/types'
+import type { AnalyticsPeriod, PeriodWindow } from '../model/types'
+import { PeriodMenu } from './PeriodMenu'
 
 /** "23 – 29 Sep 2026" or "31 Aug – 29 Sep 2026"; without the year for the comparison. */
 function dateRange(from: Date, to: Date, withYear = true) {
@@ -10,7 +9,7 @@ function dateRange(from: Date, to: Date, withYear = true) {
   return from.getMonth() === to.getMonth() ? `${from.getDate()} – ${end}` : `${dateShort(from)} – ${end}`
 }
 
-function Caption({ series, sinceNote }: { series: AnalyticsSeries; sinceNote: string }) {
+function Caption({ series, sinceNote }: { series: PeriodWindow; sinceNote: string }) {
   const period = PERIODS.find((candidate) => candidate.id === series.period)
   const zone = (instant: string) => inZone(instant, series.timezone)
   const to = zone(series.range.to)
@@ -56,28 +55,16 @@ export function PeriodBar({
   onPeriod,
 }: {
   period: AnalyticsPeriod
-  /** Null while it loads. */
-  series: AnalyticsSeries | null
+  /** The window the numbers cover (an analytics series, or a summary's period and range); null while it loads. */
+  series: PeriodWindow | null
   loading: boolean
   updatedAt: Date
   sinceNote: string
   onPeriod: (period: AnalyticsPeriod) => void
 }) {
-  const current = PERIODS.find((candidate) => candidate.id === period) ?? PERIODS[1]
   return (
     <div className="period-bar">
-      <Menu
-        label="Period"
-        triggerIcon={Calendar}
-        triggerLabel={current.label}
-        caret
-        align="start"
-        items={PERIODS.map((option) => ({
-          label: option.label,
-          checked: option.id === period,
-          onSelect: () => onPeriod(option.id),
-        }))}
-      />
+      <PeriodMenu period={period} onPeriod={onPeriod} />
       <p className="period-bar__range">{loading ? 'Loading…' : series ? <Caption series={series} sinceNote={sinceNote} /> : null}</p>
       <span className="live">
         <span className="live__dot" aria-hidden="true" />

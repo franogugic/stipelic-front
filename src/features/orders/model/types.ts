@@ -1,3 +1,5 @@
+import type { AnalyticsPeriod, AnalyticsStep } from '../../analytics/model/types'
+
 export type OrderStatus = 'Pending' | 'Paid' | 'Failed' | 'Refunded'
 
 export interface Order {
@@ -36,6 +38,27 @@ export interface OrderSummary {
   refundedAmountCents: number
   /** The last 12 calendar months in the creator's timezone, oldest first, the current month last. */
   monthlyTrend: OrderMonthTrend[]
+}
+
+/** `GET …/orders/summary?period=` — the totals of one period and its chart buckets. */
+export interface OrderPeriodSummary {
+  period: AnalyticsPeriod
+  step: AnalyticsStep
+  timezone: string
+  currency: string | null
+  range: { from: string; to: string }
+  paidOrderCount: number
+  totalPaidAmountCents: number
+  totalPlatformFeeCents: number
+  netAmountCents: number
+  refundedOrderCount: number
+  refundedAmountCents: number
+  pendingOrderCount: number
+  failedOrderCount: number
+  /** Paid + refunded + pending + failed in the period. */
+  totalOrderCount: number
+  /** Oldest first, zero-filled; `start` is "yyyy-MM-ddTHH:mm" in `timezone`. */
+  buckets: Array<{ start: string; grossCents: number; netCents: number; refundedCount: number }>
 }
 
 export interface OrderMonthTrend {

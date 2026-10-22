@@ -1,3 +1,4 @@
+import type { AnalyticsPeriod, AnalyticsStep } from '../../analytics/model/types'
 export type CampaignAudienceType = 'LandingPage' | 'Product' | 'All'
 export type CampaignStatus = 'Draft' | 'Queued' | 'Scheduled' | 'Failed' | 'Cancelled'
 export type EmailTemplateStatus = 'Active' | 'Archived'
@@ -138,4 +139,19 @@ export type ContactStats = {
   sources: Array<{ landingPagePublicId: string; title: string; count: number }>
   /** The same 12 months: contacts first captured, and opt-outs recorded, in each. */
   monthly: Array<{ month: string; joined: number; unsubscribed: number }>
+}
+
+/** `GET …/contacts/stats?period=` — the same all-time headline counts, with the growth cut to one period. */
+export type ContactPeriodStats = {
+  total: number
+  active: number
+  newThisMonth: number
+  unsubscribed: number
+  sources: ContactStats['sources']
+  period: AnalyticsPeriod
+  step: AnalyticsStep
+  timezone: string
+  range: { from: string; to: string }
+  /** Oldest first, zero-filled; `start` is "yyyy-MM-ddTHH:mm" in `timezone`. `total` is the running size of the list at the end of the bucket. */
+  buckets: Array<{ start: string; joined: number; unsubscribed: number; total: number }>
 }

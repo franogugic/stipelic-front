@@ -1,10 +1,9 @@
 import { Download, Send, Trash2, Users } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { date, month, monthYear, number, plural } from '../../../shared/lib/format'
+import { date, number, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
-  AreaChart,
   Badge,
   Button,
   Card,
@@ -23,6 +22,7 @@ import {
   useToast,
 } from '../../../shared/ui/ledger'
 import { deleteContact, exportContacts, getContactStats, searchContacts } from '../api/contacts-api'
+import { GrowthCard } from '../components/GrowthCard'
 import { SubscribersBoard } from '../components/SubscribersBoard'
 import type { Contact, ContactStats } from '../model/types'
 
@@ -287,16 +287,7 @@ export function SubscribersPage() {
         <SubscribersBoard stats={data} />
         <div className="dash">
           <div className="span-8">
-            <Card title="Growth" subtitle="Everyone subscribed at the end of each month">
-              <AreaChart
-                labels={data.growth.map((point) => month(`${point.month}-15`))}
-                titles={data.growth.map((point) => monthYear(`${point.month}-15`))}
-                values={data.growth.map((point) => point.total)}
-                label="Subscribers at the end of each month"
-                formatValue={(value) => number(Math.round(value))}
-                describe={(value) => plural(Math.round(value), 'subscriber')}
-              />
-            </Card>
+            <GrowthCard slug={slug} />
           </div>
           <div className="span-4">
             <Card title="Where they joined" subtitle="Some joined on more than one page">

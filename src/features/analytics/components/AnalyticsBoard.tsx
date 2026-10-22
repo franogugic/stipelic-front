@@ -78,7 +78,7 @@ export function AnalyticsBoard({
               title={`${def.label} per ${period.step}`}
               keys={[
                 { label: series.period === 'today' ? 'Today' : period.label },
-                ...(period.compare ? [{ label: series.period === 'today' ? 'Yesterday' : `Previous ${period.days} days`, previous: true }] : []),
+                ...(period.compare ? [{ label: series.period === 'today' ? 'Yesterday' : `${period.compare[0].toUpperCase()}${period.compare.slice(1)}`, previous: true }] : []),
               ]}
             />
             <AreaChart
