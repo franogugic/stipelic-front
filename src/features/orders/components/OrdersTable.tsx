@@ -1,9 +1,9 @@
-import { date, initials, money } from '../../../shared/lib/format'
+import { date, initials } from '../../../shared/lib/format'
 import { Avatar, Money, StatusBadge } from '../../../shared/ui/ledger'
 import type { Order } from '../model/types'
 
 /**
- * Orders in the prototype's ordersTable() layout. `compact` (dashboard) drops the landing page, fee and
+ * Orders in the prototype's ordersTable() layout. `compact` (dashboard) drops the landing page and
  * net columns. Rows stack into labelled blocks on narrow screens (`table--stack`).
  */
 export function OrdersTable({ orders, compact = false }: { orders: Order[]; compact?: boolean }) {
@@ -22,9 +22,6 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
             </th>
             {!compact && (
               <>
-                <th scope="col" className="is-num">
-                  Fee
-                </th>
                 <th scope="col" className="is-num">
                   Net
                 </th>
@@ -66,9 +63,6 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
                 </td>
                 {!compact && (
                   <>
-                    <td data-label="Fee" className="is-num text-muted">
-                      −{money(order.platformFeeCents, order.currency)}
-                    </td>
                     <td data-label="Net" className="is-num">
                       <Money amountCents={order.netAmountCents} currency={order.currency} />
                     </td>

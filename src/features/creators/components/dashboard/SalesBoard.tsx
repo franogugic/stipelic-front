@@ -1,10 +1,10 @@
-import { Calendar, Crown, Landmark, Receipt } from 'lucide-react'
+import { Calendar, Crown, Receipt, Wallet } from 'lucide-react'
 import { money, number, percent, plural } from '../../../../shared/lib/format'
 import { DeltaBadge, KpiCell, Money } from '../../../../shared/ui/ledger'
 import type { HomeSummary } from '../../../orders/model/types'
 
-/** "Sales at a glance": best seller, average order, this month and fees, with paid orders, customers, refunds and net. */
-export function SalesBoard({ summary, currency, feePercent }: { summary: HomeSummary; currency: string; feePercent: number | null }) {
+/** "Sales at a glance": best seller, average order, this month and all-time revenue, with paid orders, customers, refunds and net. */
+export function SalesBoard({ summary, currency }: { summary: HomeSummary; currency: string }) {
   const revenue = summary.monthlyRevenueTrend
   const counts = summary.monthlyPaidOrderCounts
   const thisMonth = revenue[revenue.length - 1] ?? summary.thisMonthRevenueCents
@@ -51,10 +51,10 @@ export function SalesBoard({ summary, currency, feePercent }: { summary: HomeSum
           }
         />
         <KpiCell
-          label="Fees paid to platform"
-          icon={Landmark}
-          value={<Money amountCents={summary.totalPlatformFeeCents} currency={currency} />}
-          meta={<span>{feePercent === null ? 'Per sale' : `${percent(feePercent)} per sale`} · all time</span>}
+          label="Total revenue"
+          icon={Wallet}
+          value={<Money amountCents={total} currency={currency} />}
+          meta={<span>{plural(summary.paidOrderCount, 'paid order')} · all time</span>}
         />
       </div>
       <dl className="board__stats">

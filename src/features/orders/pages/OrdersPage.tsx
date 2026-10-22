@@ -46,9 +46,6 @@ export function OrdersPage() {
   const { slug = '' } = useParams<{ slug: string }>()
   const toast = useToast()
   const creatorCurrency = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator.defaultCurrency : null))
-  const creator = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator : null))
-  const creatorPlans = useCreatorStore((s) => s.creatorPlans)
-  const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
   const [searchParams, setSearchParams] = useSearchParams()
   // The status filter lives in the URL, so a filtered list can be linked to.
   const statusParam = searchParams.get('status') ?? ''
@@ -84,10 +81,6 @@ export function OrdersPage() {
       .then((data) => setSummary({ key: slug, summary: data }))
       .catch(() => setSummary({ key: slug, summary: null }))
   }, [slug])
-
-  useEffect(() => {
-    void loadCreatorPlans()
-  }, [loadCreatorPlans])
 
   useEffect(() => {
     if (!slug) return
@@ -242,7 +235,6 @@ export function OrdersPage() {
         />
       )
     }
-    const plan = creatorPlans.find((candidate) => candidate.code === creator?.planCode)
     const statusCount = (key: string) => {
       if (key === 'all') return data.totalOrderCount
       if (key === 'paid') return data.paidOrderCount
@@ -252,12 +244,7 @@ export function OrdersPage() {
     }
     return (
       <div className="stack stack--lg reveal">
-        <OrdersBoard
-          summary={data}
-          currency={currency}
-          planName={creator?.planName ?? null}
-          feeBasisPoints={plan?.platformFeeBasisPoints ?? null}
-        />
+        <OrdersBoard summary={data} currency={currency} />
         <section className="card" aria-label="Order list">
           <TableFilterBar
             noun="customer or email"

@@ -2,7 +2,7 @@ import { Check } from 'lucide-react'
 import { useEffect } from 'react'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import type { CreatorPlan } from '../../creators/model/types'
-import { money, number, percent } from '../../../shared/lib/format'
+import { money, number } from '../../../shared/lib/format'
 import { Badge, Button, ErrorState, SkeletonCards } from '../../../shared/ui/ledger'
 import { activePlansByPrice } from '../model/plan-figures'
 import { useScrollReveal } from '../model/use-page-chrome'
@@ -30,7 +30,6 @@ function perks(plan: CreatorPlan) {
 function PlanCard({ plan }: { plan: CreatorPlan }) {
   const recommended = plan.code === RECOMMENDED_PLAN_CODE
   const paid = plan.priceCents > 0
-  const fee = plan.platformFeeBasisPoints / 100
   return (
     <article className={['mk-plan', recommended && 'mk-plan--featured'].filter(Boolean).join(' ')} data-reveal>
       <div className="cluster cluster--between">
@@ -40,9 +39,6 @@ function PlanCard({ plan }: { plan: CreatorPlan }) {
       <p className="mk-plan__price">
         {money(plan.priceCents, plan.currency, { decimals: plan.priceCents % 100 !== 0 })}
         <span>/ {plan.billingInterval === 'Yearly' ? 'year' : 'month'}</span>
-      </p>
-      <p className="mk-plan__fee">
-        <strong>{percent(fee)}</strong> fee per sale · you keep {percent(100 - fee)}
       </p>
       <ul className="mk-plan__perks" role="list">
         {perks(plan).map((perk) => (

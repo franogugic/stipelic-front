@@ -230,7 +230,6 @@ function Dashboard({
     .sort((a, b) => b.revenueCents - a.revenueCents)
     .map((product) => ({ label: product.name, value: product.revenueCents, display: formatMoney(product.revenueCents) }))
 
-  const feeBasisPoints = plan?.platformFeeBasisPoints ?? null
   const renewsOn = creator.currentPeriodEnd && creator.planCode.toLowerCase() !== 'free' ? creator.currentPeriodEnd : null
 
   return (
@@ -272,7 +271,6 @@ function Dashboard({
         slug={slug}
         planName={planName}
         renewsOn={renewsOn}
-        feeBasisPoints={feeBasisPoints}
         products={{ used: summary?.productCount ?? 0, limit: limit('max_products') }}
         pages={{ used: summary?.landingPageCount ?? 0, limit: limit('max_landing_pages') }}
         emails={{ used: summary?.emailsSentThisMonth ?? 0, limit: summary?.emailsMonthlyLimit ?? limit('max_email_sends_per_month') }}
@@ -325,7 +323,7 @@ function Dashboard({
       </div>
 
       {summary ? (
-        <SalesBoard summary={summary} currency={currency} feePercent={feeBasisPoints === null ? null : feeBasisPoints / 100} />
+        <SalesBoard summary={summary} currency={currency} />
       ) : (
         <div className="span-12">
           <SkeletonCards count={4} />

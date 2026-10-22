@@ -1,18 +1,17 @@
-import { ArrowUpRight, Package, PanelsTopLeft, Percent, Send } from 'lucide-react'
+import { ArrowUpRight, Package, PanelsTopLeft, Send } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { date, number, percent } from '../../../../shared/lib/format'
+import { date, number } from '../../../../shared/lib/format'
 import { Badge, Button } from '../../../../shared/ui/ledger'
 
 type Row = { icon: LucideIcon; label: string; used: number; limit: number | undefined; to: string }
 
-/** "Plan & usage": what the plan allows and how much of it is used, with the platform fee underneath. */
+/** "Plan & usage": what the plan allows and how much of it is used. */
 export function PlanUsageCard({
   slug,
   planName,
   renewsOn,
-  feeBasisPoints,
   products,
   pages,
   emails,
@@ -21,7 +20,6 @@ export function PlanUsageCard({
   planName: string
   /** The end of the current billing period; null on a plan that doesn't renew. */
   renewsOn: string | null
-  feeBasisPoints: number | null
   products: { used: number; limit: number | undefined }
   pages: { used: number; limit: number | undefined }
   emails: { used: number; limit: number | undefined }
@@ -78,12 +76,6 @@ export function PlanUsageCard({
             )
           })}
         </ul>
-        <p className="fill-stack__foot">
-          <span>
-            <Percent className="inline-icon" /> Platform fee
-          </span>
-          <strong>{feeBasisPoints === null ? '—' : `${percent(feeBasisPoints / 100)} per sale`}</strong>
-        </p>
       </div>
     </section>
   )

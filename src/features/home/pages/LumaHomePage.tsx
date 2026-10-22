@@ -15,7 +15,6 @@ import {
   Users,
   Zap,
 } from 'lucide-react'
-import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { monogram } from '../../../shared/lib/format'
 import { PRIVACY_URL, TERMS_URL, isLinked } from '../../../shared/lib/legal-links'
@@ -23,9 +22,7 @@ import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { Avatar, Brand, Button, ThemeToggleButton } from '../../../shared/ui/ledger'
 import { AnalyticsVisual, AudienceVisual, EmailVisual, HeroMock } from '../components/MockVisuals'
 import { PricingPlans } from '../components/PricingPlans'
-import { useCreatorStore } from '../../creators/model/creator-store'
 import { MOCK_COUNTRIES, MOCK_CREATORS, SUPPORT_EMAIL, faqItems } from '../model/home-content'
-import { feeRange } from '../model/plan-figures'
 import { usePageChrome, useScrollReveal } from '../model/use-page-chrome'
 
 /** The public marketing page of Luma at `/`, for logged-out visitors. Markup and classes from designer-prototype/app/home.html. */
@@ -34,13 +31,6 @@ export function LumaHomePage() {
   usePageChrome()
   useScrollReveal(null)
 
-  // The fee figures come from the live plans; the pricing cards load the same list.
-  const plans = useCreatorStore((state) => state.creatorPlans)
-  const loadCreatorPlans = useCreatorStore((state) => state.loadCreatorPlans)
-  useEffect(() => {
-    void loadCreatorPlans()
-  }, [loadCreatorPlans])
-  const fees = feeRange(plans)
 
   return (
     <>
@@ -365,12 +355,6 @@ export function LumaHomePage() {
                   <dt>Countries</dt>
                   <dd>{MOCK_COUNTRIES.length}</dd>
                 </div>
-                {fees && (
-                  <div>
-                    <dt>Fee from</dt>
-                    <dd>{fees.from}</dd>
-                  </div>
-                )}
                 <div>
                   <dt>Code needed</dt>
                   <dd>0</dd>
@@ -450,7 +434,7 @@ export function LumaHomePage() {
             <header className="mk-head mk-head--center" data-reveal>
               <p className="eyebrow">Pricing</p>
               <h2 className="mk-h2" id="pricing-title">
-                Simple plans. <em>Lower fees</em> as you grow.
+                Simple plans. <em>Upgrade</em> as you grow.
               </h2>
               <p className="mk-head__lead">
                 Start free. Upgrade when your sales make it worth it — every plan includes pages, checkout, email and payouts.
@@ -479,7 +463,7 @@ export function LumaHomePage() {
               )}
             </header>
             <div className="mk-faq__list" data-reveal>
-              {faqItems(fees?.sentence ?? '').map((item, index) => (
+              {faqItems().map((item, index) => (
                 <details key={item.question} open={index === 0 ? true : undefined}>
                   <summary>
                     {item.question}

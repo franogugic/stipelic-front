@@ -1,4 +1,4 @@
-import { Landmark, Percent, Undo2, Wallet } from 'lucide-react'
+import { Landmark, Receipt, Undo2, Wallet } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { money, number, percent, plural } from '../../../shared/lib/format'
 import { DeltaBadge, KpiCell, Money } from '../../../shared/ui/ledger'
@@ -11,19 +11,8 @@ const SEGMENTS: Array<[key: 'paid' | 'pending' | 'failed' | 'refunded', tone: st
   ['refunded', 'info', 'Refunded'],
 ]
 
-/** The money board above the orders list: gross, fees, net and refunds with 12-month trends, and orders by status. */
-export function OrdersBoard({
-  summary,
-  currency,
-  planName,
-  feeBasisPoints,
-}: {
-  summary: OrderSummary
-  currency: string
-  /** The workspace's plan, for the fee line; null while the plans load. */
-  planName: string | null
-  feeBasisPoints: number | null
-}) {
+/** The money board above the orders list: gross, net, average order and refunds with 12-month trends, and orders by status. */
+export function OrdersBoard({ summary, currency }: { summary: OrderSummary; currency: string }) {
   const trend = summary.monthlyTrend
   const thisMonth = trend[trend.length - 1]
   const lastMonth = trend[trend.length - 2]
@@ -56,24 +45,19 @@ export function OrdersBoard({
           spark={trend.length > 1 ? { values: values((month) => month.grossCents), label: 'Gross revenue, last 12 months' } : undefined}
         />
         <KpiCell
-          label="Platform fees"
-          icon={Percent}
-          value={<Money amountCents={summary.totalPlatformFeeCents} currency={currency} />}
-          meta={
-            feeBasisPoints !== null && planName ? (
-              <span>
-                {percent(feeBasisPoints / 100)} per sale on {planName}
-              </span>
-            ) : undefined
-          }
-          spark={trend.length > 1 ? { values: values((month) => month.feeCents), label: 'Platform fees, last 12 months' } : undefined}
-        />
-        <KpiCell
           label="Net to you"
           icon={Landmark}
           value={<Money amountCents={summary.netAmountCents} currency={currency} />}
           meta={<span>{percent(netShare)} of gross</span>}
           spark={trend.length > 1 ? { values: values((month) => month.netCents), label: 'Net to you, last 12 months' } : undefined}
+        />
+        <KpiCell
+          label="Average order"
+          icon={Receipt}
+          value={
+            summary.paidOrderCount > 0 ? <Money amountCents={Math.round(summary.totalPaidAmountCents / summary.paidOrderCount)} currency={currency} /> : '—'
+          }
+          meta={<span>{plural(summary.paidOrderCount, 'paid order')}</span>}
         />
         <KpiCell
           label="Refunded"

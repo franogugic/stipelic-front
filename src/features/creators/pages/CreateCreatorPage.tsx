@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, Check, CircleAlert, Landmark } from 'lucide-reac
 import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { money, number, percent } from '../../../shared/lib/format'
+import { money, number } from '../../../shared/lib/format'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import {
   Alert,
@@ -200,7 +200,7 @@ export function CreateCreatorPage() {
 
   const heading: Record<Step, { title: ReactNode; text: string }> = {
     1: { title: <>Name your <em>workspace</em></>, text: 'This is the name and address your customers will see.' },
-    2: { title: <>Choose your <em>plan</em></>, text: 'You can change it any time. Lower plans take a bigger fee per sale.' },
+    2: { title: <>Choose your <em>plan</em></>, text: 'You can change it any time.' },
     3: { title: <>Make it <em>yours</em></>, text: 'Optional — you can change all of this later in Settings.' },
   }
 
@@ -433,7 +433,6 @@ function PlanCard({ plan, checked, onSelect }: { plan: CreatorPlan; checked: boo
         <small className="text-sm text-muted"> /mo</small>
       </span>
       <ul className="plan__list" role="list">
-        <li>{percent(plan.platformFeeBasisPoints / 100)} fee per sale</li>
         <li>{count('max_landing_pages', 'landing page')}</li>
         <li>{count('max_products', 'product')}</li>
         <li>{count('max_email_sends_per_month', 'email')} / month</li>

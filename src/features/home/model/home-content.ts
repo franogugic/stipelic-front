@@ -59,8 +59,7 @@ export const MOCK_SUBSCRIBERS = {
 
 export type FaqItem = { question: string; answer: string }
 
-/** `feeText` is the live range of the platform fee across the plans, e.g. "from 10% on Free down to 1% on Plus". */
-export const faqItems = (feeText: string): FaqItem[] => [
+export const faqItems = (): FaqItem[] => [
   {
     question: 'Do I need to know how to code?',
     answer:
@@ -74,10 +73,6 @@ export const faqItems = (feeText: string): FaqItem[] => [
   {
     question: 'How do buyers get my product?',
     answer: 'Every product is a link — a download, a course, a booking page. The buyer receives it by email right after paying.',
-  },
-  {
-    question: 'What does the fee cover?',
-    answer: `The platform fee is taken per sale and depends on your plan${feeText ? ` — ${feeText}` : ''}.`,
   },
   {
     question: 'Can I cancel any time?',
