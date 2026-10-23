@@ -70,7 +70,7 @@ export function EmailPreview({
           <span className="email-preview__button">{button?.label}</span>
         </p>
         <p className="email-preview__footer">
-          You’re receiving this because you {reason === 'bought' ? 'bought from' : 'joined'} {brandName}. <u>Unsubscribe</u>
+          You’re receiving this because you {reason === 'bought' ? 'bought from' : 'signed up at'} {brandName}. <u>Unsubscribe</u>
           <br />
           Sent with Luma
         </p>
