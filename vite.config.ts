@@ -22,13 +22,17 @@ function publicSiteUrl(): Plugin {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), publicSiteUrl()],
-  server: {
-    host: 'localhost',
-    port: 3000,
-    proxy: {
-      '/api': 'http://localhost:5000',
+export default defineConfig(({ mode }) => {
+  // Where the dev server forwards /api. Port 5000 belongs to macOS AirPlay, so the default is the API's 5050.
+  const apiTarget = (loadEnv(mode, process.cwd(), 'VITE_').VITE_DEV_API_PROXY ?? '').trim() || 'http://localhost:5050'
+  return {
+    plugins: [react(), publicSiteUrl()],
+    server: {
+      host: 'localhost',
+      port: 3000,
+      proxy: {
+        '/api': apiTarget,
+      },
     },
-  },
+  }
 })
