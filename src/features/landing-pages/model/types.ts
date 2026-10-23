@@ -138,10 +138,9 @@ export type SaveEditorRequest = {
   title: string
   slug: string
   type: LandingPageType
-  /**
-   * A lead page's document (an Active free product), or null for a plain newsletter sign-up. Left out: unchanged.
-   * (Not in the F8.1 spec's list of fields — the page settings need a way to send it.)
-   */
+  /** A lead page's document (an Active free product) to switch to; left out or null keeps the current one. */
   productId?: string | null
+  /** A lead page stops giving a document away (a plain newsletter sign-up). Ignored when `productId` is set. */
+  removeProduct?: boolean
   sections: SaveEditorSectionRequest[]
 }

@@ -5,6 +5,8 @@ export type ApiErrorPayload = {
   errors?: Record<string, string[]>
   /** Extra data for some conflicts, e.g. `{ used, limit }` on PLAN_LIMIT_REACHED. */
   details?: unknown
+  /** Anything else the body carries (e.g. the 410 of a turned-off download link names the product and brand). */
+  [extra: string]: unknown
 }
 
 export class ApiError extends Error {
@@ -12,6 +14,8 @@ export class ApiError extends Error {
   code?: string
   errors?: Record<string, string[]>
   details?: unknown
+  /** The whole error body, for endpoints that answer with more than a message. */
+  payload: ApiErrorPayload | null
 
   constructor(status: number, payload: ApiErrorPayload | null) {
     super(payload?.message ?? 'Something went wrong. Please try again.')
@@ -20,6 +24,7 @@ export class ApiError extends Error {
     this.code = payload?.code
     this.errors = payload?.errors
     this.details = payload?.details
+    this.payload = payload
   }
 }
 

@@ -15,6 +15,14 @@ export type AccessInfo = {
   paidAt?: string | null
 }
 
+/** The 410 of a turned-off link (a refunded order): what the "turned off" page shows. */
+export type RevokedInfo = {
+  productName?: string
+  brand?: { name: string; color: string | null; logoUrl: string | null }
+  orderNumber?: string | null
+  refundedAt?: string | null
+}
+
 const base = (token: string) => `/api/public/access/${encodeURIComponent(token)}`
 
 /** The file behind a personal link. 404 `ACCESS_INVALID`, 410 `ACCESS_REVOKED` (a refunded order), 429 rate limited. */

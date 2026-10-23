@@ -186,8 +186,9 @@ export function toSaveRequest(
       title: settings?.title ?? page.title,
       slug: settings?.slug ?? page.slug,
       type: page.type,
-      // A lead page's document is only sent when the settings changed it.
-      ...(settings && page.type === 'LeadGen' ? { productId: settings.productId } : {}),
+      // A lead page's document is only sent with the page settings: a product to switch to, or the instruction to stop
+      // giving one away (the API keeps the current product when `productId` is null).
+      ...(settings && page.type === 'LeadGen' ? (settings.productId ? { productId: settings.productId } : { removeProduct: true }) : {}),
       sections: sections.map((section, index) => ({
         publicId: section.publicId,
         type: section.type,

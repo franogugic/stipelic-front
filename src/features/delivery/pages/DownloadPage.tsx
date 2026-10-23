@@ -6,7 +6,7 @@ import { date } from '../../../shared/lib/format'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { CreatorResultPage } from '../../../shared/ui/CreatorResultPage'
 import { downloadPageUrl, getAccess } from '../api/access-api'
-import type { AccessInfo } from '../api/access-api'
+import type { AccessInfo, RevokedInfo } from '../api/access-api'
 import { BuyerFile } from '../components/BuyerFile'
 import { useDownload } from '../model/use-download'
 
@@ -14,7 +14,7 @@ type State =
   | { status: 'loading' }
   | { status: 'ready'; access: AccessInfo }
   | { status: 'invalid' }
-  | { status: 'revoked' }
+  | { status: 'revoked'; info: RevokedInfo }
   | { status: 'rate-limited' }
   | { status: 'error' }
 
@@ -36,7 +36,7 @@ export function DownloadPage() {
       .catch((error: unknown) => {
         if (!active) return
         if (error instanceof ApiError && error.status === 404) setState({ status: 'invalid' })
-        else if (error instanceof ApiError && error.status === 410) setState({ status: 'revoked' })
+        else if (error instanceof ApiError && error.status === 410) setState({ status: 'revoked', info: (error.payload ?? {}) as RevokedInfo })
         else if (error instanceof ApiError && error.status === 429) setState({ status: 'rate-limited' })
         else setState({ status: 'error' })
       })
@@ -78,15 +78,32 @@ export function DownloadPage() {
   }
 
   if (state.status === 'revoked') {
+    const { productName, brand, orderNumber, refundedAt } = state.info
     return (
-      <CreatorResultPage>
+      <CreatorResultPage brand={brand}>
         <div className="state__art">
           <Link2Off />
         </div>
         <h1 className="lp__title lp-done__title">
           This link is <em>turned off</em>
         </h1>
-        <p className="lp__sub">The order behind it was refunded, so its download link no longer works.</p>
+        <p className="lp__sub">
+          {orderNumber ? `Order #${orderNumber}` : 'The order'}
+          {productName ? (
+            <>
+              {' '}
+              for <strong>{productName}</strong>
+            </>
+          ) : null}{' '}
+          was refunded
+          {refundedAt ? (
+            <>
+              {' '}
+              on <span className="lp__date">{date(refundedAt)}</span>
+            </>
+          ) : null}
+          , so its download link no longer works.
+        </p>
         <p className="lp-done__note">
           <Mail />
           <span>Bought it again? Use the link from your newest order email. Think this is a mistake? Write to the person you bought it from.</span>
