@@ -23,8 +23,6 @@ export type LandingPageSection = {
   isLocked: boolean
 }
 
-export type ProductType = 'Digital' | 'Service' | 'Course'
-
 /** The creator's brand as a visitor sees it (public page only). */
 export type PublicCreatorBrand = {
   name: string
@@ -73,7 +71,7 @@ export type LandingPageWithSections = Omit<
   /** Public page only. */
   creator?: PublicCreatorBrand
   /** Public page only; absent when the page has no product. */
-  product?: { type: ProductType; currency: string }
+  product?: { currency: string }
 }
 
 export type SectionTemplate = {
@@ -123,7 +121,8 @@ export type CreateLandingPageRequest = {
   title: string
   slug: string
   type: LandingPageType
-  productId: string
+  /** A sales page's paid product; a lead page's document (a free product), or omitted for a newsletter sign-up. */
+  productId?: string
 }
 
 export type SaveEditorSectionRequest = {
@@ -139,5 +138,10 @@ export type SaveEditorRequest = {
   title: string
   slug: string
   type: LandingPageType
+  /**
+   * A lead page's document (an Active free product), or null for a plain newsletter sign-up. Left out: unchanged.
+   * (Not in the F8.1 spec's list of fields — the page settings need a way to send it.)
+   */
+  productId?: string | null
   sections: SaveEditorSectionRequest[]
 }

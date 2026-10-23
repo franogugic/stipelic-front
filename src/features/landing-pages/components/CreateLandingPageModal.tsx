@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { money } from '../../../shared/lib/format'
 import { Alert, Badge, Button, Choice, Field, Input, InputAddon, InputGroup, Modal, Select } from '../../../shared/ui/ledger'
 import { listProducts } from '../../products/api/products-api'
+import { fileFormatOf } from '../../products/model/product-file'
 import type { Product } from '../../products/model/types'
 import { useLandingPageStore } from '../model/landing-page-store'
 import type { LandingPage, LandingPageType } from '../model/types'
@@ -27,12 +28,13 @@ function slugify(value: string) {
     .replace(/-+$/, '')
 }
 
-function validate(title: string, slug: string, productId: string): Errors {
+function validate(title: string, slug: string, productId: string, type: LandingPageType): Errors {
   const errors: Errors = {}
   if (!title.trim()) errors.title = 'Enter a title for the page.'
   if (!slug) errors.slug = 'Enter the page URL.'
   else if (!SLUG_PATTERN.test(slug)) errors.slug = 'Use lowercase letters, numbers and single dashes.'
-  if (!productId) errors.product = 'Choose the product this page is for.'
+  // A sales page sells a paid product; a lead page's document is optional (without one it is a newsletter sign-up).
+  if (type === 'Sales' && !productId) errors.product = 'Choose the product this page is for.'
   return errors
 }
 
@@ -51,7 +53,7 @@ export function CreateLandingPageModal({
   open: boolean
   creatorSlug: string
   currency: string
-  /** Opens on a sales page for this product ("Create page" on a product card). */
+  /** Opens on a page for this product ("Create page" on a product card): a sales page, or — for a free product — a lead page. */
   initialProductId?: string
   onClose: () => void
   onCreated: (page: LandingPage) => void
@@ -65,6 +67,7 @@ export function CreateLandingPageModal({
   const [slugEdited, setSlugEdited] = useState(false)
   const [type, setType] = useState<LandingPageType>(initialProductId ? 'Sales' : 'LeadGen')
   const [productId, setProductId] = useState(initialProductId ?? '')
+  const [initialApplied, setInitialApplied] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -91,8 +94,16 @@ export function CreateLandingPageModal({
   }
 
   // After a failed submit, errors follow the fields as they are corrected.
-  const revalidate = (next: { title?: string; slug?: string; productId?: string }) => {
-    if (submitted) setErrors(validate(next.title ?? title, next.slug ?? slug, next.productId ?? productId))
+  const revalidate = (next: { title?: string; slug?: string; productId?: string; type?: LandingPageType }) => {
+    if (submitted) setErrors(validate(next.title ?? title, next.slug ?? slug, next.productId ?? productId, next.type ?? type))
+  }
+
+  // Opened from a free product's card: that product is the lead page's document, not something to sell.
+  if (!initialApplied && initialProductId && products.status === 'success') {
+    setInitialApplied(true)
+    const initial = products.products.find((candidate) => candidate.publicId === initialProductId)
+    if (initial && initial.priceCents === 0) setType('LeadGen')
+    else if (!initial || initial.status !== 'Active') setProductId('')
   }
 
   const changeTitle = (value: string) => {
@@ -114,17 +125,24 @@ export function CreateLandingPageModal({
     revalidate({ productId: value })
   }
 
+  const changeType = (next: LandingPageType) => {
+    setType(next)
+    // The two kinds of pages take different products, so the choice starts over.
+    setProductId('')
+    revalidate({ type: next, productId: '' })
+  }
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     if (submitting) return
     setSubmitted(true)
-    const found = validate(title, slug, productId)
+    const found = validate(title, slug, productId, type)
     setErrors(found)
     if (Object.keys(found).length > 0) return
 
     setSubmitting(true)
     setRequestError(null)
-    const page = await createPage(creatorSlug, { title: title.trim(), slug, type, productId })
+    const page = await createPage(creatorSlug, { title: title.trim(), slug, type, ...(productId ? { productId } : {}) })
     const { mutateError, mutateErrorStatus } = useLandingPageStore.getState()
     resetMutateFeedback()
     setSubmitting(false)
@@ -137,8 +155,10 @@ export function CreateLandingPageModal({
     else setRequestError(mutateError ?? 'We couldn’t create the page. Please try again.')
   }
 
-  const productList = products.status === 'success' ? products.products : []
-  const noProducts = products.status === 'success' && productList.length === 0
+  const sales = type === 'Sales'
+  // A sales page sells a paid product; a lead page gives away a free one. Only active products can be put on a page.
+  const productList = products.status === 'success' ? products.products.filter((p) => p.status === 'Active' && (sales ? p.priceCents > 0 : p.priceCents === 0)) : []
+  const noProducts = sales && products.status === 'success' && productList.length === 0
 
   return (
     <Modal
@@ -205,39 +225,48 @@ export function CreateLandingPageModal({
               name="page-type"
               value="LeadGen"
               checked={type === 'LeadGen'}
-              onChange={() => setType('LeadGen')}
+              onChange={() => changeType('LeadGen')}
               visual={
                 <Badge tone="info" icon={MailPlus}>
                   Lead capture
                 </Badge>
               }
               title="Collect emails"
-              text="A free offer in exchange for an email address."
+              text="Give away a free document in exchange for an email address."
             />
             <Choice
               name="page-type"
               value="Sales"
               checked={type === 'Sales'}
-              onChange={() => setType('Sales')}
+              onChange={() => changeType('Sales')}
               visual={
                 <Badge tone="accent" icon={ShoppingBag}>
                   Sales
                 </Badge>
               }
               title="Sell a product"
-              text="Card checkout through Stripe, delivered by email."
+              text="Card checkout through Stripe. Buyers download the file right away."
             />
           </div>
         </fieldset>
         <Field
-          label="Product"
+          label={sales ? 'Product' : 'Document people get'}
           hint={
-            noProducts ? (
-              <>
-                You don’t have any products yet. <Link className="link" to={`/app/${creatorSlug}/products`}>Create a product</Link> first.
-              </>
+            sales ? (
+              noProducts ? (
+                <>
+                  You don’t have an active paid product yet. <Link className="link" to={`/app/${creatorSlug}/products`}>Create a product</Link> first.
+                </>
+              ) : (
+                'The product can’t be changed after the page is created.'
+              )
+            ) : productList.length > 0 ? (
+              'Your free products. Everyone who signs up gets an email with a personal link to download it.'
             ) : (
-              'The product can’t be changed after the page is created.'
+              <>
+                You have no free products yet, so this is a newsletter sign-up.{' '}
+                <Link className="link" to={`/app/${creatorSlug}/products/new`}>Add a free product</Link> to give away a guide or checklist.
+              </>
             )
           }
           error={
@@ -258,15 +287,21 @@ export function CreateLandingPageModal({
               {...control}
               name="product"
               value={productId}
-              disabled={products.status !== 'success' || noProducts}
+              disabled={products.status !== 'success' || (sales && noProducts)}
               onChange={(event) => changeProduct(event.target.value)}
             >
-              <option value="" disabled>
-                {products.status === 'loading' ? 'Loading products…' : 'Choose a product'}
-              </option>
+              {sales ? (
+                <option value="" disabled>
+                  {products.status === 'loading' ? 'Loading products…' : 'Choose a product'}
+                </option>
+              ) : (
+                <option value="">{products.status === 'loading' ? 'Loading products…' : 'No document — newsletter only'}</option>
+              )}
               {productList.map((product) => (
                 <option key={product.publicId} value={product.publicId}>
-                  {`${product.name} · ${money(product.priceCents, currency)}`}
+                  {sales
+                    ? `${product.name} · ${money(product.priceCents, currency)}`
+                    : `${product.name} · ${product.fileName ? `Free ${fileFormatOf(product.fileName) ?? 'file'}` : 'no file yet'}`}
                 </option>
               ))}
             </Select>

@@ -11,6 +11,11 @@ export type OrderReceipt = {
   /** Masked by the API, e.g. "a•••@gmail.com". Null while Pending (it arrives with the payment). */
   buyerEmail: string | null
   productName: string
+  /** The product's file, for the download button; null when it has none. */
+  fileName?: string | null
+  fileSizeBytes?: number | null
+  /** The personal link's token while the order is Paid (the receipt returns it for this page); null otherwise. */
+  accessToken?: string | null
   amountCents: number
   currency: string
   paidAt: string | null

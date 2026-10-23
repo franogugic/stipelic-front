@@ -1,4 +1,4 @@
-import { ArrowRight, Check, CircleAlert, Lock, Pause } from 'lucide-react'
+import { ArrowRight, CircleAlert, Lock, MailCheck, Pause } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 
@@ -80,11 +80,14 @@ export function LeadForm({
   label,
   inverted,
   brandName,
+  productName,
   onSubmit,
 }: {
   label: string
   inverted?: boolean
   brandName: string
+  /** The document the page gives away; null for a plain newsletter sign-up (no email is sent). */
+  productName?: string | null
   /** Resolves 'closed' when sign-ups are paused; rejects on any other failure. */
   onSubmit?: (email: string) => Promise<'success' | 'closed'>
 }) {
@@ -96,14 +99,22 @@ export function LeadForm({
     const success = state.kind === 'success'
     return (
       <div className={`lp-result lp-result--${success ? 'success' : 'closed'} ${inverted ? 'lp-result--inverted' : ''}`} role="status">
-        <span className="lp-result__icon">{success ? <Check /> : <Pause />}</span>
+        <span className="lp-result__icon">{success ? <MailCheck /> : <Pause />}</span>
         <div>
-          <p className="lp-result__title">{success ? 'You’re in!' : 'Sign-ups are paused'}</p>
+          <p className="lp-result__title">{success ? (productName ? 'Check your inbox' : 'You’re on the list') : 'Sign-ups are paused'}</p>
           <p className="lp-result__text">
             {success ? (
-              <>
-                The guide is on its way to <strong>{state.email}</strong>. Can’t see it in a few minutes? Check your spam folder.
-              </>
+              // The same calm message for a new and a repeat sign-up: the page never reveals who is on the list.
+              productName ? (
+                <>
+                  Your download link for <strong>{productName}</strong> is on its way to <strong>{state.email}</strong>. Not there in a few minutes?
+                  Check your spam folder.
+                </>
+              ) : (
+                <>
+                  Thanks — you’ll get {brandName}’s emails at <strong>{state.email}</strong>.
+                </>
+              )
             ) : (
               `${brandName} isn’t taking new sign-ups right now. Please check back soon.`
             )}

@@ -8,6 +8,7 @@ import {
   LoaderCircle,
   Monitor,
   Pencil,
+  PencilLine,
   Rocket,
   Save,
   Smartphone,
@@ -23,6 +24,7 @@ import { time } from '../../../shared/lib/format'
 import { Button, ErrorState, PageHeader, SkeletonBlock, UrlPill, useToast } from '../../../shared/ui/ledger'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { listProducts } from '../../products/api/products-api'
+import type { Product } from '../../products/model/types'
 import { getLandingPage, getSectionTemplates, publishLandingPage, saveEditor, unpublishLandingPage } from '../api/landing-pages-api'
 import { BuyButton, LeadForm } from '../components/LandingActions'
 import { LandingDropMarker, LandingSection, LandingShell } from '../components/LandingSections'
@@ -35,6 +37,9 @@ import {
   UnpublishDialog,
 } from '../components/editor/EditorDialogs'
 import type { PublishBlock } from '../components/editor/EditorDialogs'
+import { LeadDocumentHint } from '../components/editor/LeadDocument'
+import { PageSettingsModal } from '../components/editor/PageSettingsModal'
+import type { PageSettingsValues } from '../components/editor/PageSettingsModal'
 import { NothingSelected, SectionForm } from '../components/editor/SectionForm'
 import type { EditorPageContext } from '../components/editor/SectionForm'
 import { SectionsCard } from '../components/editor/SectionsCard'
@@ -43,7 +48,7 @@ import { draftReducer, emptyDraft, hasUnsavedLinkTargets, toSaveRequest } from '
 import type { Draft, DraftSection } from '../model/editor-draft'
 import { useLandingPageStore } from '../model/landing-page-store'
 import { DEFAULT_BRAND_COLOR, kindOf } from '../model/section-library'
-import type { LandingPageWithSections, ProductType, SectionTemplate } from '../model/types'
+import type { LandingPageWithSections, SectionTemplate } from '../model/types'
 
 type Load =
   | { status: 'loading' }
@@ -156,7 +161,10 @@ function EditorContent() {
   const settings = creatorSettings?.slug === slug ? creatorSettings : null
 
   const [load, setLoad] = useState<Load>({ status: 'loading' })
-  const [productType, setProductType] = useState<ProductType | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
+  const [settingsKey, setSettingsKey] = useState<number | null>(null)
+  const [settingsBusy, setSettingsBusy] = useState(false)
+  const [settingsError, setSettingsError] = useState<string | null>(null)
   const [draft, dispatch] = useReducer(draftReducer, emptyDraft)
   const draftRef = useRef<Draft>(draft)
   useEffect(() => {
@@ -206,22 +214,19 @@ function EditorContent() {
     void loadPage()
   }, [loadPage])
 
-  // The product's type labels the "no image" stand-in (Digital download / Online course / Service).
-  const productPublicId = page?.productPublicId ?? null
+  // The workspace's products: a lead page's document (and the picker in the page settings) come from them.
   useEffect(() => {
-    if (!productPublicId) return
+    if (!slug) return
     let cancelled = false
     listProducts(slug, true)
-      .then((products) => {
-        if (!cancelled) setProductType((products.find((product) => product.publicId === productPublicId)?.type as ProductType | undefined) ?? null)
-      })
+      .then((list) => !cancelled && setProducts(list))
       .catch(() => {
-        // Only the stand-in's label depends on it.
+        // Only the lead page's document hint and picker depend on it.
       })
     return () => {
       cancelled = true
     }
-  }, [slug, productPublicId])
+  }, [slug])
 
   const listUrl = `/app/${slug}/landing-pages`
   const leaveGuardActive = draft.dirty && !saving
@@ -234,14 +239,14 @@ function EditorContent() {
     }))
 
   /** Saves the draft; resolves false when it failed (a toast says why). */
-  const save = async (): Promise<boolean> => {
+  const save = async (settings?: PageSettingsValues): Promise<boolean> => {
     if (!page) return false
     setSaving(true)
     try {
       let current = draftRef.current
       // Twice at most: a navbar link to a section added in this save points at it by the id the save gives it.
       for (let round = 0; round < 2; round += 1) {
-        const { request, keys } = toSaveRequest(page, current.sections)
+        const { request, keys } = toSaveRequest(page, current.sections, settings)
         const response = await saveEditor(slug, pageId, request)
         const saved = { type: 'saved' as const, page: response, keys, revision: current.revision }
         const linksNeededIds = hasUnsavedLinkTargets(current.sections)
@@ -261,6 +266,22 @@ function EditorContent() {
       return false
     } finally {
       setSaving(false)
+    }
+  }
+
+  const saveSettings = async (values: PageSettingsValues) => {
+    setSettingsBusy(true)
+    setSettingsError(null)
+    try {
+      // Saved with the draft, so the page and its sections stay in step; the response carries the page's new product.
+      const ok = await save(values)
+      if (ok) {
+        patchListedPage({ title: values.title })
+        setSettingsKey(null)
+        toast({ title: page?.type === 'LeadGen' ? 'Page settings saved' : 'Title and address saved' })
+      }
+    } finally {
+      setSettingsBusy(false)
     }
   }
 
@@ -384,14 +405,14 @@ function EditorContent() {
 
   const previewContext: LandingContext = {
     pageType: page.type,
-    product: product ? { name: product.name, priceCents: product.priceCents, currency, type: productType } : null,
+    product: product ? { name: product.name, priceCents: product.priceCents, currency } : null,
     brand: { name: brandName, color: brandColor, logoUrl: settings?.logoUrl || null },
     selectedKey: draft.selectedKey,
     renderAction: (label, options) =>
       page.type === 'Sales' ? (
         <BuyButton label={label} inverted={options?.inverted} />
       ) : (
-        <LeadForm label={label} inverted={options?.inverted} brandName={brandName} />
+        <LeadForm label={label} inverted={options?.inverted} brandName={brandName} productName={page.productName} />
       ),
   }
 
@@ -417,6 +438,18 @@ function EditorContent() {
         actions={
           <>
             <Button variant="ghost" size="sm" iconOnly icon={X} aria-label="Close editor" data-tooltip="Close editor" onClick={requestLeave} />
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              icon={PencilLine}
+              aria-label={page.type === 'LeadGen' ? 'Page settings' : 'Page title and address'}
+              data-tooltip={page.type === 'LeadGen' ? 'Page settings' : 'Page title and address'}
+              onClick={() => {
+                setSettingsError(null)
+                setSettingsKey((current) => (current ?? 0) + 1)
+              }}
+            />
             <SaveStatus saving={saving} dirty={draft.dirty} savedAt={savedAt} />
             <IconSegmented
               label="Preview size"
@@ -454,6 +487,16 @@ function EditorContent() {
           </>
         }
       />
+      {page.type === 'LeadGen' && (
+        <LeadDocumentHint
+          product={products.find((candidate) => candidate.publicId === page.productPublicId) ?? null}
+          slug={slug}
+          onChange={() => {
+            setSettingsError(null)
+            setSettingsKey((current) => (current ?? 0) + 1)
+          }}
+        />
+      )}
       <div className="editor-shell">
         <IconSegmented
           label="Editor panel"
@@ -511,6 +554,22 @@ function EditorContent() {
         </div>
       </div>
 
+      {settingsKey !== null && (
+        <PageSettingsModal
+          key={settingsKey}
+          open
+          creatorSlug={slug}
+          host={`${window.location.host}/p/${slug}/`}
+          pageType={page.type}
+          published={live}
+          initial={{ title: page.title, slug: page.slug, productId: page.productPublicId }}
+          products={products}
+          busy={settingsBusy}
+          error={settingsError}
+          onClose={() => setSettingsKey(null)}
+          onSave={(values) => void saveSettings(values)}
+        />
+      )}
       <SectionPickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}

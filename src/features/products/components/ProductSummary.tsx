@@ -26,7 +26,7 @@ export function ProductSummary({
     .filter((product) => product.status === 'Active' && product.revenueCents > 0)
     .sort((a, b) => b.revenueCents - a.revenueCents)[0]
   const drafts = live.filter((product) => product.status === 'Draft')
-  const withoutLink = drafts.find((product) => !product.accessUrl)
+  const withoutFile = drafts.find((product) => !product.fileName)
 
   return (
     <section className="card product-summary" aria-label="Products overview">
@@ -86,13 +86,13 @@ export function ProductSummary({
           <>
             <span className="product-summary__name">{plural(drafts.length, 'draft')}</span>
             <span className="metric__meta">
-              {withoutLink ? `${withoutLink.name} has no access link yet` : `${drafts[0].name} is still a draft`}
+              {withoutFile ? `${withoutFile.name} has no file yet` : `${drafts[0].name} is still a draft`}
             </span>
           </>
         ) : (
           <>
             <span className="product-summary__name">All set</span>
-            <span className="metric__meta">Every product is ready to sell</span>
+            <span className="metric__meta">Every product is ready to go</span>
           </>
         )}
       </div>

@@ -16,6 +16,9 @@ export interface Order {
   platformFeeCents: number
   netAmountCents: number
   landingPageTitle: string | null
+  /** How often the buyer downloaded the file through their personal link; the last time. */
+  downloadCount: number
+  lastDownloadedAt: string | null
 }
 
 export interface OrdersPage {

@@ -160,3 +160,233 @@
     margin-left: 0;
   }
 }
+
+/* Round 5 — products are documents (product form, orders, editor, personal download page) */
+
+/* A non-image file (the product's document): no preview, a taller drop area */
+.uploader--file {
+  --uploader-height: 220px;
+}
+
+/* File chip — an uploaded file with its details */
+.file-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+
+.file-chip__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.file-chip__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.file-chip__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.file-chip__date {
+  white-space: nowrap;
+}
+
+/* Product form — how the file reaches people */
+.delivery-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  margin: 0;
+  padding: var(--space-4) 0 0;
+  border-top: 1px solid var(--color-divider);
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.delivery-steps li {
+  display: flex;
+  gap: var(--space-2-5);
+}
+
+.delivery-steps svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--color-text-muted);
+}
+
+.delivery-steps strong {
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+}
+
+.file-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.file-inline svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-muted);
+}
+
+/* Orders — how often the buyer used their personal link */
+.order-uses {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  white-space: nowrap;
+}
+
+.order-uses svg {
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-muted);
+}
+
+.order-uses--off {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Quiet note — a muted, one-line explanation (e.g. why there is no data) */
+.quiet-note {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.quiet-note svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+
+/* Editor: what a lead page gives away */
+.draft-hint {
+  margin-bottom: var(--space-5);
+}
+
+.draft-hint .cluster {
+  margin-top: var(--space-3);
+}
+
+.lead-document {
+  margin-bottom: var(--space-5);
+}
+
+.lead-document .link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.document-warning {
+  font-size: var(--text-sm);
+}
+
+/* The buyer's file — thank-you and download pages */
+.lp-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px 16px;
+  width: 100%;
+  padding: 18px 20px;
+  border: 1px solid var(--lp-line);
+  border-radius: 20px;
+  background: var(--lp-surface);
+  text-align: left;
+}
+
+.lp-file__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 56px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--lp-text) 6%, transparent);
+  color: var(--lp-muted);
+}
+
+.lp-file__icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.lp-file__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.lp-file__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.lp-file__meta {
+  font-size: 0.875rem;
+  color: var(--lp-faint);
+}
+
+.lp-file__cta {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.lp-file__cta svg {
+  width: 18px;
+  height: 18px;
+}
+
+.lp__date {
+  white-space: nowrap;
+}
+
+.lp-done__note {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--lp-muted);
+  text-align: left;
+}
+
+.lp-done__note svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+/* The buyer hit the download rate limit */
+.lp-done__note--alert {
+  color: var(--lp-danger);
+  font-weight: var(--weight-medium);
+}

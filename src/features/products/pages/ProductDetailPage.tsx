@@ -1,8 +1,8 @@
-import { ArrowLeft, ArrowRight, ChartNoAxesCombined, PackageOpen, PanelsTopLeft, Pencil, Receipt } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChartNoAxesCombined, MailPlus, PackageOpen, PanelsTopLeft, Pencil, Receipt } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
-import { date, money, percent, plural } from '../../../shared/lib/format'
+import { date, money, number, percent, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
   Button,
@@ -10,15 +10,16 @@ import {
   EmptyState,
   ErrorState,
   Money,
+  FileTypeBadge,
+  FreeBadge,
   PageHeader,
-  ProductTypeBadge,
   SkeletonBlock,
   SkeletonRows,
   StatusBadge,
   orderStatusKey,
   pageStatusKey,
   productStatusKey,
-  productTypeKey,
+  subscriberStatusKey,
 } from '../../../shared/ui/ledger'
 import { getAnalyticsSeries } from '../../analytics/api/series-api'
 import { AnalyticsBoard } from '../../analytics/components/AnalyticsBoard'
@@ -27,11 +28,13 @@ import { PersonRow } from '../../analytics/components/PersonRow'
 import { metricById, periodById } from '../../analytics/model/series'
 import type { AnalyticsMetric, AnalyticsPeriod, AnalyticsSeries } from '../../analytics/model/types'
 import { useCreatorStore } from '../../creators/model/creator-store'
-import { listLandingPages } from '../../landing-pages/api/landing-pages-api'
-import type { LandingPage } from '../../landing-pages/model/types'
+import { listEmailCaptures, listLandingPages } from '../../landing-pages/api/landing-pages-api'
+import type { EmailCaptureItem, LandingPage } from '../../landing-pages/model/types'
 import { listOrders } from '../../orders/api/orders-api'
 import type { Order } from '../../orders/model/types'
 import { listProducts } from '../api/products-api'
+import { FileGlyph } from '../components/FileGlyph'
+import { fileFormatOf, fileMeta, isFreeProduct } from '../model/product-file'
 import type { Product } from '../model/types'
 
 type Load<T> = { status: 'loading' } | { status: 'error'; notFound: boolean } | { status: 'success'; data: T }
@@ -42,6 +45,8 @@ const LATEST_ROWS = 5
 // Products sell less often than pages are viewed, so a month and revenue are the useful defaults.
 const DEFAULT_PERIOD: AnalyticsPeriod = '30d'
 const DEFAULT_METRIC: AnalyticsMetric = 'revenue'
+// A free product is given away for an email: its numbers are sign-ups, not sales.
+const FREE_DEFAULT_METRIC: AnalyticsMetric = 'emails'
 const LOADING = { status: 'loading' } as const
 
 function failed(error: unknown): Load<never> {
@@ -55,13 +60,16 @@ export function ProductDetailPage() {
   const creatorCurrency = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator.defaultCurrency : null))
   const [params, setParams] = useSearchParams()
   const period = periodById(params.get('period'), DEFAULT_PERIOD)
-  const metric = metricById(params.get('metric'), DEFAULT_METRIC).id
+  const [productFree, setProductFree] = useState(false)
+  const defaultMetric = productFree ? FREE_DEFAULT_METRIC : DEFAULT_METRIC
+  const metric = metricById(params.get('metric'), defaultMetric).id
 
   // Results are tagged with the product they were loaded for, so a late response never shows on another product.
   const [product, setProduct] = useState<Keyed<Product> | null>(null)
   const [orders, setOrders] = useState<Keyed<Order[]> | null>(null)
   const [lastSale, setLastSale] = useState<Keyed<string | null> | null>(null)
   const [pages, setPages] = useState<Keyed<LandingPage[]> | null>(null)
+  const [signups, setSignups] = useState<Keyed<EmailCaptureItem[]> | null>(null)
   const [series, setSeries] = useState<Record<string, Load<Loaded>>>({})
 
   const loadProduct = useCallback(() => {
@@ -70,6 +78,7 @@ export function ProductDetailPage() {
       .then((products) => {
         const found = products.find((candidate) => candidate.publicId === productId)
         setProduct({ key: productKey, load: found ? { status: 'success', data: found } : { status: 'error', notFound: true } })
+        setProductFree(found ? isFreeProduct(found) : false)
       })
       .catch((error: unknown) => setProduct({ key: productKey, load: failed(error) }))
   }, [slug, productId, productKey])
@@ -92,6 +101,28 @@ export function ProductDetailPage() {
       )
       .catch((error: unknown) => setPages({ key: productKey, load: failed(error) }))
   }, [slug, productId, productKey])
+
+  // A free product's latest sign-ups: the newest captures on the lead pages that give it away.
+  const leadPageIds =
+    pages?.key === productKey && pages.load.status === 'success'
+      ? pages.load.data.filter((page) => page.type === 'LeadGen').map((page) => page.publicId)
+      : null
+  const leadPagesKey = leadPageIds?.join(',') ?? null
+  useEffect(() => {
+    if (!productFree || leadPagesKey === null) return
+    let active = true
+    const ids = leadPagesKey ? leadPagesKey.split(',') : []
+    Promise.all(ids.map((id) => listEmailCaptures(slug, id, LATEST_ROWS)))
+      .then((lists) => {
+        if (!active) return
+        const merged = lists.flat().sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
+        setSignups({ key: productKey, load: { status: 'success', data: merged.slice(0, LATEST_ROWS) } })
+      })
+      .catch((error: unknown) => active && setSignups({ key: productKey, load: failed(error) }))
+    return () => {
+      active = false
+    }
+  }, [productFree, leadPagesKey, slug, productKey])
 
   const loadSeries = useCallback(
     (id: AnalyticsPeriod) => {
@@ -122,7 +153,7 @@ export function ProductDetailPage() {
     const nextMetric = changes.metric ?? metric
     if (nextPeriod === DEFAULT_PERIOD) next.delete('period')
     else next.set('period', nextPeriod)
-    if (nextMetric === DEFAULT_METRIC) next.delete('metric')
+    if (nextMetric === defaultMetric) next.delete('metric')
     else next.set('metric', nextMetric)
     setParams(next, { replace: true })
   }
@@ -141,6 +172,7 @@ export function ProductDetailPage() {
   const lastSaleLoad: Load<string | null> = lastSale?.key === productKey ? lastSale.load : LOADING
   const pagesLoad: Load<LandingPage[]> = pages?.key === productKey ? pages.load : LOADING
   const seriesLoad: Load<Loaded> = series[seriesKey] ?? LOADING
+  const signupsLoad: Load<EmailCaptureItem[]> = signups?.key === productKey ? signups.load : LOADING
 
   const listUrl = `/app/${slug}/products`
 
@@ -169,9 +201,36 @@ export function ProductDetailPage() {
     const currency = creatorCurrency ?? 'EUR'
     const draft = item.status === 'Draft'
     const sold = item.paidOrderCount > 0
+    const free = isFreeProduct(item)
+    const format = item.fileName ? fileFormatOf(item.fileName) : null
+    const leadPages = pagesLoad.status === 'success' ? pagesLoad.data.filter((page) => page.type === 'LeadGen') : []
 
     const boardNode =
-      seriesLoad.status === 'success' ? (
+      seriesLoad.status === 'success' && free ? (
+        <AnalyticsBoard
+          series={seriesLoad.data.series}
+          metric={metric}
+          order={['emails', 'views']}
+          name="Sign-ups for this document"
+          empty={
+            (item.signupCount ?? seriesLoad.data.series.totals.emails) > 0
+              ? undefined
+              : {
+                  icon: MailPlus,
+                  title: 'No sign-ups yet',
+                  text: 'Share the lead page that gives it away — sign-ups and views show up here.',
+                  action: { label: 'Open landing pages', icon: PanelsTopLeft, to: `/app/${slug}/landing-pages` },
+                }
+          }
+          stats={(totals) => [
+            ['Visitors who signed up', percent(totals.views ? (totals.emails / totals.views) * 100 : 0)],
+            ['Sign-ups in this period', number(totals.emails)],
+            ['Sign-ups all time', item.signupCount === undefined ? '—' : number(item.signupCount)],
+            ['Lead pages', number(leadPages.length)],
+          ]}
+          onMetric={(next) => choose({ metric: next })}
+        />
+      ) : seriesLoad.status === 'success' ? (
         <AnalyticsBoard
           series={seriesLoad.data.series}
           metric={metric}
@@ -223,7 +282,8 @@ export function ProductDetailPage() {
           subtitle={item.description}
           actions={
             <>
-              <ProductTypeBadge type={productTypeKey(item.type)} />
+              {format && <FileTypeBadge format={format} />}
+              {free && <FreeBadge />}
               <StatusBadge kind="product" value={productStatusKey(item.status)} />
               <Button
                 variant="primary"
@@ -248,6 +308,42 @@ export function ProductDetailPage() {
           {boardNode}
           <div className="dash">
             <div className="span-7">
+              {free ? (
+                <Card
+                  title="Latest sign-ups"
+                  subtitle={
+                    item.signupCount === undefined
+                      ? 'Everyone who got this document for their email'
+                      : `${plural(item.signupCount, 'person', 'people')} got it for their email`
+                  }
+                  action={
+                    <Button variant="ghost" icon={ArrowRight} to={`/app/${slug}/subscribers`}>
+                      View all
+                    </Button>
+                  }
+                >
+                  {signupsLoad.status === 'success' ? (
+                    signupsLoad.data.length > 0 ? (
+                      <div className="list">
+                        {signupsLoad.data.map((capture) => (
+                          <PersonRow key={`${capture.email}-${capture.capturedAt}`} name={capture.email}>
+                            <span className="cluster cluster--sm">
+                              {capture.unsubscribed && <StatusBadge kind="subscriber" value={subscriberStatusKey(true)} />}
+                              <span className="table__secondary">{date(capture.capturedAt)}</span>
+                            </span>
+                          </PersonRow>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyState compact icon={MailPlus} title="No sign-ups yet" text="Everyone who gets this document for their email appears here." />
+                    )
+                  ) : signupsLoad.status === 'error' ? (
+                    <ErrorState compact onRetry={retry(setPages, loadLists)} />
+                  ) : (
+                    <SkeletonRows count={4} />
+                  )}
+                </Card>
+              ) : (
               <Card
                 title="Latest orders"
                 subtitle={`${plural(item.paidOrderCount, 'paid order')} for this product`}
@@ -283,38 +379,56 @@ export function ProductDetailPage() {
                   <SkeletonRows count={4} />
                 )}
               </Card>
+              )}
             </div>
             <div className="span-5">
               <Card title="About this product">
                 <div className="fill-stack">
                   <dl className="kv">
                     <dt>Price</dt>
-                    <dd>{money(item.priceCents, currency)} · one-time</dd>
-                    <dt>Type</dt>
+                    <dd>{free ? 'Free · given away on a lead page' : `${money(item.priceCents, currency)} · one-time`}</dd>
+                    <dt>File</dt>
                     <dd>
-                      <ProductTypeBadge type={productTypeKey(item.type)} />
-                    </dd>
-                    <dt>Access link</dt>
-                    <dd>
-                      {item.accessUrl ? (
-                        <span className="url-pill">
-                          <span>{item.accessUrl.replace(/^https?:\/\//, '')}</span>
-                        </span>
+                      {item.fileName && item.fileSizeBytes !== null ? (
+                        <>
+                          <span className="file-inline">
+                            <FileGlyph fileName={item.fileName} />
+                            <span>{item.fileName}</span>
+                          </span>
+                          <span className="table__secondary">{fileMeta({ fileName: item.fileName, fileSizeBytes: item.fileSizeBytes })}</span>
+                        </>
                       ) : (
-                        <span className="text-muted">Not added yet</span>
+                        <span className="text-muted">Not uploaded yet</span>
                       )}
                     </dd>
-                    <dt>Sold all time</dt>
+                    <dt>Delivery</dt>
                     <dd>
-                      {plural(item.paidOrderCount, 'sale')} · {money(item.revenueCents, currency)}
+                      {free
+                        ? 'A personal download link by email to everyone who signs up'
+                        : 'Downloads right after paying, plus a personal link by email'}
                     </dd>
-                    <dt>Last sale</dt>
-                    <dd>{lastSaleLoad.status === 'success' && lastSaleLoad.data ? date(lastSaleLoad.data) : '—'}</dd>
+                    {free ? (
+                      <>
+                        <dt>Given away</dt>
+                        <dd>{item.signupCount === undefined ? '—' : plural(item.signupCount, 'time')}</dd>
+                        <dt>Last sign-up</dt>
+                        <dd>{signupsLoad.status === 'success' && signupsLoad.data[0] ? date(signupsLoad.data[0].capturedAt) : '—'}</dd>
+                      </>
+                    ) : (
+                      <>
+                        <dt>Sold all time</dt>
+                        <dd>
+                          {plural(item.paidOrderCount, 'sale')} · {money(item.revenueCents, currency)}
+                        </dd>
+                        <dt>Last sale</dt>
+                        <dd>{lastSaleLoad.status === 'success' && lastSaleLoad.data ? date(lastSaleLoad.data) : '—'}</dd>
+                      </>
+                    )}
                     <dt>Created</dt>
                     <dd>{date(item.createdAt)}</dd>
                   </dl>
                   <div className="fill-stack__foot product-pages">
-                    <span className="field__label">Sold on</span>
+                    <span className="field__label">{free ? 'Given away on' : 'Sold on'}</span>
                     {pagesLoad.status === 'success' && pagesLoad.data.length > 0 ? (
                       <div className="list">
                         {pagesLoad.data.map((page) => (

@@ -1,14 +1,17 @@
-export type ProductType = 'Digital' | 'Service' | 'Course'
 export type ProductStatus = 'Draft' | 'Active' | 'Archived'
 
 export type Product = {
   publicId: string
   name: string
   description: string | null
+  /** 0 = a free product, given away for an email on lead pages instead of sold. */
   priceCents: number
-  type: ProductType
   status: ProductStatus
-  accessUrl: string | null
+  /** The product's document (PDF, EPUB or ZIP); null while none is uploaded. An Active product always has one. */
+  fileName: string | null
+  fileSizeBytes: number | null
+  fileContentType: string | null
+  fileUploadedAt: string | null
   thumbnailUrl: string | null
   createdAt: string
   updatedAt: string
@@ -16,15 +19,22 @@ export type Product = {
   paidOrderCount: number
   /** Paid orders per calendar month for the last 6 months, oldest first, the current month last. */
   salesTrend: number[]
+  /**
+   * A free product's sign-ups (people who left their email on a lead page that gives it away). Not in the F8.1 spec: until
+   * the API sends them the cards show "—" for a free product.
+   */
+  signupCount?: number
+  signupsThisMonth?: number
+  signupsTrend?: number[]
 }
 
 type ProductFields = {
   name: string
   description: string
   priceCents: number
-  type: ProductType
-  accessUrl: string
   thumbnailUrl: string
+  /** The reference a confirmed upload returned. Omitted: the product keeps the file it has. */
+  fileReference?: string
 }
 
 /** Active or Draft; omitted, the API keeps the current status (Draft on create). Archiving has its own endpoint. */

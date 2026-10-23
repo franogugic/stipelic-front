@@ -133,7 +133,6 @@ function LivePage({ creatorSlug, pageSlug, page }: { creatorSlug: string; pageSl
             name: page.productName,
             priceCents: page.productPriceCents ?? 0,
             currency: page.product?.currency ?? 'EUR',
-            type: page.product?.type ?? null,
           }
         : null,
     brand,
@@ -141,7 +140,7 @@ function LivePage({ creatorSlug, pageSlug, page }: { creatorSlug: string; pageSl
       page.type === 'Sales' ? (
         <BuyButton label={label} inverted={options?.inverted} onBuy={buy} />
       ) : (
-        <LeadForm label={label} inverted={options?.inverted} brandName={brand.name} onSubmit={signUp} />
+        <LeadForm label={label} inverted={options?.inverted} brandName={brand.name} productName={page.productName} onSubmit={signUp} />
       ),
   }
 
