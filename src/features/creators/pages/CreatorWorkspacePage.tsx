@@ -1,43 +1,31 @@
-import { ArrowRight, Package, Plus, Wallet } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { Package, Plus } from 'lucide-react'
+import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { date, money, month, number, plural } from '../../../shared/lib/format'
+import { date } from '../../../shared/lib/format'
+import { useKeyedLoad } from '../../../shared/lib/use-keyed-load'
 import { AppShell } from '../../../shared/ui/AppShell'
-import {
-  Bars,
-  Button,
-  Card,
-  Delta,
-  EmptyState,
-  ErrorState,
-  Money,
-  PageHeader,
-  Segmented,
-  SkeletonBlock,
-  SkeletonCards,
-  SkeletonRows,
-  Sparkline,
-} from '../../../shared/ui/ledger'
+import { Button, EmptyState, ErrorState, PageHeader, SkeletonBlock, SkeletonCards } from '../../../shared/ui/ledger'
 import { useAuthStore } from '../../auth/model/auth-store'
-import { getAnalyticsSeries } from '../../analytics/api/series-api'
-import { PeriodMenu } from '../../analytics/components/PeriodMenu'
-import { periodById } from '../../analytics/model/series'
-import type { AnalyticsPeriod, AnalyticsSeries } from '../../analytics/model/types'
-import { getDashboardTrends, getHomeSummary } from '../../orders/api/orders-api'
-import { OrdersTable } from '../../orders/components/OrdersTable'
-import type { DashboardTrends, HomeSummary } from '../../orders/model/types'
-import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
-import type { LandingPage } from '../../landing-pages/model/types'
-import { useCreatorStore } from '../model/creator-store'
+import { getAnalyticsPages, getAnalyticsSeries, getProductRevenue } from '../../analytics/api/series-api'
+import { PageControls } from '../../analytics/components/PageControls'
+import { scopeProducts } from '../../analytics/model/series'
+import type { AnalyticsMetric } from '../../analytics/model/types'
+import { usePagePeriod } from '../../analytics/model/use-page-period'
+import { listLandingPages } from '../../landing-pages/api/landing-pages-api'
+import { getHomeSummary, listOrders } from '../../orders/api/orders-api'
+import { listProducts, getProductSignups } from '../../products/api/products-api'
+import { isFreeProduct } from '../../products/model/product-file'
+import { DashboardChart } from '../components/dashboard/DashboardChart'
+import { DashboardHero } from '../components/dashboard/DashboardHero'
+import { GlanceBoard } from '../components/dashboard/GlanceBoard'
+import { LatestSignupsCard, LatestTransactionsCard } from '../components/dashboard/LatestCard'
 import { PlanUsageCard } from '../components/dashboard/PlanUsageCard'
-import { RevenueByProductCard } from '../components/dashboard/RevenueByProductCard'
-import { SalesBoard } from '../components/dashboard/SalesBoard'
+import { FunnelCard, ProductRevenueCard } from '../components/dashboard/ScopeSideCard'
 import { TopPagesCard } from '../components/dashboard/TopPagesCard'
-import type { Creator, CreatorPlan } from '../model/types'
+import { useCreatorStore } from '../model/creator-store'
 
-type Load<T> = { status: 'loading' } | { status: 'error' } | { status: 'success'; data: T }
-
-const HERO_DEFAULT_PERIOD: AnalyticsPeriod = '30d'
+const SOLD_METRICS: AnalyticsMetric[] = ['revenue', 'sales', 'views']
+const FREE_METRICS: AnalyticsMetric[] = ['emails', 'downloads', 'views']
 
 function greeting(now = new Date()) {
   const hour = now.getHours()
@@ -54,25 +42,6 @@ export function CreatorWorkspacePage() {
   const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
   const creatorPlans = useCreatorStore((s) => s.creatorPlans)
   const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
-  const pages = useLandingPageStore((s) => s.pages)
-  const loadPages = useLandingPageStore((s) => s.loadPages)
-
-  const [summary, setSummary] = useState<Load<HomeSummary>>({ status: 'loading' })
-  const [trend12m, setTrend12m] = useState<Load<DashboardTrends>>({ status: 'loading' })
-  // The hero card's workspace series, one per period, fetched once each.
-  const [heroSeries, setHeroSeries] = useState<Record<string, Load<AnalyticsSeries>>>({})
-  const [heroPeriod, setHeroPeriod] = useState<AnalyticsPeriod>(HERO_DEFAULT_PERIOD)
-  const [loadedSlug, setLoadedSlug] = useState(slug)
-  const [barsMetric, setBarsMetric] = useState<'revenue' | 'views'>('revenue')
-
-  // Another workspace's address starts over (render-time reset, so no stale numbers flash).
-  if (loadedSlug !== slug) {
-    setLoadedSlug(slug)
-    setSummary({ status: 'loading' })
-    setTrend12m({ status: 'loading' })
-    setHeroSeries({})
-    setHeroPeriod(HERO_DEFAULT_PERIOD)
-  }
 
   const creator = currentCreator?.slug === slug ? currentCreator : null
   const creatorLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
@@ -85,56 +54,169 @@ export function CreatorWorkspacePage() {
     void loadCreatorPlans()
   }, [loadCreatorPlans])
 
-  const retrySummary = async () => {
-    setSummary({ status: 'loading' })
-    try {
-      setSummary({ status: 'success', data: await getHomeSummary(slug) })
-    } catch {
-      setSummary({ status: 'error' })
-    }
-  }
+  // One period for the whole page, and the product it is narrowed to — in the URL only: the dashboard always opens on
+  // "All products" unless the link says otherwise.
+  const { period, setPeriod, params, update } = usePagePeriod('dashboard')
+  const productParam = params.get('product')
 
-  const loadTrend12m = useCallback(async () => {
-    setTrend12m({ status: 'loading' })
-    try {
-      setTrend12m({ status: 'success', data: await getDashboardTrends(slug, '12m') })
-    } catch {
-      setTrend12m({ status: 'error' })
-    }
-  }, [slug])
+  const ready = slug !== ''
+  const products = useKeyedLoad(ready ? `products|${slug}` : null, () => listProducts(slug, true))
+  const allProducts = products.load.status === 'success' ? products.load.data : []
+  const scoped = productParam ? (scopeProducts(allProducts).find((product) => product.publicId === productParam) ?? null) : null
+  const scopeId = scoped?.publicId ?? null
+  const free = scoped ? isFreeProduct(scoped) : false
+  // A product in the link is checked against the list first, so an unknown one never reaches the API.
+  const dataReady = ready && (productParam === null || products.load.status !== 'loading')
+  const dataKey = dataReady ? `${slug}|${period.id}|${scopeId ?? 'all'}` : null
+  const scopeKey = dataReady ? `${slug}|${scopeId ?? 'all'}` : null
 
-  const loadHero = useCallback(
-    (period: AnalyticsPeriod) => {
-      const key = `${slug}|${period}`
-      getAnalyticsSeries(slug, 'workspace', null, period)
-        .then((data) => setHeroSeries((current) => ({ ...current, [key]: { status: 'success', data } })))
-        .catch(() => setHeroSeries((current) => ({ ...current, [key]: { status: 'error' } })))
-    },
-    [slug],
+  const series = useKeyedLoad(dataKey, () => getAnalyticsSeries(slug, scopeId ? 'product' : 'workspace', scopeId, period.id))
+  const breakdown = useKeyedLoad(dataKey && !free ? dataKey : null, () => getProductRevenue(slug, period.id, scopeId))
+  const topPages = useKeyedLoad(dataKey, () => getAnalyticsPages(slug, period.id, scopeId, 5))
+  const latestOrders = useKeyedLoad(scopeKey && !free ? `${scopeKey}|orders` : null, () =>
+    listOrders(slug, { productId: scopeId ?? undefined, limit: 5 }),
   )
-
-  const heroKey = `${slug}|${heroPeriod}`
-  const heroKnown = heroKey in heroSeries
-  useEffect(() => {
-    if (slug && !heroKnown) loadHero(heroPeriod)
-  }, [slug, heroKnown, heroPeriod, loadHero])
-
-  useEffect(() => {
-    if (!slug) return
-    let active = true
-    getHomeSummary(slug)
-      .then((data) => active && setSummary({ status: 'success', data }))
-      .catch(() => active && setSummary({ status: 'error' }))
-    getDashboardTrends(slug, '12m')
-      .then((data) => active && setTrend12m({ status: 'success', data }))
-      .catch(() => active && setTrend12m({ status: 'error' }))
-    void loadPages(slug)
-    return () => {
-      active = false
-    }
-  }, [slug, loadPages])
+  const latestSignups = useKeyedLoad(scopeKey && free ? `${scopeKey}|signups` : null, () => getProductSignups(slug, scopeId ?? '', 5))
+  const pages = useKeyedLoad(ready ? `pages|${slug}` : null, () => listLandingPages(slug, true))
+  const usage = useKeyedLoad(ready ? `usage|${slug}` : null, () => getHomeSummary(slug))
 
   if (!slug) return null
+
+  const metrics = free ? FREE_METRICS : SOLD_METRICS
+  const requested = params.get('metric') as AnalyticsMetric | null
+  const metric = requested && metrics.includes(requested) ? requested : metrics[0]
+  const showAllTime = () => setPeriod('all')
+
+  const productPages = scoped && pages.load.status === 'success' ? pages.load.data.filter((page) => page.productPublicId === scoped.publicId) : []
+  const livePages = productPages.filter((page) => page.status !== 'Archived')
+  const pageCount = free
+    ? livePages.filter((page) => page.type === 'LeadGen').length
+    : livePages.filter((page) => page.type === 'Sales' && page.status === 'Published').length
+
+  const currency = (series.load.status === 'success' ? series.load.data.currency : (creator?.defaultCurrency ?? 'EUR')) ?? 'EUR'
+  const plan = creator ? creatorPlans.find((candidate) => candidate.code === creator.planCode) : undefined
+  const limit = (key: string) => plan?.limits[key]
+  const usageData = usage.load.status === 'success' ? usage.load.data : null
+  const renewsOn = creator?.currentPeriodEnd && creator.planCode.toLowerCase() !== 'free' ? creator.currentPeriodEnd : null
+
+  const usageCard = creator ? (
+    <PlanUsageCard
+      slug={slug}
+      planName={creator.planName}
+      renewsOn={renewsOn}
+      products={{ used: usageData?.productCount ?? 0, limit: limit('max_products') }}
+      pages={{ used: usageData?.landingPageCount ?? 0, limit: limit('max_landing_pages') }}
+      emails={{ used: usageData?.emailsSentThisMonth ?? 0, limit: usageData?.emailsMonthlyLimit ?? limit('max_email_sends_per_month') }}
+    />
+  ) : null
+
+  const controls = (
+    <PageControls
+      period={period.id}
+      onPeriod={setPeriod}
+      series={series.load.status === 'success' ? series.load.data : null}
+      loading={series.load.status === 'loading'}
+      updatedAt={series.load.status === 'success' ? series.load.at : new Date()}
+      sinceNote={scoped ? 'since you added it' : 'since you started'}
+      scope={{
+        products: allProducts,
+        selectedId: scopeId,
+        onSelect: (id) => update({ product: id, metric: null }),
+      }}
+    />
+  )
+
+  const body = () => {
+    if (series.load.status === 'error') {
+      return (
+        <div className="dash">
+          <section className="card span-7">
+            <ErrorState
+              compact
+              title="We couldn’t load your numbers"
+              text="The figures for this period didn’t load. Your pages and sales aren’t affected — try again in a moment."
+              onRetry={series.reload}
+            />
+          </section>
+          {usageCard}
+        </div>
+      )
+    }
+    if (series.load.status === 'loading') {
+      return (
+        <div className="dash" aria-busy="true">
+          <span className="sr-only" role="status">
+            Loading {period.label.toLowerCase()}…
+          </span>
+          <div className="card span-7">
+            <div className="card__body stack stack--md">
+              <SkeletonBlock />
+            </div>
+          </div>
+          {usageCard}
+          <div className="span-8">
+            <SkeletonBlock />
+          </div>
+          <div className="span-4">
+            <SkeletonBlock />
+          </div>
+          <div className="span-12">
+            <SkeletonCards count={4} />
+          </div>
+        </div>
+      )
+    }
+
+    const data = series.load.data
+    return (
+      <div className="dash reveal">
+        <DashboardHero series={data} free={free} />
+        {usageCard}
+        <div className="span-8">
+          <DashboardChart
+            series={data}
+            metrics={metrics}
+            metric={metric}
+            onMetric={(next) => update({ metric: next === metrics[0] ? null : next })}
+            scopeName={scoped?.name ?? null}
+            onShowAll={showAllTime}
+          />
+        </div>
+        <div className="span-4">
+          {free ? (
+            <FunnelCard series={data} onShowAll={showAllTime} />
+          ) : (
+            <ProductRevenueCard load={breakdown.load} currency={currency} onRetry={breakdown.reload} onShowAll={showAllTime} />
+          )}
+        </div>
+        <GlanceBoard
+          kind={scoped ? (free ? 'free' : 'sold') : 'all'}
+          series={data}
+          breakdown={breakdown.load}
+          productName={scoped?.name ?? null}
+          pageCount={pageCount}
+        />
+        <div className="span-8">
+          {free ? (
+            <LatestSignupsCard slug={slug} load={latestSignups.load} onRetry={latestSignups.reload} />
+          ) : (
+            <LatestTransactionsCard slug={slug} productId={scopeId} load={latestOrders.load} onRetry={latestOrders.reload} />
+          )}
+        </div>
+        <div className="span-4">
+          <TopPagesCard
+            slug={slug}
+            period={period.id}
+            load={topPages.load}
+            scope={scoped ? { free } : null}
+            hasArchivedPages={productPages.length > 0 && livePages.length === 0}
+            onRetry={topPages.reload}
+            onShowAll={showAllTime}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <AppShell slug={slug} activeSection="overview">
@@ -151,7 +233,18 @@ export function CreatorWorkspacePage() {
                 {greeting()}, <em>{firstName}</em>
               </>
             }
-            subtitle={`Here is how ${creator.name} is doing today.`}
+            subtitle={
+              scoped ? (
+                <>
+                  Showing <strong>{scoped.name}</strong> only.{' '}
+                  <button className="link link--button" type="button" onClick={() => update({ product: null, metric: null })}>
+                    Show all products
+                  </button>
+                </>
+              ) : (
+                `Here is how ${creator.name} is doing.`
+              )
+            }
             actions={
               <>
                 <Button variant="secondary" icon={Plus} to={`/app/${slug}/landing-pages`}>
@@ -163,188 +256,12 @@ export function CreatorWorkspacePage() {
               </>
             }
           />
-          {summary.status === 'error' ? (
-            <ErrorState onRetry={() => void retrySummary()} />
-          ) : (
-            <Dashboard
-              creator={creator}
-              plan={creatorPlans.find((plan) => plan.code === creator.planCode)}
-              summary={summary.status === 'success' ? summary.data : null}
-              pages={pages}
-              trend12m={trend12m}
-              hero={heroSeries[heroKey]}
-              heroPeriod={heroPeriod}
-              onHeroPeriod={setHeroPeriod}
-              onRetryHero={() => {
-                setHeroSeries((current) => ({ ...current, [heroKey]: { status: 'loading' } }))
-                loadHero(heroPeriod)
-              }}
-              barsMetric={barsMetric}
-              onBarsMetric={setBarsMetric}
-              onRetryTrend={() => void loadTrend12m()}
-            />
-          )}
+          <div className="stack stack--lg">
+            {controls}
+            {body()}
+          </div>
         </>
       )}
     </AppShell>
-  )
-}
-
-function Dashboard({
-  creator,
-  plan,
-  summary,
-  pages,
-  trend12m,
-  hero,
-  heroPeriod,
-  onHeroPeriod,
-  onRetryHero,
-  barsMetric,
-  onBarsMetric,
-  onRetryTrend,
-}: {
-  creator: Creator
-  plan: CreatorPlan | undefined
-  summary: HomeSummary | null
-  pages: LandingPage[]
-  trend12m: Load<DashboardTrends>
-  hero: Load<AnalyticsSeries> | undefined
-  heroPeriod: AnalyticsPeriod
-  onHeroPeriod: (period: AnalyticsPeriod) => void
-  onRetryHero: () => void
-  barsMetric: 'revenue' | 'views'
-  onBarsMetric: (metric: 'revenue' | 'views') => void
-  onRetryTrend: () => void
-}) {
-  const slug = creator.slug
-  const currency = summary?.currency ?? creator.defaultCurrency ?? 'EUR'
-  const formatMoney = (cents: number) => money(cents, currency)
-  const planName = creator.planName
-  const limit = (key: string) => plan?.limits[key]
-
-  const months12 = trend12m.status === 'success' ? trend12m.data.points : null
-
-  // The hero: revenue in the chosen period, against the period before.
-  const heroData = hero?.status === 'success' ? hero.data : null
-  const heroPeriodDef = periodById(heroPeriod, HERO_DEFAULT_PERIOD)
-  const heroPrevious = heroData?.previousTotals ?? null
-  const heroChange =
-    heroData && heroPrevious && heroPrevious.revenueCents > 0
-      ? ((heroData.totals.revenueCents - heroPrevious.revenueCents) / heroPrevious.revenueCents) * 100
-      : null
-
-  const renewsOn = creator.currentPeriodEnd && creator.planCode.toLowerCase() !== 'free' ? creator.currentPeriodEnd : null
-
-  return (
-    <div className="dash reveal">
-      <article className="card card--feature span-7 hero-rev">
-        <div className="card__body stack stack--lg">
-          <div className="cluster cluster--between">
-            <span className="metric__label">
-              <Wallet />
-              Revenue · {heroPeriodDef.label.toLowerCase()}
-            </span>
-            <PeriodMenu period={heroPeriod} onPeriod={onHeroPeriod} align="end" />
-          </div>
-          <div className="metric metric--xl">
-            <span className="metric__value">
-              {heroData ? <Money amountCents={heroData.totals.revenueCents} currency={currency} /> : '—'}
-            </span>
-            <span className="metric__meta">
-              {heroData && heroPrevious ? (
-                <>
-                  {heroChange !== null && <Delta change={heroChange} />}
-                  <span>vs {formatMoney(heroPrevious.revenueCents)} {heroPeriodDef.compare}</span>
-                </>
-              ) : heroData ? (
-                <span>{plural(heroData.totals.sales, 'sale')} since {date(heroData.since)}</span>
-              ) : null}
-            </span>
-          </div>
-          {heroData ? (
-            <Sparkline values={heroData.buckets.map((bucket) => bucket.revenueCents)} label={`Revenue, ${heroPeriodDef.label.toLowerCase()}`} />
-          ) : hero?.status === 'error' ? (
-            <ErrorState compact onRetry={onRetryHero} />
-          ) : (
-            <SkeletonBlock />
-          )}
-        </div>
-      </article>
-
-      <PlanUsageCard
-        slug={slug}
-        planName={planName}
-        renewsOn={renewsOn}
-        products={{ used: summary?.productCount ?? 0, limit: limit('max_products') }}
-        pages={{ used: summary?.landingPageCount ?? 0, limit: limit('max_landing_pages') }}
-        emails={{ used: summary?.emailsSentThisMonth ?? 0, limit: summary?.emailsMonthlyLimit ?? limit('max_email_sends_per_month') }}
-      />
-
-      <div className="span-8">
-        <Card
-          title="Revenue by month"
-          subtitle="Paid orders, last 12 months"
-          action={
-            <Segmented
-              label="Chart"
-              options={[
-                { value: 'revenue', label: 'Revenue' },
-                { value: 'views', label: 'Views' },
-              ]}
-              value={barsMetric}
-              onChange={(value) => onBarsMetric(value as 'revenue' | 'views')}
-            />
-          }
-        >
-          {months12 ? (
-            <Bars
-              values={months12.map((point) => (barsMetric === 'revenue' ? point.revenueCents : point.views))}
-              labels={months12.map((point) => month(point.bucketStart))}
-              formatValue={barsMetric === 'revenue' ? formatMoney : number}
-              label={barsMetric === 'revenue' ? 'Revenue by month' : 'Page views by month'}
-            />
-          ) : trend12m.status === 'error' ? (
-            <ErrorState compact onRetry={onRetryTrend} />
-          ) : (
-            <SkeletonBlock />
-          )}
-        </Card>
-      </div>
-      <div className="span-4">
-        <RevenueByProductCard slug={slug} currency={currency} />
-      </div>
-
-      {summary ? (
-        <SalesBoard summary={summary} currency={currency} />
-      ) : (
-        <div className="span-12">
-          <SkeletonCards count={4} />
-        </div>
-      )}
-
-      <div className="span-8">
-        <Card
-          title="Latest transactions"
-          flush
-          action={
-            <Button variant="ghost" icon={ArrowRight} to={`/app/${slug}/orders`}>
-              View all
-            </Button>
-          }
-        >
-          {!summary ? (
-            <SkeletonRows count={5} />
-          ) : summary.recentOrders.length > 0 ? (
-            <OrdersTable orders={summary.recentOrders.slice(0, 5)} compact />
-          ) : (
-            <EmptyState compact title="No orders yet" text="Your latest sales will show up here." />
-          )}
-        </Card>
-      </div>
-      <div className="span-4">
-        <TopPagesCard slug={slug} pages={pages} currency={currency} />
-      </div>
-    </div>
   )
 }

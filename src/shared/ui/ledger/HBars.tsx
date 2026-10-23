@@ -11,7 +11,7 @@ export function HBars({ rows, highlight }: { rows: Array<{ label: string; value:
       {rows.map((row, i) => (
         <div
           className={['hbar', highlight && (row.label === highlight ? 'hbar--chosen' : 'hbar--muted')].filter(Boolean).join(' ')}
-          key={row.label}
+          key={`${i}-${row.label}`}
         >
           <div className="hbar__head">
             <span>{row.label}</span>
