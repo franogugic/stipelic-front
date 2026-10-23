@@ -1,7 +1,7 @@
 import { downloadFile } from '../../../shared/api/download'
 import { apiRequest } from '../../../shared/api/http-client'
 import type { AnalyticsPeriod } from '../../analytics/model/types'
-import type { DashboardTrendRange, DashboardTrends, HomeSummary, OrderPeriodSummary, OrdersPage, OrderSummary } from '../model/types'
+import type { HomeSummary, OrderPeriodSummary, OrdersPage, OrderSummary } from '../model/types'
 
 type ApiResponse<T> = { statusCode: number; message: string; code: string; data: T }
 
@@ -69,12 +69,5 @@ export async function getOrderPeriodSummary(slug: string, period: AnalyticsPerio
 
 export async function getHomeSummary(slug: string): Promise<HomeSummary> {
   const res = await apiRequest<ApiResponse<HomeSummary>>(`/api/creators/${slug}/orders/home-summary`)
-  return res.data
-}
-
-export async function getDashboardTrends(slug: string, range: DashboardTrendRange): Promise<DashboardTrends> {
-  const res = await apiRequest<ApiResponse<DashboardTrends>>(
-    `/api/creators/${slug}/orders/dashboard-trends?range=${range}`,
-  )
   return res.data
 }

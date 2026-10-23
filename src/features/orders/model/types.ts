@@ -127,12 +127,3 @@ export interface HomeSummary {
   refundedOrderCount: number
   refundedAmountCents: number
 }
-
-export type DashboardTrendRange = '30d' | '6m' | '12m'
-
-/** `GET …/orders/dashboard-trends`: revenue and page views per day (30d) or per month (6m, 12m). */
-export interface DashboardTrends {
-  range: DashboardTrendRange
-  granularity: 'day' | 'month'
-  points: Array<{ bucketStart: string; revenueCents: number; views: number }>
-}

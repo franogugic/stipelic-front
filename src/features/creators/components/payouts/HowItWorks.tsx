@@ -1,8 +1,9 @@
 import { Card } from '../../../../shared/ui/ledger'
+import { PayoutsNetNote } from './PayoutsNetNote'
 
 const STEPS: Array<[number: string, title: string, text: string]> = [
   ['1', 'A customer pays', 'Card payment through Stripe checkout.'],
-  ['2', 'To replace', 'To replace'],
+  ['2', 'It joins your balance', 'Every paid order adds to what you’re owed, order by order.'],
   ['3', 'Money reaches you', 'Stripe pays out to your bank automatically.'],
 ]
 
@@ -10,14 +11,17 @@ const STEPS: Array<[number: string, title: string, text: string]> = [
 export function HowItWorks() {
   return (
     <Card title="How it works">
-      <div className="grid grid--3">
-        {STEPS.map(([number, title, text]) => (
-          <div className="stack stack--sm" key={number}>
-            <span className="payout-step__num">0{number}</span>
-            <strong>{title}</strong>
-            <p className="text-secondary text-sm">{text}</p>
-          </div>
-        ))}
+      <div className="stack stack--lg">
+        <div className="grid grid--3">
+          {STEPS.map(([number, title, text]) => (
+            <div className="stack stack--sm" key={number}>
+              <span className="payout-step__num">0{number}</span>
+              <strong>{title}</strong>
+              <p className="text-secondary text-sm">{text}</p>
+            </div>
+          ))}
+        </div>
+        <PayoutsNetNote />
       </div>
     </Card>
   )

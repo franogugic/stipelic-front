@@ -10,7 +10,7 @@ import { useCreatorStore } from '../model/creator-store'
 
 const steps: { number: string; title: string; text: string; icon: LucideIcon }[] = [
   { number: '01', title: 'Name & link', text: 'Pick a name and your public address, like luma.app/p/mh-studio.', icon: AtSign },
-  { number: '02', title: 'Choose a plan', text: 'To replace', icon: Gauge },
+  { number: '02', title: 'Choose a plan', text: 'Start free, or pick a plan with room to grow.', icon: Gauge },
   { number: '03', title: 'Make it yours', text: 'Logo, colour and support email — optional.', icon: Palette },
 ]
 
