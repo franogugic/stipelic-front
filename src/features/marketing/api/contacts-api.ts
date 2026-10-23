@@ -1,7 +1,7 @@
 import { downloadFile } from '../../../shared/api/download'
 import { apiRequest } from '../../../shared/api/http-client'
 import type { AnalyticsPeriod } from '../../analytics/model/types'
-import type { ContactPeriodStats, ContactStats, ContactsPage } from '../model/types'
+import type { ContactImportSummary, ContactPeriodStats, ContactStats, ContactsPage } from '../model/types'
 
 type ApiResponse<TData> = {
   statusCode: number
@@ -69,4 +69,19 @@ export function exportContacts(slug: string, filters: ContactFilters): Promise<v
     `/api/creators/${encodeURIComponent(slug)}/contacts/export${query ? `?${query}` : ''}`,
     `contacts-${slug}.csv`,
   )
+}
+
+/**
+ * Imports contacts from a CSV file. A dry run saves nothing and says what an import would do; the real import
+ * (`dryRun: false`, consent attested) takes the same file again, and is all or nothing against the plan's contact limit.
+ */
+export function importContacts(slug: string, file: File, { dryRun, consentAttested }: { dryRun: boolean; consentAttested: boolean }) {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('consentAttested', String(consentAttested))
+  form.append('dryRun', String(dryRun))
+  return apiRequest<ApiResponse<ContactImportSummary>>(`/api/creators/${encodeURIComponent(slug)}/contacts/import`, {
+    method: 'POST',
+    body: form,
+  }).then(unwrapApiResponse)
 }

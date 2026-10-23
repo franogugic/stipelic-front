@@ -40,14 +40,16 @@ export async function apiRequest<TResponse>(
 ): Promise<TResponse> {
   const { body, headers, ...requestInit } = options
 
+  // A form (a file upload) goes out as multipart: the browser sets the content type and its boundary.
+  const isForm = body instanceof FormData
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     headers: {
-      'Content-Type': 'application/json',
+      ...(isForm ? {} : { 'Content-Type': 'application/json' }),
       ...headers,
     },
     ...requestInit,
     credentials: 'include',
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   })
 
   if (!response.ok) {

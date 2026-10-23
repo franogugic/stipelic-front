@@ -206,6 +206,8 @@ export type Contact = {
   /** The landing pages the contact signed up on. */
   sourceList: ContactSource[]
   isUnsubscribed: boolean
+  /** When a CSV import created the contact (its source is "Import"); null for everyone else. */
+  importedAt: string | null
 }
 
 export type ContactsPage = {
@@ -258,3 +260,23 @@ export type ContactPeriodStats = {
   /** Who joined in the period, each contact once, at the source of its first capture; the rows add up to `joined`. */
   sources: Array<{ kind: 'page' | 'import'; landingPagePublicId: string | null; title: string; count: number }>
 }
+
+/** `POST …/contacts/import` — what a CSV import found (dry run) or did (real import). */
+export type ContactImportSummary = {
+  dryRun: boolean
+  /** Data rows read. */
+  rows: number
+  /** Rows with a valid email: `new` + `existing` + `unsubscribed` + `duplicatesInFile`. */
+  valid: number
+  new: number
+  existing: number
+  duplicatesInFile: number
+  unsubscribed: number
+  invalidCount: number
+  /** The first 100 invalid rows. */
+  invalid: ContactImportInvalidRow[]
+  /** What the plan leaves after the import (a dry run: what it would leave); null without a limit; below zero: refused. */
+  remainingContactLimit: number | null
+}
+
+export type ContactImportInvalidRow = { row: number; value: string; reason: 'EMPTY' | 'TOO_LONG' | 'INVALID_EMAIL' }

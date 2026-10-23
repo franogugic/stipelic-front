@@ -1,5 +1,5 @@
 import { UserCheck, UserPlus, Users, UserX } from 'lucide-react'
-import { dateShort, number, percent } from '../../../shared/lib/format'
+import { date, dateShort, number } from '../../../shared/lib/format'
 import { DeltaBadge, KpiCell } from '../../../shared/ui/ledger'
 import { PERIODS, inZone, periodPhrase } from '../../analytics/model/series'
 import type { ContactPeriodStats } from '../model/types'
@@ -8,11 +8,17 @@ import type { ContactPeriodStats } from '../model/types'
  * The summary board above the subscriber list, for one period: everyone now (against the start of the period), the
  * active share, who joined (imports noted) and who left, each against the period before.
  */
-export function SubscribersBoard({ stats }: { stats: ContactPeriodStats }) {
+export function SubscribersBoard({
+  stats,
+  plan,
+}: {
+  stats: ContactPeriodStats
+  /** The plan's name and its limit of active contacts (null: no limit). */
+  plan: { name: string; contactLimit: number | null }
+}) {
   const phrase = periodPhrase(stats.period)
   const compare = PERIODS.find((period) => period.id === stats.period)?.compare
   const previous = stats.previous
-  const share = (count: number) => (stats.total > 0 ? (count / stats.total) * 100 : 0)
   const spark = (label: string, values: number[]) => (values.length > 1 ? { values, label: `${label}, ${phrase}` } : undefined)
   const startLabel =
     stats.period === 'today' ? 'at midnight' : `on ${dateShort(inZone(stats.range.from, stats.timezone))}`
@@ -26,7 +32,7 @@ export function SubscribersBoard({ stats }: { stats: ContactPeriodStats }) {
           value={number(stats.total)}
           meta={
             stats.period === 'all' ? (
-              <span>since {dateShort(inZone(stats.range.from, stats.timezone))}</span>
+              <span>since {date(inZone(stats.range.from, stats.timezone))}</span>
             ) : (
               <>
                 <DeltaBadge current={stats.total} previous={stats.startTotal} />
@@ -43,11 +49,19 @@ export function SubscribersBoard({ stats }: { stats: ContactPeriodStats }) {
           icon={UserCheck}
           value={number(stats.active)}
           meta={
-            <span>
-              {percent(share(stats.active))} still subscribed · {number(stats.unsubscribed)} left overall
-            </span>
+            plan.contactLimit === null ? (
+              <span>No contact limit on {plan.name}</span>
+            ) : (
+              <span>
+                of {number(plan.contactLimit)} on {plan.name} · {number(stats.unsubscribed)} unsubscribed don’t count
+              </span>
+            )
           }
-          bar={{ ratio: share(stats.active), tone: 'success' }}
+          bar={
+            plan.contactLimit === null
+              ? undefined
+              : { ratio: (stats.active / plan.contactLimit) * 100, tone: stats.active / plan.contactLimit >= 0.85 ? 'warning' : 'success' }
+          }
         />
         <KpiCell
           label="New"
@@ -68,7 +82,7 @@ export function SubscribersBoard({ stats }: { stats: ContactPeriodStats }) {
               {stats.importedInPeriod > 0 && (
                 <span>
                   {' '}
-                  · <strong className="kpi__note">{number(stats.importedInPeriod)} imported</strong>
+                  · <strong className="kpi__note">incl. {number(stats.importedInPeriod)} imported</strong>
                 </span>
               )}
             </>

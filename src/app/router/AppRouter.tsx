@@ -26,6 +26,7 @@ import { TemplateEditorPage } from '../../features/marketing/pages/TemplateEdito
 import { TemplatesPage } from '../../features/marketing/pages/TemplatesPage'
 import { NewCampaignPage } from '../../features/marketing/pages/NewCampaignPage'
 import { EmailsPage } from '../../features/marketing/pages/EmailsPage'
+import { ContactImportPage } from '../../features/marketing/pages/ContactImportPage'
 import { SubscribersPage } from '../../features/marketing/pages/SubscribersPage'
 import { ProductDetailPage } from '../../features/products/pages/ProductDetailPage'
 import { ProductFormPage } from '../../features/products/pages/ProductFormPage'
@@ -78,6 +79,7 @@ export function AppRouter() {
           <Route path="/app/:slug/emails/templates/:templateId" element={<TemplateEditorPage />} />
           <Route path="/app/:slug/emails/campaigns/:campaignId" element={<CampaignDetailPage />} />
           <Route path="/app/:slug/subscribers" element={<SubscribersPage />} />
+          <Route path="/app/:slug/subscribers/import" element={<ContactImportPage />} />
           <Route path="/app/:slug/payouts" element={<CreatorPayoutsPage />} />
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />
           <Route path="/welcome" element={<WelcomePage />} />
