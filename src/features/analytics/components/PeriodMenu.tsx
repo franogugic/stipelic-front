@@ -8,10 +8,12 @@ export function PeriodMenu({
   period,
   onPeriod,
   align = 'start',
+  triggerClassName,
 }: {
   period: AnalyticsPeriod
   onPeriod: (period: AnalyticsPeriod) => void
   align?: 'start' | 'end'
+  triggerClassName?: string
 }) {
   const current = PERIODS.find((candidate) => candidate.id === period) ?? PERIODS[1]
   return (
@@ -21,6 +23,7 @@ export function PeriodMenu({
       triggerLabel={current.label}
       caret
       align={align}
+      triggerClassName={triggerClassName}
       items={PERIODS.map((option) => ({
         label: option.label,
         checked: option.id === period,

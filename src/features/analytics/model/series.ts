@@ -1,6 +1,7 @@
-import { Eye, MailPlus, ShoppingBag, Wallet } from 'lucide-react'
+import { Download, Eye, MailPlus, ShoppingBag, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { dateShort, month, monthYear, money, number } from '../../../shared/lib/format'
+import type { Product } from '../../products/model/types'
 import type { AnalyticsBucket, AnalyticsMetric, AnalyticsPeriod, AnalyticsSeries, AnalyticsStep, AnalyticsTotals } from './types'
 
 /** The one period menu of every chart. `compare` is the previous period's name (null: nothing to compare with). */
@@ -11,7 +12,7 @@ export const PERIODS: Array<{ id: AnalyticsPeriod; label: string; compare: strin
   { id: '30d', label: 'Last 30 days', compare: 'previous 30 days', step: 'day' },
   { id: '2m', label: 'Last 2 months', compare: 'previous 2 months', step: 'week' },
   { id: '3m', label: 'Last 3 months', compare: 'previous 3 months', step: 'week' },
-  { id: '6m', label: 'Last 6 months', compare: 'previous 6 months', step: 'week' },
+  { id: '6m', label: 'Last 6 months', compare: 'previous 6 months', step: 'month' },
   { id: 'all', label: 'All time', compare: null, step: 'month' },
 ]
 
@@ -20,6 +21,7 @@ export const METRICS: Array<{ id: AnalyticsMetric; label: string; icon: LucideIc
   { id: 'emails', label: 'Emails collected', icon: MailPlus, unit: ['email', 'emails'] },
   { id: 'sales', label: 'Sales', icon: ShoppingBag, unit: ['sale', 'sales'] },
   { id: 'revenue', label: 'Revenue', icon: Wallet },
+  { id: 'downloads', label: 'Downloads', icon: Download, unit: ['download', 'downloads'] },
 ]
 
 export const periodById = (id: string | null, fallback: AnalyticsPeriod): (typeof PERIODS)[number] =>
@@ -114,6 +116,10 @@ export function chartOf(series: AnalyticsSeries, metric: AnalyticsMetric) {
     labels,
     titles,
     values: pick(series.buckets),
-    previous: series.step !== 'month' && series.previousBuckets ? pick(series.previousBuckets) : null,
+    // "All time" has no previous period; a 6-month window has 6 monthly buckets before it.
+    previous: series.previousBuckets ? pick(series.previousBuckets) : null,
   }
 }
+
+/** What the dashboard can be narrowed to: active and archived products (drafts have no numbers yet). */
+export const scopeProducts = (products: Product[]) => products.filter((product) => product.status !== 'Draft')

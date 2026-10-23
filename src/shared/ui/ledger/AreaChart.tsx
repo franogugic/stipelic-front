@@ -21,6 +21,7 @@ export function AreaChart({
   live = true,
   previousLabel = 'Period before',
   axisFloor,
+  notes,
 }: {
   labels: string[]
   titles: string[]
@@ -33,6 +34,8 @@ export function AreaChart({
   live?: boolean
   previousLabel?: string
   axisFloor?: number
+  /** A short note per point ("128 imported"); a point with one is ringed and the note joins its tooltip. */
+  notes?: string[] | null
 }) {
   const slots = labels.length
   const max = axisMax(Math.max(...values, ...(previous ?? []), 0), axisFloor)
@@ -68,12 +71,15 @@ export function AreaChart({
           {running && <path className="area-chart__line area-chart__line--running" d={running} />}
         </svg>
         <span className="area-chart__dot" style={{ '--x': pct(x(last), WIDTH), '--y': pct(y(values[last]), HEIGHT) } as CSSProperties} />
+        {notes?.map((note, index) =>
+          note ? <span className="area-chart__note" style={{ '--x': pct(x(index), WIDTH), '--y': pct(y(values[index]), HEIGHT) } as CSSProperties} key={index} /> : null,
+        )}
         <div className="area-chart__hits" style={{ '--w': pct(1, Math.max(slots - 1, 1)) } as CSSProperties}>
           {values.map((value, index) => (
             <span
               key={index}
               style={{ '--x': pct(x(index), WIDTH) } as CSSProperties}
-              data-tooltip={`${titles[index]}${split && index === last ? ' (so far)' : ''} · ${describe(value)}${versus(index)}`}
+              data-tooltip={`${titles[index]}${split && index === last ? ' (so far)' : ''} · ${describe(value)}${versus(index)}${notes?.[index] ? ` · ${notes[index]}` : ''}`}
             />
           ))}
         </div>
@@ -102,7 +108,10 @@ export function AreaChart({
           <tbody>
             {values.map((value, index) => (
               <tr key={index}>
-                <th scope="row">{titles[index]}</th>
+                <th scope="row">
+                  {titles[index]}
+                  {notes?.[index] ? ` (${notes[index]})` : ''}
+                </th>
                 <td>{formatValue(value)}</td>
                 {previous && <td>{formatValue(previous[index])}</td>}
               </tr>
@@ -115,13 +124,13 @@ export function AreaChart({
 }
 
 /** The legend above a chart: what it measures and the keys of its lines. */
-export function ChartLegend({ title, keys }: { title: string; keys: Array<{ label: string; previous?: boolean }> }) {
+export function ChartLegend({ title, keys }: { title: string; keys: Array<{ label: string; previous?: boolean; note?: boolean }> }) {
   return (
     <div className="chart-legend">
       <span className="chart-legend__title">{title}</span>
       <span className="chart-legend__keys">
         {keys.map((key) => (
-          <span className={`chart-legend__key chart-legend__key--${key.previous ? 'previous' : 'current'}`} key={key.label}>
+          <span className={`chart-legend__key chart-legend__key--${key.note ? 'note' : key.previous ? 'previous' : 'current'}`} key={key.label}>
             {key.label}
           </span>
         ))}

@@ -10,6 +10,8 @@ import { positionFloating } from './floating'
 
 export type MenuItem =
   | 'separator'
+  /** A named set of items (e.g. sold and free products), with its heading. */
+  | { group: string; items: MenuItem[] }
   /** A short explanation at the top of the menu (not an item): why some actions are unavailable. */
   | { note: string; icon?: LucideIcon }
   | {
@@ -36,6 +38,7 @@ export function Menu({
   triggerIcon = Ellipsis,
   triggerVariant,
   triggerSize,
+  triggerClassName,
   caret,
 }: {
   /** Accessible name of the menu (and of the trigger when it has no visible label). */
@@ -46,6 +49,8 @@ export function Menu({
   triggerIcon?: LucideIcon
   triggerVariant?: ButtonVariant
   triggerSize?: 'sm' | 'lg'
+  /** An extra class on the labelled trigger. */
+  triggerClassName?: string
   /** A chevron after the trigger's label. */
   caret?: boolean
 }) {
@@ -149,6 +154,16 @@ export function Menu({
 
   const renderItem = (item: MenuItem, index: number) => {
     if (item === 'separator') return <div className="menu__separator" role="separator" key={index} />
+    if ('group' in item) {
+      return (
+        <div className="menu__group" role="group" aria-label={item.group} key={index}>
+          <p className="menu__heading" aria-hidden="true">
+            {item.group}
+          </p>
+          {item.items.map(renderItem)}
+        </div>
+      )
+    }
     if ('note' in item) {
       const NoteIcon = item.icon
       return (
@@ -216,6 +231,7 @@ export function Menu({
           ref={triggerRef}
           variant={triggerVariant ?? 'secondary'}
           size={triggerSize}
+          className={triggerClassName}
           icon={triggerIcon}
           caret={caret}
           aria-haspopup="menu"

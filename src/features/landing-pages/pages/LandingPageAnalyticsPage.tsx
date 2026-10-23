@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, ChartNoAxesCombined, Copy, ExternalLink, MailPlus, Pencil, Send, ShoppingBag } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
 import { date, money, percent, plural } from '../../../shared/lib/format'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -21,9 +21,10 @@ import {
 import { getAnalyticsSeries } from '../../analytics/api/series-api'
 import { AnalyticsBoard } from '../../analytics/components/AnalyticsBoard'
 import { PersonRow } from '../../analytics/components/PersonRow'
-import { PeriodBar } from '../../analytics/components/PeriodBar'
-import { metricById, periodById } from '../../analytics/model/series'
+import { PageControls } from '../../analytics/components/PageControls'
+import { metricById } from '../../analytics/model/series'
 import type { AnalyticsMetric, AnalyticsPeriod, AnalyticsSeries } from '../../analytics/model/types'
+import { usePagePeriod } from '../../analytics/model/use-page-period'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { listOrders } from '../../orders/api/orders-api'
 import type { Order } from '../../orders/model/types'
@@ -36,7 +37,6 @@ type Keyed<T> = { key: string; load: Load<T> }
 type Loaded = { series: AnalyticsSeries; at: Date }
 
 const LATEST_ROWS = 5
-const DEFAULT_PERIOD: AnalyticsPeriod = '7d'
 const DEFAULT_METRIC: AnalyticsMetric = 'views'
 const LOADING = { status: 'loading' } as const
 
@@ -49,8 +49,7 @@ export function LandingPageAnalyticsPage() {
   const pageKey = `${slug}/${pageId}`
   const toast = useToast()
   const creatorCurrency = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator.defaultCurrency : null))
-  const [params, setParams] = useSearchParams()
-  const period = periodById(params.get('period'), DEFAULT_PERIOD)
+  const { period, setPeriod, params, update } = usePagePeriod('landing-page-analytics')
   const metric = metricById(params.get('metric'), DEFAULT_METRIC).id
 
   const [analytics, setAnalytics] = useState<Keyed<LandingPageAnalytics> | null>(null)
@@ -96,16 +95,7 @@ export function LandingPageAnalyticsPage() {
     if (slug && pageId && !hasSeries) loadSeries(period.id)
   }, [slug, pageId, period.id, hasSeries, loadSeries])
 
-  const choose = (changes: { period?: AnalyticsPeriod; metric?: AnalyticsMetric }) => {
-    const next = new URLSearchParams(params)
-    const nextPeriod = changes.period ?? period.id
-    const nextMetric = changes.metric ?? metric
-    if (nextPeriod === DEFAULT_PERIOD) next.delete('period')
-    else next.set('period', nextPeriod)
-    if (nextMetric === DEFAULT_METRIC) next.delete('metric')
-    else next.set('metric', nextMetric)
-    setParams(next, { replace: true })
-  }
+  const chooseMetric = (next: AnalyticsMetric) => update({ metric: next === DEFAULT_METRIC ? null : next })
 
   const retry = <T,>(setter: (value: Keyed<T>) => void, load: () => void) => () => {
     setter({ key: pageKey, load: LOADING })
@@ -186,7 +176,7 @@ export function LandingPageAnalyticsPage() {
               ['Revenue per view', money(totals.views ? Math.round(totals.revenueCents / totals.views) : 0, currency)],
             ]
           }}
-          onMetric={(next) => choose({ metric: next })}
+          onMetric={chooseMetric}
         />
       ) : seriesLoad.status === 'error' ? (
         <ErrorState onRetry={retrySeries} />
@@ -228,13 +218,13 @@ export function LandingPageAnalyticsPage() {
           }
         />
         <div className="stack stack--lg reveal">
-          <PeriodBar
+          <PageControls
             period={period.id}
             series={seriesLoad.status === 'success' ? seriesLoad.data.series : null}
             loading={seriesLoad.status === 'loading'}
             updatedAt={seriesLoad.status === 'success' ? seriesLoad.data.at : new Date()}
             sinceNote="when the page went live"
-            onPeriod={(next) => choose({ period: next })}
+            onPeriod={setPeriod}
           />
           {boardNode}
           <div className="dash">

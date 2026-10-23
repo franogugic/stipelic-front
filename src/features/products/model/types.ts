@@ -24,6 +24,8 @@ export type Product = {
    * the API sends them the cards show "—" for a free product.
    */
   signupCount?: number
+  /** Every order of the product, any status, all time (R6). The orders product filter lists archived products with orders. */
+  orderCount?: number
   signupsThisMonth?: number
   signupsTrend?: number[]
 }
@@ -43,3 +45,16 @@ export type WritableProductStatus = Exclude<ProductStatus, 'Archived'>
 export type CreateProductRequest = ProductFields & { status?: WritableProductStatus }
 
 export type UpdateProductRequest = ProductFields & { status?: WritableProductStatus }
+
+/** `GET …/products/{id}/signups` — the newest sign-ups across the lead pages that give a product away. */
+export type ProductSignups = {
+  /** Distinct emails that ever signed up on the product's lead pages. */
+  total: number
+  signups: Array<{
+    email: string
+    capturedAt: string
+    unsubscribed: boolean
+    landingPagePublicId: string
+    landingPageTitle: string
+  }>
+}

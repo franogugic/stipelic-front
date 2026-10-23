@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ErrorState, SkeletonCards } from '../../../shared/ui/ledger'
-import { PeriodBar } from '../../analytics/components/PeriodBar'
+import { PageControls } from '../../analytics/components/PageControls'
 import type { AnalyticsPeriod } from '../../analytics/model/types'
 import { getOrderPeriodSummary } from '../api/orders-api'
 import type { OrderPeriodSummary } from '../model/types'
@@ -36,7 +36,7 @@ export function OrdersPeriodBoard({ slug, currency }: { slug: string; currency: 
 
   return (
     <div className="stack stack--md">
-      <PeriodBar
+      <PageControls
         period={period}
         // The summary has no previous window or start of its own: "all" starts where its range starts.
         series={data ? { period: data.period, timezone: data.timezone, since: data.range.from, range: data.range, previousRange: null } : null}
