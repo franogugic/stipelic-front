@@ -20,7 +20,6 @@ import { PageControls } from '../../analytics/components/PageControls'
 import { QuietPeriod } from '../../analytics/components/QuietPeriod'
 import { usePagePeriod } from '../../analytics/model/use-page-period'
 import { useCreatorStore } from '../../creators/model/creator-store'
-import { listLandingPages } from '../../landing-pages/api/landing-pages-api'
 import { listProducts } from '../../products/api/products-api'
 import { exportOrders, getOrderPeriodSummary, listOrders } from '../api/orders-api'
 import type { OrderFilters } from '../api/orders-api'
@@ -65,7 +64,6 @@ export function OrdersPage() {
 
   const [search, setSearch] = useState('')
   const [term, setTerm] = useState('')
-  const [pageId, setPageId] = useState('')
   const [attempt, setAttempt] = useState(0)
 
   const [results, setResults] = useState<Results | null>(null)
@@ -78,7 +76,6 @@ export function OrdersPage() {
   )
   // Products an order can belong to: those that sell, active ones and archived ones that still have orders.
   const products = useKeyedLoad(ready ? `products|${slug}` : null, () => listProducts(slug, true))
-  const pages = useKeyedLoad(ready ? `pages|${slug}` : null, () => listLandingPages(slug, true))
 
   const productOptions: Option[] =
     products.load.status === 'success'
@@ -91,18 +88,15 @@ export function OrdersPage() {
   if (productId && chosenProduct && !productOptions.some((option) => option.value === productId)) {
     productOptions.push({ value: productId, label: chosenProduct.name })
   }
-  const pageOptions: Option[] =
-    pages.load.status === 'success' ? pages.load.data.map((page) => ({ value: page.publicId, label: page.title })) : []
 
   const filters: OrderFilters = {
     period: period.id,
     productId: productId || undefined,
-    landingPageId: pageId || undefined,
     status: status || undefined,
     search: term || undefined,
   }
-  const filtersActive = Boolean(productId || pageId || status || term)
-  const resultsKey = `${slug}|${period.id}|${productId}|${pageId}|${status}|${term}|${attempt}`
+  const filtersActive = Boolean(productId || status || term)
+  const resultsKey = `${slug}|${period.id}|${productId}|${status}|${term}|${attempt}`
 
   // The search runs 350 ms after the last keystroke, trimmed.
   useEffect(() => {
@@ -117,7 +111,6 @@ export function OrdersPage() {
     listOrders(slug, {
       period: period.id,
       productId: productId || undefined,
-      landingPageId: pageId || undefined,
       status: status || undefined,
       search: term || undefined,
       limit: PAGE_SIZE,
@@ -131,7 +124,7 @@ export function OrdersPage() {
     return () => {
       current = false
     }
-  }, [slug, period.id, productId, pageId, status, term, resultsKey])
+  }, [slug, period.id, productId, status, term, resultsKey])
 
   const first = results?.key === resultsKey ? results : null
   const orders = first?.orders ?? []
@@ -184,7 +177,6 @@ export function OrdersPage() {
   const clearFilters = () => {
     setSearch('')
     setTerm('')
-    setPageId('')
     update({ product: null, status: null })
   }
 
@@ -281,24 +273,14 @@ export function OrdersPage() {
             onQuery={setSearch}
             maxLength={SEARCH_MAX_LENGTH}
             extra={
-              <>
-                <Select aria-label="Product" value={productId} onChange={(event) => setProductFilter(event.target.value)}>
-                  <option value="">All products</option>
-                  {productOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-                <Select aria-label="Landing page" value={pageId} onChange={(event) => setPageId(event.target.value)}>
-                  <option value="">All pages</option>
-                  {pageOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </>
+              <Select aria-label="Product" value={productId} onChange={(event) => setProductFilter(event.target.value)}>
+                <option value="">All products</option>
+                {productOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
             }
           />
           {list()}

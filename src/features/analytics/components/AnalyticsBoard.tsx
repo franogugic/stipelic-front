@@ -36,7 +36,7 @@ export function AnalyticsBoard({
 
   return (
     <section className="card board" aria-label={`${name}, ${period.label.toLowerCase()}`}>
-      <div className="board__kpis" role="radiogroup" aria-label="Metric shown in the chart">
+      <div className={`board__kpis${order.length === 3 ? ' board__kpis--3' : ''}`} role="radiogroup" aria-label="Metric shown in the chart">
         {order.map((id) => {
           const cell = METRICS.find((candidate) => candidate.id === id)!
           const Icon = cell.icon

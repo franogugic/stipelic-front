@@ -10,6 +10,7 @@ export function GrowthCard({ stats }: { stats: ContactPeriodStats }) {
     buckets.map((bucket) => bucket.start),
     step,
     inZone(stats.range.to, stats.timezone),
+    stats.period === '6m',
   )
   const imported = buckets.map((bucket) => (bucket.imported > 0 ? `${number(bucket.imported)} imported` : ''))
   const hasImports = imported.some(Boolean)

@@ -32,8 +32,20 @@ export const periodPhrase = (id: AnalyticsPeriod) => periodById(id, '30d').label
 
 /** Labels and tooltip titles for bucket starts of any step ("yyyy-MM-ddTHH:mm", creator-local). A week runs seven days
  * from its start; the last one is cut at `end` (the period's end, as creator-local wall time) when that comes earlier. */
-export function bucketLabels(starts: string[], step: AnalyticsStep, end?: Date) {
+export function bucketLabels(starts: string[], step: AnalyticsStep, end?: Date, anchoredMonths = false) {
   const dates = starts.map(wallTime)
+  if (step === 'month' && anchoredMonths) {
+    // "Last 6 months": months counted from the period's first day, so a point is named by its first day and a tooltip
+    // gives the range ("24 Apr – 23 May"), not a calendar month.
+    return {
+      labels: dates.map((value) => dateShort(value)),
+      titles: dates.map((value, index) => {
+        const next = dates[index + 1] ?? addMonths(value, 1)
+        const last = new Date(next.getFullYear(), next.getMonth(), next.getDate() - 1)
+        return `${dateShort(value)} – ${dateShort(!dates[index + 1] && end && end < last ? end : last)}`
+      }),
+    }
+  }
   if (step === 'hour') {
     const labels = dates.map((value) => hourLabel(value.getHours()))
     return { labels, titles: dates.map((value) => `${hourLabel(value.getHours())}–${hourLabel(value.getHours() + 1)}`) }
@@ -80,6 +92,13 @@ export function inZone(instant: string, timeZone: string) {
   return new Date(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'))
 }
 
+/** The same day `count` months later; a day the month doesn't have (the 31st) falls on its last day. */
+function addMonths(value: Date, count: number) {
+  const target = new Date(value.getFullYear(), value.getMonth() + count, 1)
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+  return new Date(target.getFullYear(), target.getMonth(), Math.min(value.getDate(), lastDay))
+}
+
 const pad = (value: number) => String(value).padStart(2, '0')
 const hourLabel = (hour: number) => `${pad(hour % 24)}:00`
 
@@ -111,6 +130,7 @@ export function chartOf(series: AnalyticsSeries, metric: AnalyticsMetric) {
     series.buckets.map((bucket) => bucket.start),
     series.step,
     inZone(series.range.to, series.timezone),
+    series.period === '6m',
   )
   return {
     labels,
