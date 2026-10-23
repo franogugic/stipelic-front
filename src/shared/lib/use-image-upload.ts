@@ -5,6 +5,7 @@ import {
   uploadImage,
   type MediaUploadPurpose,
 } from '../api/media-api'
+import { uploadErrorText } from './upload-error-text'
 
 function validateImage(file: File): string | null {
   if (!ALLOWED_UPLOAD_CONTENT_TYPES.includes(file.type)) {
@@ -49,8 +50,8 @@ export function useImageUpload({
       setError(null)
       try {
         onUploaded(await uploadImage(slug, purpose, file, setProgress))
-      } catch {
-        setError('Upload failed. Please try again.')
+      } catch (failure) {
+        setError(uploadErrorText(failure))
       } finally {
         setUploading(false)
       }
