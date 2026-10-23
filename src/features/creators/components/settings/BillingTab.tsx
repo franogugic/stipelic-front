@@ -271,6 +271,7 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
                       {limitText(option.limits['max_products'], 'product')}
                     </li>
                     <li>{emails < 0 ? 'Unlimited' : number(emails)} emails / month</li>
+                    <li>{limitText(option.limits['max_contacts'], 'contact')}</li>
                   </ul>
                   {onFree && optionPaid && (
                     <Button
