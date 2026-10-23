@@ -849,11 +849,6 @@
   .area-chart__plot {
     height: 200px;
   }
-
-  /* Every other date label on phones, so they never touch */
-  .area-chart__x .is-minor {
-    display: none;
-  }
 }
 
 /* Charts that sit alone in a card grow with it, so side-by-side cards stay level */

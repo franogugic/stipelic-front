@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { axisMax, monotonePath } from '../../lib/curve'
 
@@ -5,6 +6,39 @@ const WIDTH = 700
 const HEIGHT = 260
 
 const pct = (value: number, total: number) => `${((value / total) * 100).toFixed(2)}%`
+
+// The x-axis labels are 11 px text; this is a generous per-character width, plus the air kept between two labels.
+const CHAR_WIDTH = 6.4
+const LABEL_GAP = 14
+
+/**
+ * The labels to draw on the x-axis: always the first and the last, with the ones between at an even step wide enough
+ * that two labels never touch at the width the axis really has (the first is left-aligned, the last right-aligned,
+ * the rest centred on their point).
+ */
+function visibleLabels(labels: string[], width: number): number[] {
+  const slots = labels.length
+  if (slots === 0) return []
+  if (slots === 1) return [0]
+  const size = (index: number) => labels[index].length * CHAR_WIDTH
+  const at = (index: number) => (index / (slots - 1)) * width
+  const left = (index: number) => (index === 0 ? at(index) : index === slots - 1 ? at(index) - size(index) : at(index) - size(index) / 2)
+  const right = (index: number) => left(index) + size(index)
+  const widest = Math.max(...labels.map((text) => text.length)) * CHAR_WIDTH
+  const step = Math.max(1, Math.ceil((widest + LABEL_GAP) / (width / (slots - 1))))
+  // Every `step`-th label from the first, kept only while it clears the one before it (the first and last are aligned
+  // to the edges, so their extents differ from the centred ones).
+  const picked: number[] = []
+  for (let index = 0; index < slots - 1; index += step) {
+    const previous = picked[picked.length - 1]
+    if (previous === undefined || left(index) >= right(previous) + LABEL_GAP) picked.push(index)
+  }
+  // The last point is always named: it replaces the labels before it that it would touch.
+  const last = slots - 1
+  while (picked.length > 0 && right(picked[picked.length - 1]) + LABEL_GAP > left(last)) picked.pop()
+  picked.push(last)
+  return picked
+}
 
 /**
  * Area chart with an optional dashed "previous" line, a y-axis gutter, hover tooltips and a data table for screen
@@ -48,10 +82,17 @@ export function AreaChart({
   const settled = curveOf(split ? points.slice(0, -1) : points)
   const running = split ? `M${points[last - 1].join(' ')} L${points[last].join(' ')}` : ''
   const outline = split ? `${settled} L${points[last].join(' ')}` : settled
-  const step = Math.ceil(slots / 7)
-  const axis = labels
-    .map((text, index) => ({ text, index }))
-    .filter(({ index }) => index % step === 0 || (index === slots - 1 && (slots - 1) % step > step / 2))
+  const axisRef = useRef<HTMLDivElement>(null)
+  const [axisWidth, setAxisWidth] = useState(560)
+  // The labels that fit follow the width the axis has, so they thin out on a narrow screen and never overlap.
+  useEffect(() => {
+    const element = axisRef.current
+    if (!element) return
+    const observer = new ResizeObserver(([entry]) => setAxisWidth(entry.contentRect.width))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+  const axis = visibleLabels(labels, axisWidth).map((index) => ({ text: labels[index], index }))
   const versus = (index: number) => (previous ? ` · vs ${describe(previous[index])}` : '')
 
   if (slots === 0) return null
@@ -84,11 +125,11 @@ export function AreaChart({
           ))}
         </div>
       </div>
-      <div className="area-chart__x" aria-hidden="true">
-        {axis.map(({ text, index }, position) => (
+      <div className="area-chart__x" aria-hidden="true" ref={axisRef}>
+        {axis.map(({ text, index }) => (
           <span
             key={index}
-            className={index === 0 ? 'is-start' : index === slots - 1 ? 'is-end' : position % 2 ? 'is-minor' : undefined}
+            className={index === 0 ? 'is-start' : index === slots - 1 ? 'is-end' : undefined}
             style={{ '--x': pct(x(index), WIDTH) } as CSSProperties}
           >
             {text}
