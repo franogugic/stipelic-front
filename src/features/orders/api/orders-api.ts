@@ -1,10 +1,13 @@
 import { downloadFile } from '../../../shared/api/download'
 import { apiRequest } from '../../../shared/api/http-client'
-import type { DashboardTrendRange, DashboardTrends, HomeSummary, OrdersPage, OrderSummary } from '../model/types'
+import type { AnalyticsPeriod } from '../../analytics/model/types'
+import type { HomeSummary, OrderPeriodSummary, OrdersPage, OrderSummary } from '../model/types'
 
 type ApiResponse<T> = { statusCode: number; message: string; code: string; data: T }
 
 export type OrderFilters = {
+  /** Only orders counted in this period (the creator's timezone); the list is then ordered by the counted date. */
+  period?: AnalyticsPeriod
   productId?: string
   landingPageId?: string
   status?: string
@@ -14,6 +17,7 @@ export type OrderFilters = {
 
 function filterParams(filters: OrderFilters) {
   const params = new URLSearchParams()
+  if (filters.period) params.set('period', filters.period)
   if (filters.productId) params.set('productId', filters.productId)
   if (filters.landingPageId) params.set('landingPageId', filters.landingPageId)
   if (filters.status) params.set('status', filters.status)
@@ -24,12 +28,15 @@ function filterParams(filters: OrderFilters) {
 export async function listOrders(
   slug: string,
   options: OrderFilters & {
+    /** The cursor: the last row's `countedAt` with a period, else its `createdAt`. */
+    afterCountedAt?: string
     afterCreatedAt?: string
     afterId?: string
     limit?: number
   } = {},
 ): Promise<OrdersPage> {
   const params = filterParams(options)
+  if (options.afterCountedAt) params.set('afterCountedAt', options.afterCountedAt)
   if (options.afterCreatedAt) params.set('afterCreatedAt', options.afterCreatedAt)
   if (options.afterId) params.set('afterId', options.afterId)
   if (options.limit) params.set('limit', String(options.limit))
@@ -52,14 +59,15 @@ export async function getOrderSummary(slug: string): Promise<OrderSummary> {
   return res.data
 }
 
-export async function getHomeSummary(slug: string): Promise<HomeSummary> {
-  const res = await apiRequest<ApiResponse<HomeSummary>>(`/api/creators/${slug}/orders/home-summary`)
+/** The totals, the previous period and the chart buckets of one period (creator timezone), optionally for one product. */
+export async function getOrderPeriodSummary(slug: string, period: AnalyticsPeriod, productId?: string | null): Promise<OrderPeriodSummary> {
+  const params = new URLSearchParams({ period })
+  if (productId) params.set('productId', productId)
+  const res = await apiRequest<ApiResponse<OrderPeriodSummary>>(`/api/creators/${slug}/orders/summary?${params}`)
   return res.data
 }
 
-export async function getDashboardTrends(slug: string, range: DashboardTrendRange): Promise<DashboardTrends> {
-  const res = await apiRequest<ApiResponse<DashboardTrends>>(
-    `/api/creators/${slug}/orders/dashboard-trends?range=${range}`,
-  )
+export async function getHomeSummary(slug: string): Promise<HomeSummary> {
+  const res = await apiRequest<ApiResponse<HomeSummary>>(`/api/creators/${slug}/orders/home-summary`)
   return res.data
 }

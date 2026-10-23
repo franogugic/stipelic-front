@@ -57,7 +57,7 @@ const MOCK_TILES: Array<[label: string, value: ReactNode]> = [
   ['Average order', <Money amountCents={MOCK_AVERAGE_ORDER_CENTS} />],
   ['This month', <Money amountCents={MOCK_MONTHLY_REVENUE_CENTS[11]} />],
   ['Subscribers', '124'],
-  ['Platform fee', '2.5%'],
+  ['Customers', '58'],
 ]
 
 /** The dashboard of a fictional creator, inside a browser frame. */

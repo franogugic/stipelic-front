@@ -1,10 +1,37 @@
-import { date, initials, money } from '../../../shared/lib/format'
+import { Download, Link2Off } from 'lucide-react'
+import { date, initials, number, plural } from '../../../shared/lib/format'
 import { Avatar, Money, StatusBadge } from '../../../shared/ui/ledger'
 import type { Order } from '../model/types'
 
+/** How often the buyer used their personal link — and "Link off" once the order was refunded. */
+function Downloads({ order }: { order: Order }) {
+  if (order.status !== 'Paid' && order.status !== 'Refunded') {
+    return (
+      <span className="text-muted" data-tooltip="No download link until the order is paid" tabIndex={0}>
+        —
+      </span>
+    )
+  }
+  const done = `Downloaded ${plural(order.downloadCount, 'time')}`
+  if (order.status === 'Refunded') {
+    return (
+      <span className="order-uses order-uses--off" data-tooltip={`Refunded, so the buyer’s link is off. ${done} before that.`} tabIndex={0}>
+        <Link2Off />
+        Link off
+      </span>
+    )
+  }
+  return (
+    <span className="order-uses" data-tooltip={done} tabIndex={0} aria-label={done}>
+      <Download />
+      <span className="num">{number(order.downloadCount)}</span>
+    </span>
+  )
+}
+
 /**
- * Orders in the prototype's ordersTable() layout. `compact` (dashboard) drops the landing page, fee and
- * net columns. Rows stack into labelled blocks on narrow screens (`table--stack`).
+ * Orders in the prototype's ordersTable() layout. `compact` (dashboard) drops the landing page and
+ * downloads columns. The date is the one the period rule counts the order on. Rows stack into labelled blocks on narrow screens (`table--stack`).
  */
 export function OrdersTable({ orders, compact = false }: { orders: Order[]; compact?: boolean }) {
   return (
@@ -20,16 +47,7 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
             <th scope="col" className="is-num">
               Amount
             </th>
-            {!compact && (
-              <>
-                <th scope="col" className="is-num">
-                  Fee
-                </th>
-                <th scope="col" className="is-num">
-                  Net
-                </th>
-              </>
-            )}
+            {!compact && <th scope="col">Downloads</th>}
           </tr>
         </thead>
         <tbody>
@@ -56,7 +74,13 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
                   </td>
                 )}
                 <td data-label="Date" className="num">
-                  {date(order.createdAt)}
+                  {order.status === 'Refunded' ? (
+                    <span data-tooltip={`Ordered ${date(order.createdAt)}, refunded ${date(order.countedAt)}`} tabIndex={0}>
+                      {date(order.countedAt)}
+                    </span>
+                  ) : (
+                    date(order.countedAt)
+                  )}
                 </td>
                 <td data-label="Status">
                   <StatusBadge kind="order" value={order.status.toLowerCase()} />
@@ -65,14 +89,9 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
                   <Money amountCents={order.amountCents} currency={order.currency} />
                 </td>
                 {!compact && (
-                  <>
-                    <td data-label="Fee" className="is-num text-muted">
-                      −{money(order.platformFeeCents, order.currency)}
-                    </td>
-                    <td data-label="Net" className="is-num">
-                      <Money amountCents={order.netAmountCents} currency={order.currency} />
-                    </td>
-                  </>
+                  <td data-label="Downloads">
+                    <Downloads order={order} />
+                  </td>
                 )}
               </tr>
             )

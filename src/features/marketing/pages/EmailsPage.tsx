@@ -77,8 +77,10 @@ export function EmailsPage() {
   // The store keeps the last workspace's list until the new one has loaded; never show it under another address.
   const listStatus = campaignsSlug === slug || campaignsStatus === 'error' ? campaignsStatus : 'loading'
   const ready = listStatus === 'success'
+  // The averages, the open-rate chart and the sent count are about campaigns: a resend (to people who did not open) is
+  // listed in the table but would drag every one of them down.
   const sent = campaigns
-    .filter((campaign) => campaignGroup(campaign) === 'sent')
+    .filter((campaign) => campaignGroup(campaign) === 'sent' && !campaign.sourceCampaignPublicId)
     .sort((a, b) => new Date(a.queuedAt ?? a.createdAt).getTime() - new Date(b.queuedAt ?? b.createdAt).getTime())
   const upcoming = campaigns.filter((campaign) => campaignGroup(campaign) === 'upcoming')
   const activeTemplates =

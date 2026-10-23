@@ -1,12 +1,18 @@
 import type { CSSProperties } from 'react'
 
-/** Horizontal share bars; colours cycle through `--chart-1…6`. `display` is the formatted value text. */
-export function HBars({ rows }: { rows: Array<{ label: string; value: number; display: string }> }) {
+/**
+ * Horizontal share bars; colours cycle through `--chart-1…6`. `display` is the formatted value text. With `highlight`
+ * (a row's label) that row is the chosen one and the others step back.
+ */
+export function HBars({ rows, highlight }: { rows: Array<{ label: string; value: number; display: string }>; highlight?: string }) {
   const max = Math.max(...rows.map((row) => row.value), 1)
   return (
     <div className="stack stack--md">
       {rows.map((row, i) => (
-        <div className="hbar" key={row.label}>
+        <div
+          className={['hbar', highlight && (row.label === highlight ? 'hbar--chosen' : 'hbar--muted')].filter(Boolean).join(' ')}
+          key={`${i}-${row.label}`}
+        >
           <div className="hbar__head">
             <span>{row.label}</span>
             <span className="num">{row.display}</span>

@@ -229,22 +229,6 @@
    chart body and a stats strip. Used by page, product, order and campaign
    analytics so every screen with numbers reads the same way.
    ========================================================================== */
-.period-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-4);
-}
-
-.period-bar__range {
-  font-size: var(--text-sm);
-  color: var(--color-text);
-}
-
-.period-bar__range span {
-  color: var(--color-text-muted);
-}
-
 .live {
   display: inline-flex;
   align-items: center;
@@ -864,11 +848,6 @@
 
   .area-chart__plot {
     height: 200px;
-  }
-
-  /* Every other date label on phones, so they never touch */
-  .area-chart__x .is-minor {
-    display: none;
   }
 }
 

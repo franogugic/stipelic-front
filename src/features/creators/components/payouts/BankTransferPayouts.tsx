@@ -27,6 +27,7 @@ import { usePayoutStore } from '../../model/payout-store'
 import type { Creator } from '../../model/types'
 import { BankDetailsModal } from './BankDetailsModal'
 import { countryName, formatMaskedIban } from './payout-format'
+import { PayoutsNetNote } from './PayoutsNetNote'
 
 /** Payouts for a bank-transfer workspace: the balance, a payout request, the bank account and the history. */
 export function BankTransferPayouts({ slug, creator }: { slug: string; creator: Creator }) {
@@ -271,6 +272,7 @@ export function BankTransferPayouts({ slug, creator }: { slug: string; creator: 
             meta="all time"
           />
         </div>
+        <PayoutsNetNote />
         <div className="grid grid--2">
           {noBank ? (
             <Card title="Bank details">

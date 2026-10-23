@@ -1,10 +1,12 @@
-import { Check, PartyPopper } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { CircleAlert, Check, Mail, PartyPopper } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
 import { money } from '../../../shared/lib/format'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { CreatorResultPage } from '../../../shared/ui/CreatorResultPage'
+import { BuyerFile } from '../../delivery/components/BuyerFile'
+import { useDownload } from '../../delivery/model/use-download'
 import { getOrderReceipt } from '../../orders/api/public-orders-api'
 import type { OrderReceipt } from '../../orders/api/public-orders-api'
 import { PublicPageNotFound } from '../components/PublicPageNotFound'
@@ -29,6 +31,17 @@ export function OrderSuccessPage() {
   const [state, setState] = useState<State>(sessionId ? { status: 'loading' } : { status: 'notfound' })
 
   useDocumentTitle('Thank you · Luma')
+
+  // The paid receipt carries the personal link's token: the file downloads at once, and the button repeats it.
+  const readyReceipt = state.status === 'ready' ? state.receipt : null
+  const accessToken = readyReceipt?.status === 'Paid' ? (readyReceipt.accessToken ?? '') : ''
+  const { busy: downloading, problem: downloadProblem, download } = useDownload(accessToken)
+  const autoStarted = useRef('')
+  useEffect(() => {
+    if (!accessToken || autoStarted.current === accessToken) return
+    autoStarted.current = accessToken
+    void download()
+  }, [accessToken, download])
 
   useEffect(() => {
     if (!sessionId) return
@@ -121,8 +134,36 @@ export function OrderSuccessPage() {
         </p>
       ) : (
         <p className="lp__sub">
-          Your order of <strong>{receipt.productName}</strong> is confirmed. We’ve sent the download link to{' '}
-          <strong>{receipt.buyerEmail ?? 'your email'}</strong> — it usually arrives within a minute.
+          Your order of <strong>{receipt.productName}</strong> is confirmed
+          {accessToken ? ', and your download has started.' : '. The download link is on its way to your email.'}
+        </p>
+      )}
+      {!inactive && accessToken && receipt.fileName && receipt.fileSizeBytes ? (
+        <BuyerFile
+          fileName={receipt.fileName}
+          fileSizeBytes={receipt.fileSizeBytes}
+          label="Download again"
+          busy={downloading}
+          onDownload={() => void download()}
+        />
+      ) : null}
+      {downloadProblem && (
+        <p className="lp-done__note lp-done__note--alert" role="alert">
+          <CircleAlert />
+          <span>
+            {downloadProblem === 'rate-limited'
+              ? 'That’s a lot of downloads in a short time. Wait a few minutes, then try again.'
+              : 'We couldn’t start the download. Use the link we emailed you.'}
+          </span>
+        </p>
+      )}
+      {!inactive && (
+        <p className="lp-done__note">
+          <Mail />
+          <span>
+            We’ve also emailed a personal download link to <strong>{receipt.buyerEmail ?? 'your email'}</strong>. Keep it — it works any time you need the
+            file again.
+          </span>
         </p>
       )}
       {!inactive && (

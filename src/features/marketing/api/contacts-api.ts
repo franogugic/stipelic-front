@@ -1,6 +1,7 @@
 import { downloadFile } from '../../../shared/api/download'
 import { apiRequest } from '../../../shared/api/http-client'
-import type { ContactStats, ContactsPage } from '../model/types'
+import type { AnalyticsPeriod } from '../../analytics/model/types'
+import type { ContactImportSummary, ContactPeriodStats, ContactStats, ContactsPage } from '../model/types'
 
 type ApiResponse<TData> = {
   statusCode: number
@@ -47,6 +48,13 @@ export function getContactStats(slug: string) {
   )
 }
 
+/** The overview with the growth cut to one period (creator timezone). */
+export function getContactPeriodStats(slug: string, period: AnalyticsPeriod) {
+  return apiRequest<ApiResponse<ContactPeriodStats>>(
+    `/api/creators/${encodeURIComponent(slug)}/contacts/stats?${new URLSearchParams({ period })}`,
+  ).then(unwrapApiResponse)
+}
+
 /** Removes the contact from the workspace's pages; an opt-out on record stays. */
 export async function deleteContact(slug: string, email: string): Promise<void> {
   await apiRequest<unknown>(`/api/creators/${encodeURIComponent(slug)}/contacts/${encodeURIComponent(email)}`, {
@@ -61,4 +69,19 @@ export function exportContacts(slug: string, filters: ContactFilters): Promise<v
     `/api/creators/${encodeURIComponent(slug)}/contacts/export${query ? `?${query}` : ''}`,
     `contacts-${slug}.csv`,
   )
+}
+
+/**
+ * Imports contacts from a CSV file. A dry run saves nothing and says what an import would do; the real import
+ * (`dryRun: false`, consent attested) takes the same file again, and is all or nothing against the plan's contact limit.
+ */
+export function importContacts(slug: string, file: File, { dryRun, consentAttested }: { dryRun: boolean; consentAttested: boolean }) {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('consentAttested', String(consentAttested))
+  form.append('dryRun', String(dryRun))
+  return apiRequest<ApiResponse<ContactImportSummary>>(`/api/creators/${encodeURIComponent(slug)}/contacts/import`, {
+    method: 'POST',
+    body: form,
+  }).then(unwrapApiResponse)
 }

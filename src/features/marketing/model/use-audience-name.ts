@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
 import { useLandingPageStore } from '../../landing-pages/model/landing-page-store'
 import { useProductStore } from '../../products/model/product-store'
+import { audienceLabel } from './audience'
+import type { CampaignAudienceType, ResendSource } from './types'
 
-type Audience = { audienceType: 'LandingPage' | 'Product' | 'All'; targetPublicId: string | null }
+type Audience = { audienceType: CampaignAudienceType; targetPublicId: string | null; source?: ResendSource | null }
 
 /** Resolves a campaign's audience to the label used across the email screens (needs the pages and products loaded). */
 export function useAudienceName() {
@@ -12,9 +14,11 @@ export function useAudienceName() {
     const lpByPublicId = new Map(pages.map((p) => [p.publicId, p.title]))
     const productByPublicId = new Map(products.map((p) => [p.publicId, p.name]))
     return (campaign: Audience) => {
-      if (campaign.audienceType === 'All') return 'All subscribers'
+      if (campaign.audienceType === 'All') return audienceLabel('All', '')
+      if (campaign.audienceType === 'CampaignNonOpeners') return audienceLabel('CampaignNonOpeners', campaign.source?.subject ?? '—')
       const target = campaign.targetPublicId ?? ''
-      return (campaign.audienceType === 'LandingPage' ? lpByPublicId.get(target) : productByPublicId.get(target)) ?? '—'
+      const name = (campaign.audienceType === 'Product' ? productByPublicId.get(target) : lpByPublicId.get(target)) ?? '—'
+      return audienceLabel(campaign.audienceType, name)
     }
   }, [pages, products])
 }

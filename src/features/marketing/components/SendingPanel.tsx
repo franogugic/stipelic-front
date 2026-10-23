@@ -3,13 +3,23 @@ import { useEffect, useState } from 'react'
 import { number, plural, time } from '../../../shared/lib/format'
 import { Button, Meter, PageHeader } from '../../../shared/ui/ledger'
 import { getCampaign } from '../api/campaigns-api'
+import { isBuyersAudience } from '../model/audience'
 import { isCampaignComplete } from '../model/campaign-progress'
 import type { CampaignDetail } from '../model/types'
 
 const POLL_INTERVAL_MS = 3000
 
 /** What follows "Send now": the campaign's delivery, polled every 3 s until it is complete. */
-export function SendingPanel({ slug, initial }: { slug: string; initial: CampaignDetail }) {
+export function SendingPanel({
+  slug,
+  initial,
+  resend,
+}: {
+  slug: string
+  initial: CampaignDetail
+  /** A resend to non-openers: which one it is, and the original it hangs off. */
+  resend?: { round: number; limit: number; originalPublicId: string }
+}) {
   const [campaign, setCampaign] = useState(initial)
   const complete = isCampaignComplete(campaign)
   const id = initial.publicId
@@ -37,16 +47,18 @@ export function SendingPanel({ slug, initial }: { slug: string; initial: Campaig
   }, [slug, id, initial])
 
   const overview = `/app/${slug}/emails`
-  const detail = `/app/${slug}/emails/campaigns/${id}`
+  const detail = resend ? `/app/${slug}/emails/campaigns/${resend.originalPublicId}` : `/app/${slug}/emails/campaigns/${id}`
+  const who = resend ? 'who didn’t open' : ''
+  const noun = isBuyersAudience(campaign.audienceType) ? 'buyer' : 'subscriber'
   const subject = `“${campaign.subject}”`
   return (
     <>
       <PageHeader
-        eyebrow="Email marketing"
+        eyebrow={resend ? `Email marketing · Resend ${resend.round} of ${resend.limit}` : 'Email marketing'}
         title={
           <>
-            {complete ? 'Your campaign was ' : 'Sending your '}
-            <em>{complete ? 'sent' : 'campaign'}</em>
+            {complete ? `Your ${resend ? 'resend' : 'campaign'} was ` : 'Sending your '}
+            <em>{complete ? 'sent' : resend ? 'resend' : 'campaign'}</em>
           </>
         }
       />
@@ -58,13 +70,15 @@ export function SendingPanel({ slug, initial }: { slug: string; initial: Campaig
           <div className="stack stack--sm">
             <h2 className="state__title" id="sending-title">
               {complete
-                ? `Sent to ${plural(campaign.sentCount, 'subscriber')}`
-                : `On its way to ${plural(campaign.recipientCount, 'subscriber')}`}
+                ? `Sent to ${resend ? plural(campaign.sentCount, 'person', 'people') : plural(campaign.sentCount, noun)}${who ? ` ${who}` : ''}`
+                : `On its way to ${resend ? plural(campaign.recipientCount, 'person', 'people') : plural(campaign.recipientCount, noun)}${who ? ` ${who}` : ''}`}
             </h2>
             <p className="text-secondary">
               {complete
                 ? `${subject}${campaign.failedCount > 0 ? ` · ${number(campaign.failedCount)} couldn’t be delivered.` : ' · everyone got it.'}`
-                : `${subject} · started at ${time(campaign.queuedAt ?? campaign.createdAt)}. Large lists go out in batches, so this can take a few minutes.`}
+                : resend
+                  ? `${subject} · started at ${time(campaign.queuedAt ?? campaign.createdAt)}. It shows up under the original campaign as resend ${resend.round}.`
+                  : `${subject} · started at ${time(campaign.queuedAt ?? campaign.createdAt)}. Large lists go out in batches, so this can take a few minutes.`}
             </p>
           </div>
           <Meter label="Delivered so far" used={campaign.sentCount} limit={campaign.recipientCount} />
@@ -75,7 +89,7 @@ export function SendingPanel({ slug, initial }: { slug: string; initial: Campaig
           )}
           <div className="cluster">
             <Button variant="primary" icon={ArrowRight} to={detail}>
-              View campaign
+              {resend ? 'Back to the campaign' : 'View campaign'}
             </Button>
             <Button variant="ghost" to={overview}>
               Back to email marketing

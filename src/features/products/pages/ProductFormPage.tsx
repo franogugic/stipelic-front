@@ -1,4 +1,4 @@
-import { Check, CircleAlert, Link as LinkIcon, Package } from 'lucide-react'
+import { Check, CircleAlert, Package } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -18,7 +18,6 @@ import {
   InputAddon,
   InputGroup,
   PageHeader,
-  Select,
   SkeletonRows,
   Textarea,
   Uploader,
@@ -26,44 +25,25 @@ import {
 } from '../../../shared/ui/ledger'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { listProducts } from '../api/products-api'
+import { ProductFileCard } from '../components/ProductFileCard'
+import type { ProductFileView } from '../components/ProductFileCard'
 import { useProductStore } from '../model/product-store'
-import type { Product, ProductStatus, ProductType, WritableProductStatus } from '../model/types'
+import type { Product, ProductStatus, WritableProductStatus } from '../model/types'
+import { useProductFileUpload } from '../model/use-product-file-upload'
 
 const NAME_MAX_LENGTH = 100
 const DESCRIPTION_MAX_LENGTH = 2000
-const ACCESS_URL_MAX_LENGTH = 2000
 const FORM_ID = 'product-form'
 
-const PRODUCT_TYPES: ProductType[] = ['Digital', 'Service', 'Course']
-const STATUS_CHOICES: Array<[ProductStatus, string]> = [
-  ['Active', 'Can be sold on landing pages'],
-  ['Draft', 'Hidden while you work on it'],
-  ['Archived', 'No longer for sale'],
-]
-
-type Errors = Partial<Record<'name' | 'price' | 'accessUrl', string>>
+type Errors = Partial<Record<'name' | 'price', string>>
 type Lookup = { status: 'loading' } | { status: 'error' } | { status: 'missing' } | { status: 'found'; product: Product }
 
-function validate(name: string, price: string, accessUrl: string): Errors {
+function validate(name: string, price: string): Errors {
   const errors: Errors = {}
   if (!name.trim()) errors.name = 'Enter a name for the product.'
   const parsed = parsePriceInput(price)
   if (!parsed.ok) errors.price = parsed.error
-  const link = accessUrl.trim()
-  if (link) {
-    if (link.length > ACCESS_URL_MAX_LENGTH) errors.accessUrl = `The link can’t be longer than ${number(ACCESS_URL_MAX_LENGTH)} characters.`
-    else if (!isHttpUrl(link)) errors.accessUrl = 'Enter a valid http or https link.'
-  }
   return errors
-}
-
-function isHttpUrl(value: string) {
-  try {
-    const { protocol } = new URL(value)
-    return protocol === 'http:' || protocol === 'https:'
-  } catch {
-    return false
-  }
 }
 
 /** The file name of an uploaded image's address, for the uploader's preview. */
@@ -187,8 +167,6 @@ function ProductForm({
   const [name, setName] = useState(product?.name ?? '')
   const [description, setDescription] = useState(product?.description ?? '')
   const [price, setPrice] = useState(product ? formatPriceInput(product.priceCents) : '')
-  const [type, setType] = useState<ProductType>(product?.type ?? 'Digital')
-  const [accessUrl, setAccessUrl] = useState(product?.accessUrl ?? '')
   const [thumbnailUrl, setThumbnailUrl] = useState(product?.thumbnailUrl ?? '')
   // New products start as a draft; the status card is where "Active" is chosen.
   const [status, setStatus] = useState<ProductStatus>(product?.status ?? 'Draft')
@@ -198,6 +176,19 @@ function ProductForm({
   const [requestError, setRequestError] = useState<string | null>(null)
 
   const upload = useImageUpload({ slug, purpose: 'ProductThumbnail', onUploaded: setThumbnailUrl })
+  const fileUpload = useProductFileUpload({ slug })
+  // The file shown: the one just picked (saved with the product), else the one the product has.
+  const file: ProductFileView | null = fileUpload.pending
+    ? { fileName: fileUpload.pending.fileName, fileSizeBytes: fileUpload.pending.fileSizeBytes, uploadedAt: null }
+    : product?.fileName && product.fileSizeBytes !== null
+      ? { fileName: product.fileName, fileSizeBytes: product.fileSizeBytes, uploadedAt: product.fileUploadedAt }
+      : null
+  const hasFile = file !== null || fileUpload.uploading
+  const statusChoices: Array<[ProductStatus, string]> = [
+    ['Active', hasFile ? 'Can be sold or given away on landing pages' : 'Upload the file first'],
+    ['Draft', 'Hidden while you work on it'],
+    ['Archived', 'No longer for sale'],
+  ]
 
   // Creating needs room under the plan's product limit (archived products don't count).
   const maxProducts = creatorPlans.find((plan) => plan.code === planCode)?.limits['max_products']
@@ -210,8 +201,8 @@ function ProductForm({
     : undefined
 
   // After a failed submit, the errors follow the fields as they are corrected.
-  const revalidate = (next: { name?: string; price?: string; accessUrl?: string }) => {
-    if (submitted) setErrors(validate(next.name ?? name, next.price ?? price, next.accessUrl ?? accessUrl))
+  const revalidate = (next: { name?: string; price?: string }) => {
+    if (submitted) setErrors(validate(next.name ?? name, next.price ?? price))
   }
 
   const goToList = () => navigate(`/app/${slug}/products`)
@@ -220,10 +211,18 @@ function ProductForm({
     event.preventDefault()
     if (saving || readOnly) return
     setSubmitted(true)
-    const found = validate(name, price, accessUrl)
+    const found = validate(name, price)
     setErrors(found)
     const parsed = parsePriceInput(price)
     if (Object.keys(found).length > 0 || !parsed.ok) return
+    if (fileUpload.uploading) {
+      setRequestError('The file is still uploading. Save once it has finished.')
+      return
+    }
+    if (status === 'Active' && !file) {
+      setRequestError('Upload the file first — a product can’t be active without one.')
+      return
+    }
 
     setSaving(true)
     setRequestError(null)
@@ -231,9 +230,8 @@ function ProductForm({
       name: name.trim(),
       description: description.trim(),
       priceCents: parsed.cents,
-      type,
-      accessUrl: accessUrl.trim(),
       thumbnailUrl,
+      ...(fileUpload.pending ? { fileReference: fileUpload.pending.fileReference } : {}),
     }
     // Archiving is its own endpoint: save the fields first, with the status the product has (or, new, Draft).
     const archiveAfter = status === 'Archived'
@@ -342,52 +340,19 @@ function ProductForm({
                       />
                     )}
                   </Field>
-                  <div className="form-row">
-                    <Field label="Price" error={errors.price}>
-                      {(control) => (
-                        <InputGroup>
-                          <InputAddon>{currencySymbol(currency)}</InputAddon>
-                          <Input
-                            {...control}
-                            className="num"
-                            inputMode="decimal"
-                            autoComplete="off"
-                            value={price}
-                            onChange={(event) => {
-                              setPrice(event.target.value)
-                              revalidate({ price: event.target.value })
-                            }}
-                          />
-                        </InputGroup>
-                      )}
-                    </Field>
-                    <Field label="Type">
-                      {(control) => (
-                        <Select {...control} value={type} onChange={(event) => setType(event.target.value as ProductType)}>
-                          {PRODUCT_TYPES.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </Select>
-                      )}
-                    </Field>
-                  </div>
-                  <Field label="Access link" hint="Buyers receive this link by email right after payment." error={errors.accessUrl}>
+                  <Field label="Price" error={errors.price} hint="0 makes it free — for giving away on a lead page.">
                     {(control) => (
                       <InputGroup>
-                        <InputAddon>
-                          <LinkIcon />
-                        </InputAddon>
+                        <InputAddon>{currencySymbol(currency)}</InputAddon>
                         <Input
                           {...control}
-                          type="url"
-                          inputMode="url"
+                          className="num"
+                          inputMode="decimal"
                           autoComplete="off"
-                          value={accessUrl}
+                          value={price}
                           onChange={(event) => {
-                            setAccessUrl(event.target.value)
-                            revalidate({ accessUrl: event.target.value })
+                            setPrice(event.target.value)
+                            revalidate({ price: event.target.value })
                           }}
                         />
                       </InputGroup>
@@ -397,6 +362,16 @@ function ProductForm({
               </Card>
 
               <div className="stack stack--lg">
+                <ProductFileCard
+                  file={file}
+                  uploading={fileUpload.uploading}
+                  progress={fileUpload.progress}
+                  uploadingName={fileUpload.selectedName}
+                  uploadingSize={fileUpload.selectedSize}
+                  error={fileUpload.error}
+                  disabled={readOnly}
+                  onSelect={(picked) => void fileUpload.upload(picked)}
+                />
                 <Card title="Thumbnail">
                   <Uploader
                     label="Thumbnail"
@@ -415,7 +390,7 @@ function ProductForm({
                 </Card>
                 <Card title="Status">
                   <div className="stack stack--sm">
-                    {STATUS_CHOICES.map(([value, text]) => (
+                    {statusChoices.map(([value, text]) => (
                       <Choice
                         key={value}
                         name="status"
@@ -423,6 +398,7 @@ function ProductForm({
                         title={value}
                         text={text}
                         checked={status === value}
+                        disabled={value === 'Active' && !hasFile}
                         onChange={() => setStatus(value)}
                       />
                     ))}

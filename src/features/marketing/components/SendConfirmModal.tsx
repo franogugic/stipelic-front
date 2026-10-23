@@ -2,7 +2,7 @@ import { CircleAlert, Send } from 'lucide-react'
 import { number, plural } from '../../../shared/lib/format'
 import { Alert, Button, KeyValue, Modal } from '../../../shared/ui/ledger'
 
-/** "Send to N subscribers?" — the last look before an immediate send. */
+/** "Send to N subscribers (or buyers)?" — the last look before an immediate send. */
 export function SendConfirmModal({
   open,
   recipientCount,
@@ -12,6 +12,8 @@ export function SendConfirmModal({
   sendsLeftAfter,
   busy,
   error,
+  resend,
+  noun = 'subscriber',
   onCancel,
   onConfirm,
 }: {
@@ -25,12 +27,17 @@ export function SendConfirmModal({
   sendsLeftAfter: number | null
   busy: boolean
   error: string | null
+  /** A resend to non-openers: which one it is ("Resend 2 of 5"). */
+  resend?: { round: number; limit: number }
+  /** Who gets it: subscribers, or the buyers of a page. */
+  noun?: 'subscriber' | 'buyer'
   onCancel: () => void
   onConfirm: () => void
 }) {
   const items = [
     { term: 'Subject', description: subject },
     { term: 'Audience', description: audienceTitle },
+    ...(resend ? [{ term: 'Resend', description: `${resend.round} of ${resend.limit}` }] : []),
     ...(from ? [{ term: 'From', description: from }] : []),
     ...(sendsLeftAfter === null ? [] : [{ term: 'Sends left after', description: `${number(sendsLeftAfter)} this month` }]),
   ]
@@ -40,7 +47,7 @@ export function SendConfirmModal({
       onClose={onCancel}
       dismissible={!busy}
       size="sm"
-      title={`Send to ${plural(recipientCount, 'subscriber')}?`}
+      title={resend ? `Resend to ${plural(recipientCount, 'person', 'people')}?` : `Send to ${plural(recipientCount, noun)}?`}
       description="It goes out right away and can’t be stopped once sending finishes."
       icon={Send}
       tone="accent"
@@ -50,7 +57,7 @@ export function SendConfirmModal({
             Cancel
           </Button>
           <Button variant="accent" icon={Send} loading={busy} onClick={onConfirm}>
-            Send now
+            {resend ? 'Resend now' : 'Send now'}
           </Button>
         </>
       }

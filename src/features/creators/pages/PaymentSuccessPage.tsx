@@ -1,7 +1,7 @@
 import { ArrowRight, Check, CreditCard, PartyPopper, Plus } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { date, money, percent } from '../../../shared/lib/format'
+import { date, money } from '../../../shared/lib/format'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { SoloLayout } from '../../../shared/ui/SoloLayout'
 import { StateArt } from '../../../shared/ui/StateArt'
@@ -90,7 +90,6 @@ function Activated({ creator }: { creator: Creator }) {
           <KeyValue
             items={[
               { term: 'Plan', description: planLabel(creator.planName, plan) },
-              { term: 'Fee per sale', description: plan ? percent(plan.platformFeeBasisPoints / 100) : '—' },
               { term: 'Next payment', description: creator.currentPeriodEnd ? date(creator.currentPeriodEnd) : '—' },
               { term: 'Your address', description: `${window.location.host}/p/${creator.slug}`, mono: true },
             ]}

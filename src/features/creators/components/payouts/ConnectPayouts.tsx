@@ -143,7 +143,7 @@ export function ConnectPayouts({ slug, creator }: { slug: string; creator: Creat
             </div>
           </Card>
           <div className="span-full">
-            <HowItWorks creator={creator} />
+            <HowItWorks />
           </div>
         </div>
       </>
@@ -207,7 +207,7 @@ export function ConnectPayouts({ slug, creator }: { slug: string; creator: Creat
             </div>
           </Card>
           <div className="span-full">
-            <HowItWorks creator={creator} />
+            <HowItWorks />
           </div>
         </div>
       </>
@@ -260,7 +260,7 @@ export function ConnectPayouts({ slug, creator }: { slug: string; creator: Creat
           </div>
         </Card>
         <div className="span-full">
-          <HowItWorks creator={creator} />
+          <HowItWorks />
         </div>
       </div>
     </>

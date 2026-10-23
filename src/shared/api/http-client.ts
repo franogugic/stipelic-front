@@ -5,6 +5,8 @@ export type ApiErrorPayload = {
   errors?: Record<string, string[]>
   /** Extra data for some conflicts, e.g. `{ used, limit }` on PLAN_LIMIT_REACHED. */
   details?: unknown
+  /** Anything else the body carries (e.g. the 410 of a turned-off download link names the product and brand). */
+  [extra: string]: unknown
 }
 
 export class ApiError extends Error {
@@ -12,6 +14,8 @@ export class ApiError extends Error {
   code?: string
   errors?: Record<string, string[]>
   details?: unknown
+  /** The whole error body, for endpoints that answer with more than a message. */
+  payload: ApiErrorPayload | null
 
   constructor(status: number, payload: ApiErrorPayload | null) {
     super(payload?.message ?? 'Something went wrong. Please try again.')
@@ -20,6 +24,7 @@ export class ApiError extends Error {
     this.code = payload?.code
     this.errors = payload?.errors
     this.details = payload?.details
+    this.payload = payload
   }
 }
 
@@ -35,14 +40,16 @@ export async function apiRequest<TResponse>(
 ): Promise<TResponse> {
   const { body, headers, ...requestInit } = options
 
+  // A form (a file upload) goes out as multipart: the browser sets the content type and its boundary.
+  const isForm = body instanceof FormData
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     headers: {
-      'Content-Type': 'application/json',
+      ...(isForm ? {} : { 'Content-Type': 'application/json' }),
       ...headers,
     },
     ...requestInit,
     credentials: 'include',
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   })
 
   if (!response.ok) {

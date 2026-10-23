@@ -1,7 +1,7 @@
 import { ArrowUpRight, CalendarClock, CircleAlert, CreditCard, Gauge, Lock } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { date, money, number, percent, plural } from '../../../../shared/lib/format'
+import { date, money, number, plural } from '../../../../shared/lib/format'
 import {
   Alert,
   Badge,
@@ -73,7 +73,7 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
   const onFree = !paid
   const freePlan = plans.find((candidate) => candidate.priceCents === 0)
   const freeSummary = freePlan
-    ? ` — ${limitText(freePlan.limits['max_landing_pages'], 'landing page')}, ${limitText(freePlan.limits['max_products'], 'product')} and a ${percent(freePlan.platformFeeBasisPoints / 100)} fee per sale`
+    ? ` — ${limitText(freePlan.limits['max_landing_pages'], 'landing page')} and ${limitText(freePlan.limits['max_products'], 'product')}`
     : ''
 
   const openPortal = async () => {
@@ -211,7 +211,7 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
               <span className="metric__value">{planName}</span>
               <span className="metric__meta">
                 {plan
-                  ? `${paid ? `${money(plan.priceCents, currency, { decimals: false })} / ${intervalWord(plan)}` : 'Free'} · ${percent(plan.platformFeeBasisPoints / 100)} fee per sale`
+                  ? `${paid ? `${money(plan.priceCents, currency, { decimals: false })} / ${intervalWord(plan)}` : 'Free'}`
                   : '—'}
               </span>
             </div>
@@ -266,7 +266,6 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
                     <small className="text-sm text-muted"> /{optionPaid ? (option.billingInterval === 'Yearly' ? 'yr' : 'mo') : 'mo'}</small>
                   </p>
                   <ul className="plan__list" role="list">
-                    <li>{percent(option.platformFeeBasisPoints / 100)} fee per sale</li>
                     <li>
                       {limitText(option.limits['max_landing_pages'], 'landing page')} ·{' '}
                       {limitText(option.limits['max_products'], 'product')}

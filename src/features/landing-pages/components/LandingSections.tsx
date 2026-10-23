@@ -19,7 +19,7 @@ import type {
   TestimonialsContent,
 } from '../model/section-content'
 import { defaultCopyright, kindOf } from '../model/section-library'
-import type { LandingPageType, ProductType, SectionType } from '../model/types'
+import type { LandingPageType, SectionType } from '../model/types'
 
 // The creator's landing page as the prototype draws it (`renderSection` / SECTION_RENDERERS): used by the public
 // page and, inside a frame, by the editor's live preview. Buttons and forms come from the caller (`renderAction`)
@@ -29,7 +29,6 @@ export type LandingProduct = {
   name: string
   priceCents: number
   currency: string
-  type: ProductType | null
 }
 
 export type LandingBrand = {
@@ -66,12 +65,6 @@ export type RenderedSection = {
   }
 }[SectionType]
 
-const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
-  Digital: 'Digital download',
-  Course: 'Online course',
-  Service: 'Service',
-}
-
 const wholePrice = (product: LandingProduct) => money(product.priceCents, product.currency, { decimals: false })
 
 /** Text colour on a section with its own background (`.lp-sec--on-light` / `--on-dark`). */
@@ -89,7 +82,7 @@ function FallbackVisual({ product, shape = 'tall' }: { product: LandingProduct |
   if (!product) return null
   return (
     <div className={`lp__visual lp__visual--fallback lp__visual--${shape}`} role="img" aria-label={product.name}>
-      <span className="lp-fallback__type">{product.type ? PRODUCT_TYPE_LABELS[product.type] : 'Digital download'}</span>
+      <span className="lp-fallback__type">{product.priceCents > 0 ? 'Instant download' : 'Free download'}</span>
       <span className="lp-fallback__name">{product.name}</span>
       <span className="lp-fallback__price">{wholePrice(product)}</span>
     </div>

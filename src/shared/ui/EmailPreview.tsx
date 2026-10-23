@@ -2,6 +2,23 @@ import { brandStyle } from '../lib/brand-color'
 import { monogram } from '../lib/format'
 import { Avatar } from './ledger'
 
+/** A paragraph with the email's text links underlined. */
+function linked(text: string, links: string[]) {
+  const phrases = links.filter((link) => text.includes(link))
+  if (phrases.length === 0) return text
+  const escape = (phrase: string) => phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = new RegExp(`(${phrases.map(escape).join('|')})`)
+  return text.split(pattern).map((part, index) =>
+    phrases.includes(part) ? (
+      <u className="email-preview__link" key={index}>
+        {part}
+      </u>
+    ) : (
+      part
+    ),
+  )
+}
+
 /**
  * A campaign email as the recipient sees it, in the creator's brand colour — the prototype's `emailPreview()`.
  * `button` shows the call-to-action; `body` is split into paragraphs at blank lines.
@@ -14,6 +31,8 @@ export function EmailPreview({
   body,
   button,
   device = 'desktop',
+  reason = 'joined',
+  textLinks = [],
 }: {
   brandName: string
   supportEmail: string
@@ -22,6 +41,10 @@ export function EmailPreview({
   body: string
   button?: { label: string }
   device?: 'desktop' | 'mobile'
+  /** Why the person gets it, as the footer says: they joined the list, or they bought from the brand. */
+  reason?: 'joined' | 'bought'
+  /** URLs in the message that the email turns into links: shown underlined, as an inbox shows them. */
+  textLinks?: string[]
 }) {
   const paragraphs = body.split(/\n{2,}/)
   return (
@@ -40,14 +63,14 @@ export function EmailPreview({
         <p className="email-preview__brand">{brandName}</p>
         <div className="email-preview__body">
           {paragraphs.map((paragraph, index) => (
-            <p key={index}>{paragraph}</p>
+            <p key={index}>{linked(paragraph, textLinks)}</p>
           ))}
         </div>
         <p className="email-preview__button-row" hidden={!button}>
           <span className="email-preview__button">{button?.label}</span>
         </p>
         <p className="email-preview__footer">
-          You’re receiving this because you joined {brandName}. <u>Unsubscribe</u>
+          You’re receiving this because you {reason === 'bought' ? 'bought from' : 'signed up at'} {brandName}. <u>Unsubscribe</u>
           <br />
           Sent with Luma
         </p>

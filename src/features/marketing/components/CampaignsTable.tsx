@@ -1,6 +1,6 @@
-import { Send } from 'lucide-react'
+import { CornerUpLeft, Send } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { date, dateShort, number, percent } from '../../../shared/lib/format'
+import { date, dateShort, number, percent, plural } from '../../../shared/lib/format'
 import {
   EmptyState,
   ErrorState,
@@ -11,9 +11,32 @@ import {
   campaignStatusKey,
 } from '../../../shared/ui/ledger'
 import { CAMPAIGN_FILTERS, campaignDateOf, campaignGroup, openRateOf } from '../model/campaign-groups'
+import { clickInfoOfItem } from '../model/clicks'
 import type { CampaignListItem } from '../model/types'
 
 /** "Campaigns": the latest campaigns with a status filter and their delivery numbers. Each subject opens the campaign. */
+/** The click rate of one campaign: a rate bar, or why there is none. */
+function ClickRateCell({ campaign }: { campaign: CampaignListItem }) {
+  if (campaign.sentCount === 0) return <span className="text-muted">—</span>
+  const info = clickInfoOfItem(campaign)
+  if (info.kind === 'untracked') {
+    return (
+      <span className="text-muted" data-tooltip="Click tracking wasn’t on when this campaign was sent" tabIndex={0}>
+        Not tracked
+      </span>
+    )
+  }
+  if (info.kind === 'nolinks') return <span className="text-muted">No links</span>
+  return (
+    <span className="rate-cell" data-tooltip={`${plural(campaign.uniqueClickCount, 'person', 'people')} clicked`} tabIndex={0}>
+      <span className="rate-cell__bar" aria-hidden="true">
+        <span style={{ '--w': `${info.rate.toFixed(1)}%` } as React.CSSProperties} />
+      </span>
+      <span className="num">{percent(info.rate)}</span>
+    </span>
+  )
+}
+
 export function CampaignsTable({
   campaigns,
   status,
@@ -79,10 +102,8 @@ export function CampaignsTable({
                   <th scope="col" className="is-num">
                     Sent
                   </th>
-                  <th scope="col" className="is-num">
-                    Opens
-                  </th>
                   <th scope="col">Open rate</th>
+                  <th scope="col">Click rate</th>
                 </tr>
               </thead>
               <tbody>
@@ -101,6 +122,11 @@ export function CampaignsTable({
                         <Link className="table__primary" to={`/app/${slug}/emails/campaigns/${campaign.publicId}`}>
                           {campaign.subject}
                         </Link>
+                        {campaign.source && (
+                          <span className="table__secondary">
+                            <CornerUpLeft className="inline-icon" /> Resend {campaign.resendRound ?? 1} of “{campaign.source.subject}”
+                          </span>
+                        )}
                       </td>
                       <td data-label="Audience" className="text-secondary">
                         {audienceName(campaign)}
@@ -114,12 +140,9 @@ export function CampaignsTable({
                       <td data-label="Sent" className="is-num">
                         {number(campaign.sentCount)}
                       </td>
-                      <td data-label="Opens" className="is-num">
-                        {number(campaign.uniqueOpenCount)}
-                      </td>
                       <td data-label="Open rate">
                         {campaign.sentCount > 0 ? (
-                          <span className="rate-cell">
+                          <span className="rate-cell" data-tooltip={`${plural(campaign.uniqueOpenCount, 'person', 'people')} opened it`} tabIndex={0}>
                             <span className="rate-cell__bar" aria-hidden="true">
                               <span style={{ '--w': `${rate.toFixed(1)}%` } as React.CSSProperties} />
                             </span>
@@ -128,6 +151,9 @@ export function CampaignsTable({
                         ) : (
                           <span className="text-muted">—</span>
                         )}
+                      </td>
+                      <td data-label="Click rate">
+                        <ClickRateCell campaign={campaign} />
                       </td>
                     </tr>
                   )

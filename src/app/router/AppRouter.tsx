@@ -17,6 +17,7 @@ import { WelcomePage } from '../../features/creators/pages/WelcomePage'
 import { LandingPageAnalyticsPage } from '../../features/landing-pages/pages/LandingPageAnalyticsPage'
 import { LandingPageEditorPage } from '../../features/landing-pages/pages/LandingPageEditorPage'
 import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPagesPage'
+import { DownloadPage } from '../../features/delivery/pages/DownloadPage'
 import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSuccessPage'
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
 import { UnsubscribePage } from '../../features/marketing/pages/UnsubscribePage'
@@ -25,6 +26,7 @@ import { TemplateEditorPage } from '../../features/marketing/pages/TemplateEdito
 import { TemplatesPage } from '../../features/marketing/pages/TemplatesPage'
 import { NewCampaignPage } from '../../features/marketing/pages/NewCampaignPage'
 import { EmailsPage } from '../../features/marketing/pages/EmailsPage'
+import { ContactImportPage } from '../../features/marketing/pages/ContactImportPage'
 import { SubscribersPage } from '../../features/marketing/pages/SubscribersPage'
 import { ProductDetailPage } from '../../features/products/pages/ProductDetailPage'
 import { ProductFormPage } from '../../features/products/pages/ProductFormPage'
@@ -43,6 +45,7 @@ export function AppRouter() {
       <Route element={<AuthBootstrap />}>
         <Route path="/p/:creatorSlug/:pageSlug/success" element={<OrderSuccessPage />} />
         <Route path="/p/:creatorSlug/:pageSlug" element={<PublicLandingPage />} />
+        <Route path="/d/:token" element={<DownloadPage />} />
         <Route path="/unsubscribe/:token" element={<UnsubscribePage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/confirm-email-change" element={<ConfirmEmailChangePage />} />
@@ -76,6 +79,7 @@ export function AppRouter() {
           <Route path="/app/:slug/emails/templates/:templateId" element={<TemplateEditorPage />} />
           <Route path="/app/:slug/emails/campaigns/:campaignId" element={<CampaignDetailPage />} />
           <Route path="/app/:slug/subscribers" element={<SubscribersPage />} />
+          <Route path="/app/:slug/subscribers/import" element={<ContactImportPage />} />
           <Route path="/app/:slug/payouts" element={<CreatorPayoutsPage />} />
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />
           <Route path="/welcome" element={<WelcomePage />} />

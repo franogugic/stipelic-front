@@ -1,8 +1,9 @@
-import { Landmark, Percent, Undo2, Wallet } from 'lucide-react'
+import { Receipt, ShoppingBag, Undo2, Wallet } from 'lucide-react'
 import type { CSSProperties } from 'react'
-import { money, number, percent, plural } from '../../../shared/lib/format'
+import { money, number, plural } from '../../../shared/lib/format'
 import { DeltaBadge, KpiCell, Money } from '../../../shared/ui/ledger'
-import type { OrderSummary } from '../model/types'
+import { PERIODS, periodPhrase } from '../../analytics/model/series'
+import type { OrderPeriodSummary } from '../model/types'
 
 const SEGMENTS: Array<[key: 'paid' | 'pending' | 'failed' | 'refunded', tone: string, label: string]> = [
   ['paid', 'success', 'Paid'],
@@ -11,22 +12,18 @@ const SEGMENTS: Array<[key: 'paid' | 'pending' | 'failed' | 'refunded', tone: st
   ['refunded', 'info', 'Refunded'],
 ]
 
-/** The money board above the orders list: gross, fees, net and refunds with 12-month trends, and orders by status. */
-export function OrdersBoard({
-  summary,
-  currency,
-  planName,
-  feeBasisPoints,
-}: {
-  summary: OrderSummary
-  currency: string
-  /** The workspace's plan, for the fee line; null while the plans load. */
-  planName: string | null
-  feeBasisPoints: number | null
-}) {
-  const trend = summary.monthlyTrend
-  const thisMonth = trend[trend.length - 1]
-  const lastMonth = trend[trend.length - 2]
+const average = (revenueCents: number, paid: number) => (paid ? revenueCents / paid : 0)
+
+/**
+ * The money board above the orders list: revenue, paid orders, average order and refunds of one period (and product),
+ * each with its trend over the period's buckets and the change against the period before, and the period's orders
+ * by status. Every count follows the one date rule, so the list below adds up to it.
+ */
+export function OrdersBoard({ summary, currency }: { summary: OrderPeriodSummary; currency: string }) {
+  const trend = summary.buckets
+  const phrase = periodPhrase(summary.period)
+  const compare = PERIODS.find((period) => period.id === summary.period)?.compare
+  const previous = summary.previous
   const counts = {
     paid: summary.paidOrderCount,
     pending: summary.pendingOrderCount,
@@ -35,52 +32,73 @@ export function OrdersBoard({
   }
   const total = summary.totalOrderCount
   const share = (count: number) => (total > 0 ? ((count / total) * 100).toFixed(1) : '0.0')
-  const netShare = summary.totalPaidAmountCents > 0 ? (summary.netAmountCents / summary.totalPaidAmountCents) * 100 : 0
-  const values = (pick: (month: (typeof trend)[number]) => number) => trend.map(pick)
+  const spark = (label: string, values: number[]) => (values.length > 1 ? { values, label: `${label}, ${phrase}` } : undefined)
+  const averageNow = average(summary.totalPaidAmountCents, summary.paidOrderCount)
+  const averageBefore = previous ? average(previous.totalPaidAmountCents, previous.paidOrderCount) : 0
 
   return (
-    <section className="card board" aria-label="Orders overview">
+    <section className="card board" aria-label={`Orders overview, ${phrase}`}>
       <div className="board__kpis">
         <KpiCell
-          label="Gross revenue"
+          label="Revenue"
           icon={Wallet}
           value={<Money amountCents={summary.totalPaidAmountCents} currency={currency} />}
           meta={
-            thisMonth && lastMonth ? (
+            previous ? (
               <>
-                <DeltaBadge current={thisMonth.grossCents} previous={lastMonth.grossCents} />
-                <span>{money(thisMonth.grossCents, currency)} this month</span>
+                <DeltaBadge current={summary.totalPaidAmountCents} previous={previous.totalPaidAmountCents} />
+                <span>
+                  vs {money(previous.totalPaidAmountCents, currency)} {compare}
+                </span>
               </>
-            ) : undefined
+            ) : (
+              <span>all time</span>
+            )
           }
-          spark={trend.length > 1 ? { values: values((month) => month.grossCents), label: 'Gross revenue, last 12 months' } : undefined}
+          spark={spark('Revenue', trend.map((bucket) => bucket.grossCents))}
         />
         <KpiCell
-          label="Platform fees"
-          icon={Percent}
-          value={<Money amountCents={summary.totalPlatformFeeCents} currency={currency} />}
+          label="Paid orders"
+          icon={ShoppingBag}
+          value={number(summary.paidOrderCount)}
           meta={
-            feeBasisPoints !== null && planName ? (
-              <span>
-                {percent(feeBasisPoints / 100)} per sale on {planName}
-              </span>
-            ) : undefined
+            previous ? (
+              <>
+                <DeltaBadge current={summary.paidOrderCount} previous={previous.paidOrderCount} />
+                <span>
+                  vs {number(previous.paidOrderCount)} {compare}
+                </span>
+              </>
+            ) : (
+              <span>all time</span>
+            )
           }
-          spark={trend.length > 1 ? { values: values((month) => month.feeCents), label: 'Platform fees, last 12 months' } : undefined}
+          spark={spark('Paid orders', trend.map((bucket) => bucket.paidCount))}
         />
         <KpiCell
-          label="Net to you"
-          icon={Landmark}
-          value={<Money amountCents={summary.netAmountCents} currency={currency} />}
-          meta={<span>{percent(netShare)} of gross</span>}
-          spark={trend.length > 1 ? { values: values((month) => month.netCents), label: 'Net to you, last 12 months' } : undefined}
+          label="Average order"
+          icon={Receipt}
+          value={<Money amountCents={Math.round(averageNow)} currency={currency} />}
+          meta={
+            previous ? (
+              <>
+                <DeltaBadge current={averageNow} previous={averageBefore} />
+                <span>
+                  vs {money(Math.round(averageBefore), currency)} {compare}
+                </span>
+              </>
+            ) : (
+              <span>all time</span>
+            )
+          }
+          spark={spark('Average order', trend.map((bucket) => average(bucket.grossCents, bucket.paidCount)))}
         />
         <KpiCell
           label="Refunded"
           icon={Undo2}
           value={number(summary.refundedOrderCount)}
-          meta={<span>{money(summary.refundedAmountCents, currency)} returned to buyers</span>}
-          spark={trend.length > 1 ? { values: values((month) => month.refundedCount), label: 'Refunded orders, last 12 months' } : undefined}
+          meta={<span>{summary.refundedOrderCount > 0 ? `${money(summary.refundedAmountCents, currency)} returned to buyers` : 'No refunds'}</span>}
+          spark={spark('Refunded orders', trend.map((bucket) => bucket.refundedCount))}
         />
       </div>
       <div className="board__foot">
@@ -101,7 +119,9 @@ export function OrdersBoard({
                 {label} <strong>{number(counts[key])}</strong>
               </li>
             ))}
-            <li className="stackbar__total">{plural(total, 'order')} in total</li>
+            <li className="stackbar__total">
+              {plural(total, 'order')} · {phrase}
+            </li>
           </ul>
         </div>
       </div>

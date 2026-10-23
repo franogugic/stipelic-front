@@ -175,13 +175,20 @@ export function draftReducer(draft: Draft, action: DraftAction): Draft {
 export const emptyDraft: Draft = { sections: [], selectedKey: null, dirty: false, revision: 0 }
 
 /** The editor PUT for the draft, plus the keys in the order sent (to match the response). */
-export function toSaveRequest(page: LandingPageWithSections, sections: DraftSection[]): { request: SaveEditorRequest; keys: string[] } {
+export function toSaveRequest(
+  page: LandingPageWithSections,
+  sections: DraftSection[],
+  settings?: { title: string; slug: string; productId: string | null },
+): { request: SaveEditorRequest; keys: string[] } {
   return {
     keys: sections.map((section) => section.key),
     request: {
-      title: page.title,
-      slug: page.slug,
+      title: settings?.title ?? page.title,
+      slug: settings?.slug ?? page.slug,
       type: page.type,
+      // A lead page's document is only sent with the page settings: a product to switch to, or the instruction to stop
+      // giving one away (the API keeps the current product when `productId` is null).
+      ...(settings && page.type === 'LeadGen' ? (settings.productId ? { productId: settings.productId } : { removeProduct: true }) : {}),
       sections: sections.map((section, index) => ({
         publicId: section.publicId,
         type: section.type,

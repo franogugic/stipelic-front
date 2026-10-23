@@ -2,6 +2,7 @@ import { apiRequest } from '../../../shared/api/http-client'
 import type {
   CreateProductRequest,
   Product,
+  ProductSignups,
   UpdateProductRequest,
 } from '../model/types'
 
@@ -46,6 +47,14 @@ export async function restoreProduct(slug: string, productId: string): Promise<P
   const res = await apiRequest<ApiResponse<Product>>(
     `/api/creators/${slug}/products/${productId}/restore`,
     { method: 'POST' },
+  )
+  return res.data
+}
+
+/** The newest sign-ups of a free product, one row per email, newest first. */
+export async function getProductSignups(slug: string, productId: string, limit: number): Promise<ProductSignups> {
+  const res = await apiRequest<ApiResponse<ProductSignups>>(
+    `/api/creators/${encodeURIComponent(slug)}/products/${productId}/signups?${new URLSearchParams({ limit: String(limit) })}`,
   )
   return res.data
 }

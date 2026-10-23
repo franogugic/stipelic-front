@@ -1,8 +1,7 @@
-import { CalendarClock, Download, GraduationCap, MailPlus, ShoppingBag } from 'lucide-react'
+import { MailPlus, ShoppingBag } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-// One status vocabulary for the whole app (ported from the prototype's STATUS / PAGE_TYPES /
-// PRODUCT_TYPES). Screens never pick badge colours; they map the API value to a key here.
+// One status vocabulary for the whole app (ported from the prototype's STATUS / PAGE_TYPES). Screens never pick badge colours; they map the API value to a key here.
 
 export type BadgeTone = 'success' | 'warning' | 'danger' | 'info' | 'accent' | 'neutral' | 'outline' | 'solid-accent'
 
@@ -52,12 +51,6 @@ export const PAGE_TYPES: Record<string, readonly [BadgeTone, string, LucideIcon]
   sales: ['accent', 'Sales', ShoppingBag],
 }
 
-export const PRODUCT_TYPES: Record<string, readonly [string, LucideIcon]> = {
-  digital: ['Digital', Download],
-  service: ['Service', CalendarClock],
-  course: ['Course', GraduationCap],
-}
-
 // ---------------------------------------------------------------------------------------------
 // API value → prototype key. Values the API can send that are NOT listed here fall through to the
 // lower-cased raw value, which the badge renders as a plain, unstyled badge (the prototype's
@@ -77,9 +70,6 @@ export const pageTypeKey = (apiValue: string) => (apiValue === 'LeadGen' ? 'lead
 
 /** Product: Draft, Active, Archived. */
 export const productStatusKey = (apiValue: string) => lower(apiValue)
-
-/** Product type: Digital, Service, Course. */
-export const productTypeKey = (apiValue: string) => lower(apiValue)
 
 /** Payout: Pending, Paid, Failed, Cancelled. */
 export const payoutStatusKey = (apiValue: string) => lower(apiValue)

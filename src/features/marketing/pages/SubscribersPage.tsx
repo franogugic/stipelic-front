@@ -1,19 +1,19 @@
-import { Download, Send, Trash2, Users } from 'lucide-react'
+import { CircleCheck, Download, Send, Trash2, Upload, Users } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
-import { date, month, monthYear, number, plural } from '../../../shared/lib/format'
+import { useParams } from 'react-router-dom'
+import { date, number, plural } from '../../../shared/lib/format'
+import { useKeyedLoad } from '../../../shared/lib/use-keyed-load'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
-  AreaChart,
+  Alert,
   Badge,
   Button,
-  Card,
   ConfirmDialog,
   EmptyState,
   ErrorState,
-  HBars,
   PageHeader,
   Select,
+  SkeletonBlock,
   SkeletonCards,
   SkeletonRows,
   StatusBadge,
@@ -22,7 +22,12 @@ import {
   subscriberStatusKey,
   useToast,
 } from '../../../shared/ui/ledger'
-import { deleteContact, exportContacts, getContactStats, searchContacts } from '../api/contacts-api'
+import { useCreatorStore } from '../../creators/model/creator-store'
+import { PageControls } from '../../analytics/components/PageControls'
+import { usePagePeriod } from '../../analytics/model/use-page-period'
+import { deleteContact, exportContacts, getContactPeriodStats, getContactStats, searchContacts } from '../api/contacts-api'
+import { GrowthCard } from '../components/GrowthCard'
+import { JoinedCard } from '../components/JoinedCard'
 import { SubscribersBoard } from '../components/SubscribersBoard'
 import type { Contact, ContactStats } from '../model/types'
 
@@ -42,8 +47,24 @@ type Results = { key: string; contacts: Contact[]; hasMore: boolean; error: bool
 
 export function SubscribersPage() {
   const { slug = '' } = useParams<{ slug: string }>()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const { period, setPeriod, params: searchParams, update } = usePagePeriod('subscribers')
   const toast = useToast()
+  const creator = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator : null))
+  const plans = useCreatorStore((s) => s.creatorPlans)
+  const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
+  const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
+  const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
+  useEffect(() => {
+    if (currentCreatorStatus === 'idle') void loadCurrentCreator()
+  }, [currentCreatorStatus, loadCurrentCreator])
+  useEffect(() => {
+    void loadCreatorPlans()
+  }, [loadCreatorPlans])
+  const planName = creator?.planName ?? 'your plan'
+  const contactLimit = creator ? (plans.find((plan) => plan.code === creator.planCode)?.limits.max_contacts ?? null) : null
+  // Right after an import the page says so (the link comes with ?imported=<new contacts>).
+  const imported = Number(searchParams.get('imported')) || 0
+  const periodStats = useKeyedLoad(slug ? `${slug}|${period.id}` : null, () => getContactPeriodStats(slug, period.id))
 
   const [stats, setStats] = useState<Stats | null>(null)
   const [search, setSearch] = useState('')
@@ -105,6 +126,7 @@ export function SubscribersPage() {
   const retry = () => {
     setStats(null)
     loadStats()
+    periodStats.reload()
     setResults(null)
     setAttempt((value) => value + 1)
   }
@@ -169,16 +191,7 @@ export function SubscribersPage() {
     }
   }
 
-  const setStatusFilter = (key: string) =>
-    setSearchParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        if (key === 'all') next.delete('status')
-        else next.set('status', key)
-        return next
-      },
-      { replace: true },
-    )
+  const setStatusFilter = (key: string) => update({ status: key === 'all' ? null : key })
 
   const clearFilters = () => {
     setSearch('')
@@ -227,6 +240,11 @@ export function SubscribersPage() {
                   </td>
                   <td data-label="Joined on">
                     <div className="cluster cluster--sm">
+                      {contact.importedAt && (
+                        <Badge tone="info" icon={Upload}>
+                          Import
+                        </Badge>
+                      )}
                       {contact.sourceList.map((source) => (
                         <Badge tone="outline" key={source.landingPagePublicId}>
                           {source.title}
@@ -282,39 +300,66 @@ export function SubscribersPage() {
     }
     const statusCount = (key: string) =>
       key === 'active' ? data.active : key === 'unsubscribed' ? data.unsubscribed : data.total
+    const periodData = periodStats.load.status === 'success' ? periodStats.load.data : null
     return (
       <div className="stack stack--lg reveal">
-        <SubscribersBoard stats={data} />
-        <div className="dash">
-          <div className="span-8">
-            <Card title="Growth" subtitle="Everyone subscribed at the end of each month">
-              <AreaChart
-                labels={data.growth.map((point) => month(`${point.month}-15`))}
-                titles={data.growth.map((point) => monthYear(`${point.month}-15`))}
-                values={data.growth.map((point) => point.total)}
-                label="Subscribers at the end of each month"
-                formatValue={(value) => number(Math.round(value))}
-                describe={(value) => plural(Math.round(value), 'subscriber')}
-              />
-            </Card>
+        <PageControls
+          period={period.id}
+          onPeriod={setPeriod}
+          series={
+            periodData
+              ? { period: periodData.period, timezone: periodData.timezone, since: periodData.range.from, range: periodData.range, previousRange: periodData.previousRange }
+              : null
+          }
+          loading={periodStats.load.status === 'loading'}
+          updatedAt={periodStats.load.status === 'success' ? periodStats.load.at : new Date()}
+          sinceNote="your first subscriber"
+        />
+        {periodStats.load.status === 'error' ? (
+          <section className="card">
+            <ErrorState
+              compact
+              title="We couldn’t load your numbers"
+              text="The figures for this period didn’t load. Your list is safe — try again in a moment."
+              onRetry={periodStats.reload}
+            />
+          </section>
+        ) : periodData ? (
+          <>
+            <SubscribersBoard stats={periodData} plan={{ name: planName, contactLimit: contactLimit !== null && contactLimit >= 0 ? contactLimit : null }} />
+            <div className="dash">
+              <div className="span-8">
+                <GrowthCard stats={periodData} />
+              </div>
+              <div className="span-4">
+                <JoinedCard stats={periodData} onShowAll={() => setPeriod('all')} />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <SkeletonCards count={4} />
+            <div className="dash">
+              <div className="span-8">
+                <SkeletonBlock />
+              </div>
+              <div className="span-4">
+                <SkeletonBlock />
+              </div>
+            </div>
+          </>
+        )}
+        <section className="card" aria-labelledby="subscriber-list-title">
+          <div className="card__header">
+            <div className="card__heading">
+              <h2 className="card__title" id="subscriber-list-title">
+                Everyone on your list
+              </h2>
+              <p className="card__subtitle">
+                {plural(data.total, 'person', 'people')} · {number(data.active)} active · any date
+              </p>
+            </div>
           </div>
-          <div className="span-4">
-            <Card title="Where they joined" subtitle="Some joined on more than one page">
-              {data.sources.length > 0 ? (
-                <div className="fill-stack">
-                  <HBars rows={data.sources.map((source) => ({ label: source.title, value: source.count, display: number(source.count) }))} />
-                  <p className="fill-stack__foot">
-                    <span>{plural(data.sources.length, 'page')} collecting emails</span>
-                    <strong>{plural(data.total, 'person', 'people')}</strong>
-                  </p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted">No sources yet.</p>
-              )}
-            </Card>
-          </div>
-        </div>
-        <section className="card" aria-label="Subscriber list">
           <TableFilterBar
             noun="email"
             statuses={STATUS_FILTERS}
@@ -363,12 +408,20 @@ export function SubscribersPage() {
             >
               Export
             </Button>
+            <Button variant="secondary" icon={Upload} to={`/app/${slug}/subscribers/import`}>
+              Import
+            </Button>
             <Button variant="primary" icon={Send} to={`/app/${slug}/emails`}>
               Send to all
             </Button>
           </>
         }
       />
+      {imported > 0 && (
+        <Alert tone="success" icon={CircleCheck} title={`${plural(imported, 'contact')} imported`} live>
+          They’re in your list with “Import” as their source, counted in “New” and marked on the growth chart.
+        </Alert>
+      )}
       {body()}
 
       <ConfirmDialog

@@ -1,7 +1,8 @@
 import { Download, Receipt } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
-import { number } from '../../../shared/lib/format'
+import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { number, plural } from '../../../shared/lib/format'
+import { useKeyedLoad } from '../../../shared/lib/use-keyed-load'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
   Button,
@@ -15,14 +16,16 @@ import {
   TableFooter,
   useToast,
 } from '../../../shared/ui/ledger'
+import { PageControls } from '../../analytics/components/PageControls'
+import { QuietPeriod } from '../../analytics/components/QuietPeriod'
+import { usePagePeriod } from '../../analytics/model/use-page-period'
 import { useCreatorStore } from '../../creators/model/creator-store'
-import { listLandingPages } from '../../landing-pages/api/landing-pages-api'
 import { listProducts } from '../../products/api/products-api'
-import { exportOrders, getOrderSummary, listOrders } from '../api/orders-api'
+import { exportOrders, getOrderPeriodSummary, listOrders } from '../api/orders-api'
 import type { OrderFilters } from '../api/orders-api'
 import { OrdersBoard } from '../components/OrdersBoard'
 import { OrdersTable } from '../components/OrdersTable'
-import type { Order, OrderStatus, OrderSummary } from '../model/types'
+import type { Order, OrderStatus, OrdersPage as OrdersPageData } from '../model/types'
 
 const PAGE_SIZE = 12
 const SEARCH_MAX_LENGTH = 100
@@ -38,67 +41,62 @@ const STATUS_FILTERS: Array<[string, string]> = [
 const STATUS_OF: Record<string, OrderStatus> = { paid: 'Paid', pending: 'Pending', failed: 'Failed', refunded: 'Refunded' }
 
 type Option = { value: string; label: string }
-type Summary = { key: string; summary: OrderSummary | null }
 /** The orders loaded so far for one set of filters (first page, then "Load more" pages); `error` when loading failed. */
-type Results = { key: string; orders: Order[]; hasMore: boolean; error: boolean }
+type Results = {
+  key: string
+  orders: Order[]
+  hasMore: boolean
+  total: number | null
+  statusCounts: OrdersPageData['statusCounts']
+  error: boolean
+}
 
 export function OrdersPage() {
   const { slug = '' } = useParams<{ slug: string }>()
   const toast = useToast()
   const creatorCurrency = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator.defaultCurrency : null))
-  const creator = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator : null))
-  const creatorPlans = useCreatorStore((s) => s.creatorPlans)
-  const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
-  const [searchParams, setSearchParams] = useSearchParams()
-  // The status filter lives in the URL, so a filtered list can be linked to.
-  const statusParam = searchParams.get('status') ?? ''
+  // The period, the product and the status live in the URL, so a view can be linked to.
+  const { period, setPeriod, params, update } = usePagePeriod('orders')
+  const statusParam = params.get('status') ?? ''
   const statusKey = STATUS_FILTERS.some(([key]) => key === statusParam) && statusParam !== 'all' ? statusParam : 'all'
   const status = statusKey === 'all' ? '' : STATUS_OF[statusKey]
-
-  const [summary, setSummary] = useState<Summary | null>(null)
-  const [productOptions, setProductOptions] = useState<Option[]>([])
-  const [pageOptions, setPageOptions] = useState<Option[]>([])
+  const productId = params.get('product') ?? ''
 
   const [search, setSearch] = useState('')
   const [term, setTerm] = useState('')
-  const [productId, setProductId] = useState('')
-  const [pageId, setPageId] = useState('')
   const [attempt, setAttempt] = useState(0)
 
   const [results, setResults] = useState<Results | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [exporting, setExporting] = useState(false)
 
+  const ready = slug !== ''
+  const summary = useKeyedLoad(ready ? `${slug}|${period.id}|${productId}` : null, () =>
+    getOrderPeriodSummary(slug, period.id, productId || null),
+  )
+  // Products an order can belong to: those that sell, active ones and archived ones that still have orders.
+  const products = useKeyedLoad(ready ? `products|${slug}` : null, () => listProducts(slug, true))
+
+  const productOptions: Option[] =
+    products.load.status === 'success'
+      ? products.load.data
+          .filter((product) => product.priceCents > 0 && (product.status === 'Active' || (product.status === 'Archived' && (product.orderCount ?? 1) > 0)))
+          .map((product) => ({ value: product.publicId, label: product.name }))
+      : []
+  // A product in the link that is not in the list (a draft, say) still shows as the chosen one.
+  const chosenProduct = products.load.status === 'success' ? products.load.data.find((product) => product.publicId === productId) : undefined
+  if (productId && chosenProduct && !productOptions.some((option) => option.value === productId)) {
+    productOptions.push({ value: productId, label: chosenProduct.name })
+  }
+
   const filters: OrderFilters = {
+    period: period.id,
     productId: productId || undefined,
-    landingPageId: pageId || undefined,
     status: status || undefined,
     search: term || undefined,
   }
-  const filtersActive = Boolean(productId || pageId || status || term)
-  const resultsKey = `${slug}|${productId}|${pageId}|${status}|${term}|${attempt}`
-
-  // Workspace-wide numbers and the filter options (archived products and pages still have orders).
-  const loadSummary = useCallback(() => {
-    getOrderSummary(slug)
-      .then((data) => setSummary({ key: slug, summary: data }))
-      .catch(() => setSummary({ key: slug, summary: null }))
-  }, [slug])
-
-  useEffect(() => {
-    void loadCreatorPlans()
-  }, [loadCreatorPlans])
-
-  useEffect(() => {
-    if (!slug) return
-    loadSummary()
-    listProducts(slug, true)
-      .then((products) => setProductOptions(products.map((product) => ({ value: product.publicId, label: product.name }))))
-      .catch(() => setProductOptions([]))
-    listLandingPages(slug, true)
-      .then((pages) => setPageOptions(pages.map((page) => ({ value: page.publicId, label: page.title }))))
-      .catch(() => setPageOptions([]))
-  }, [slug, loadSummary])
+  const filtersActive = Boolean(productId || status || term)
+  const resultsKey = `${slug}|${period.id}|${productId}|${status}|${term}|${attempt}`
 
   // The search runs 350 ms after the last keystroke, trimmed.
   useEffect(() => {
@@ -111,28 +109,32 @@ export function OrdersPage() {
     if (!slug) return
     let current = true
     listOrders(slug, {
+      period: period.id,
       productId: productId || undefined,
-      landingPageId: pageId || undefined,
       status: status || undefined,
       search: term || undefined,
       limit: PAGE_SIZE,
     })
-      .then((page) => current && setResults({ key: resultsKey, orders: page.orders, hasMore: page.hasMore, error: false }))
-      .catch(() => current && setResults({ key: resultsKey, orders: [], hasMore: false, error: true }))
+      .then(
+        (page) =>
+          current &&
+          setResults({ key: resultsKey, orders: page.orders, hasMore: page.hasMore, total: page.total, statusCounts: page.statusCounts, error: false }),
+      )
+      .catch(() => current && setResults({ key: resultsKey, orders: [], hasMore: false, total: null, statusCounts: null, error: true }))
     return () => {
       current = false
     }
-  }, [slug, productId, pageId, status, term, resultsKey])
+  }, [slug, period.id, productId, status, term, resultsKey])
 
-  const summaryState = summary?.key === slug ? summary : null
   const first = results?.key === resultsKey ? results : null
   const orders = first?.orders ?? []
   const hasMore = first?.hasMore ?? false
-  const currency = summaryState?.summary?.currency ?? creatorCurrency ?? 'EUR'
+  const summaryData = summary.load.status === 'success' ? summary.load.data : null
+  const currency = summaryData?.currency ?? creatorCurrency ?? 'EUR'
+  const lower = period.label.toLowerCase()
 
   const retry = () => {
-    setSummary(null)
-    loadSummary()
+    summary.reload()
     setResults(null)
     setAttempt((value) => value + 1)
   }
@@ -142,7 +144,7 @@ export function OrdersPage() {
     if (!last || loadingMore) return
     setLoadingMore(true)
     const requestKey = resultsKey
-    listOrders(slug, { ...filters, afterCreatedAt: last.createdAt, afterId: last.publicId, limit: PAGE_SIZE })
+    listOrders(slug, { ...filters, afterCountedAt: last.countedAt, afterId: last.publicId, limit: PAGE_SIZE })
       // Appended only while the filters are still the ones it was asked for.
       .then((page) =>
         setResults((current) =>
@@ -169,48 +171,43 @@ export function OrdersPage() {
     }
   }
 
-  const setStatusFilter = (key: string) =>
-    setSearchParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        if (key === 'all') next.delete('status')
-        else next.set('status', key)
-        return next
-      },
-      { replace: true },
-    )
+  const setStatusFilter = (key: string) => update({ status: key === 'all' ? null : key })
+  const setProductFilter = (id: string) => update({ product: id || null })
 
   const clearFilters = () => {
     setSearch('')
     setTerm('')
-    setProductId('')
-    setPageId('')
-    setStatusFilter('all')
+    update({ product: null, status: null })
   }
 
-  const total = summaryState?.summary?.totalOrderCount
-  const noOrdersAtAll = total === 0
-  const subtitle =
-    total === undefined
-      ? 'All transactions across your products and pages.'
-      : `${number(total)} ${total === 1 ? 'transaction' : 'transactions'} across all products and pages.`
+  const shown = first?.total ?? null
+  const exportNote = shown === null ? 'Exports the orders shown' : `Exports the ${plural(shown, 'order')} shown`
+  const noOrdersEver = period.id === 'all' && !productId && summaryData?.totalOrderCount === 0
 
   const count = () => {
-    const shown = number(orders.length)
-    if (filtersActive || total === undefined) return `Showing ${shown}${hasMore ? '+' : ''}`
-    return `Showing ${shown} of ${number(total)}`
+    const loaded = number(orders.length)
+    if (shown === null) return `Showing ${loaded}${hasMore ? '+' : ''}`
+    return `Showing ${loaded} of ${number(shown)}`
   }
 
   const list = () => {
     if (!first) return <SkeletonRows count={6} />
     if (first.error) return <ErrorState compact onRetry={retry} />
     if (orders.length === 0) {
-      return (
+      return filtersActive || term ? (
         <EmptyState
           compact
           icon={Receipt}
           title="No orders match these filters"
           action={{ label: 'Clear filters', variant: 'ghost', onClick: clearFilters }}
+        />
+      ) : (
+        <QuietPeriod
+          period={period.id}
+          icon={Receipt}
+          title="No orders in this period"
+          text={`Nothing was ordered ${period.id === 'today' ? 'today' : `in the ${lower}`}.`}
+          onShowAll={() => setPeriod('all')}
         />
       )
     }
@@ -222,18 +219,21 @@ export function OrdersPage() {
     )
   }
 
+  const statusCount = (key: string) => {
+    const counts = first?.statusCounts
+    if (counts) return counts[key as keyof typeof counts]
+    if (!summaryData) return 0
+    if (key === 'all') return summaryData.totalOrderCount
+    if (key === 'paid') return summaryData.paidOrderCount
+    if (key === 'pending') return summaryData.pendingOrderCount
+    if (key === 'failed') return summaryData.failedOrderCount
+    return summaryData.refundedOrderCount
+  }
+
+  const productName = productId ? (chosenProduct?.name ?? null) : null
+
   const body = () => {
-    if (!summaryState) {
-      return (
-        <div className="stack stack--lg">
-          <SkeletonCards count={4} />
-          <SkeletonRows count={6} />
-        </div>
-      )
-    }
-    const data = summaryState.summary
-    if (!data) return <ErrorState onRetry={retry} />
-    if (noOrdersAtAll) {
+    if (noOrdersEver) {
       return (
         <EmptyState
           icon={Receipt}
@@ -242,23 +242,27 @@ export function OrdersPage() {
         />
       )
     }
-    const plan = creatorPlans.find((candidate) => candidate.code === creator?.planCode)
-    const statusCount = (key: string) => {
-      if (key === 'all') return data.totalOrderCount
-      if (key === 'paid') return data.paidOrderCount
-      if (key === 'pending') return data.pendingOrderCount
-      if (key === 'failed') return data.failedOrderCount
-      return data.refundedOrderCount
-    }
     return (
       <div className="stack stack--lg reveal">
-        <OrdersBoard
-          summary={data}
-          currency={currency}
-          planName={creator?.planName ?? null}
-          feeBasisPoints={plan?.platformFeeBasisPoints ?? null}
-        />
-        <section className="card" aria-label="Order list">
+        {summary.load.status === 'error' ? (
+          <ErrorState compact onRetry={retry} />
+        ) : summaryData ? (
+          <OrdersBoard summary={summaryData} currency={currency} />
+        ) : (
+          <SkeletonCards count={4} />
+        )}
+        <section className="card" aria-labelledby="order-list-title">
+          <div className="card__header">
+            <div className="card__heading">
+              <h2 className="card__title" id="order-list-title">
+                {period.id === 'all' ? 'All orders' : `Orders · ${lower}`}
+              </h2>
+              <p className="card__subtitle">
+                {plural(first?.statusCounts?.all ?? summaryData?.totalOrderCount ?? 0, 'order')}
+                {productName ? ` for ${productName}` : ''} · newest first
+              </p>
+            </div>
+          </div>
           <TableFilterBar
             noun="customer or email"
             statuses={STATUS_FILTERS}
@@ -269,24 +273,14 @@ export function OrdersPage() {
             onQuery={setSearch}
             maxLength={SEARCH_MAX_LENGTH}
             extra={
-              <>
-                <Select aria-label="Product" value={productId} onChange={(event) => setProductId(event.target.value)}>
-                  <option value="">All products</option>
-                  {productOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-                <Select aria-label="Landing page" value={pageId} onChange={(event) => setPageId(event.target.value)}>
-                  <option value="">All pages</option>
-                  {pageOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </>
+              <Select aria-label="Product" value={productId} onChange={(event) => setProductFilter(event.target.value)}>
+                <option value="">All products</option>
+                {productOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
             }
           />
           {list()}
@@ -299,20 +293,35 @@ export function OrdersPage() {
     <AppShell slug={slug} activeSection="orders">
       <PageHeader
         title={<em>Orders</em>}
-        subtitle={subtitle}
+        subtitle="Every transaction across your products and pages."
         actions={
           <Button
             variant="secondary"
             icon={Download}
             loading={exporting}
-            disabledReason={noOrdersAtAll ? 'There are no orders to export yet.' : undefined}
+            data-tooltip={exportNote}
+            disabledReason={noOrdersEver || shown === 0 ? 'There are no orders to export.' : undefined}
             onClick={() => void runExport()}
           >
             Export CSV
           </Button>
         }
       />
-      {body()}
+      <div className="stack stack--lg">
+        <PageControls
+          period={period.id}
+          onPeriod={setPeriod}
+          series={
+            summaryData
+              ? { period: summaryData.period, timezone: summaryData.timezone, since: summaryData.range.from, range: summaryData.range, previousRange: summaryData.previousRange }
+              : null
+          }
+          loading={summary.load.status === 'loading'}
+          updatedAt={summary.load.status === 'success' ? summary.load.at : new Date()}
+          sinceNote="your first order"
+        />
+        {body()}
+      </div>
     </AppShell>
   )
 }

@@ -1,4 +1,4 @@
-import { Archive, CalendarClock, GraduationCap, LayoutGrid, List, Package, Plus, Download, Search } from 'lucide-react'
+import { Archive, BookOpen, ClipboardList, FileArchive, LayoutGrid, List, Package, Plus, Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -23,13 +23,6 @@ import { ProductsTable } from '../components/ProductsTable'
 import { sellingPagesOf } from '../model/catalogue'
 import { useProductStore } from '../model/product-store'
 import type { Product } from '../model/types'
-
-const TYPES: Array<[string, string]> = [
-  ['all', 'All'],
-  ['digital', 'Digital'],
-  ['course', 'Course'],
-  ['service', 'Service'],
-]
 
 const VIEW_KEY = 'products-view'
 type View = 'grid' | 'list'
@@ -89,8 +82,6 @@ export function ProductsPage() {
     void loadPages(slug)
   }, [slug, loadProducts, loadPages])
 
-  const typeParam = searchParams.get('type')
-  const type = TYPES.some(([key]) => key === typeParam) ? (typeParam as string) : 'all'
   const showArchived = searchParams.get('archived') === '1'
   const viewParam = searchParams.get('view')
   const view: View = viewParam === 'list' || viewParam === 'grid' ? viewParam : (storedView() ?? 'grid')
@@ -130,12 +121,10 @@ export function ProductsPage() {
       : undefined
 
   const inScope = useMemo(() => products.filter((product) => showArchived || product.status !== 'Archived'), [products, showArchived])
-  const countOf = (key: string) => inScope.filter((product) => key === 'all' || product.type.toLowerCase() === key).length
-  const byType = inScope.filter((product) => type === 'all' || product.type.toLowerCase() === type)
-  const best = byType
+  const best = inScope
     .filter((product) => product.status === 'Active' && product.revenueCents > 0)
     .sort((a, b) => b.revenueCents - a.revenueCents)[0]
-  const ordered = best ? [best, ...byType.filter((product) => product !== best)] : byType
+  const ordered = best ? [best, ...inScope.filter((product) => product !== best)] : inScope
   const needle = query.trim().toLowerCase()
   const visible = needle ? ordered.filter((product) => product.name.toLowerCase().includes(needle)) : ordered
   const sellingPages = (product: Product) => sellingPagesOf(product, pages)
@@ -169,7 +158,7 @@ export function ProductsPage() {
   const header = (
     <PageHeader
       title={<em>Products</em>}
-      subtitle="What you sell — each one is delivered to the buyer as a link by email."
+      subtitle="Documents you sell or give away — people download them right away."
       actions={newProductButton}
     />
   )
@@ -183,15 +172,15 @@ export function ProductsPage() {
           <EmptyState
             icon={Package}
             title="No products yet"
-            text="Add your first product, then sell it from a landing page. Buyers get your access link by email the moment they pay."
+            text="Add your first product and upload its file, then sell it — or give it away for an email — from a landing page. People download it right away and get a personal link by email to download it again."
             action={limitReason ? undefined : { label: 'Create product', icon: Plus, variant: 'primary', to: `/app/${slug}/products/new` }}
           />
           <div className="product-kinds">
             {(
               [
-                [Download, 'Digital', 'Presets, templates, e-books, files'],
-                [GraduationCap, 'Course', 'Video lessons and programmes'],
-                [CalendarClock, 'Service', 'Calls, reviews, consultations'],
+                [BookOpen, 'E-books and guides', 'A PDF or EPUB — sell it, or give one away for an email.'],
+                [FileArchive, 'Templates and presets', 'Everything in one ZIP, up to 100 MB.'],
+                [ClipboardList, 'Workbooks and checklists', 'A PDF people print or fill in.'],
               ] as const
             ).map(([Glyph, title, text]) => (
               <div className="product-kind" key={title}>
@@ -223,23 +212,6 @@ export function ProductsPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
-          </div>
-          <div className="segmented" role="radiogroup" aria-label="Product type">
-            {TYPES.map(([key, label]) => (
-              <label className="segmented__option" key={key}>
-                <input
-                  type="radio"
-                  name="product-type"
-                  value={key}
-                  checked={type === key}
-                  onChange={() => updateParams({ type: key === 'all' ? null : key })}
-                />
-                <span className="segmented__label">
-                  {label}
-                  <span className="tab__count">{countOf(key)}</span>
-                </span>
-              </label>
-            ))}
           </div>
           <Switch
             label="Show archived"
@@ -285,7 +257,7 @@ export function ProductsPage() {
                 creatorSlug={slug}
                 currency={currency}
                 sellingPages={sellingPages(product)}
-                featured={product === best && type === 'all'}
+                featured={product === best}
                 busy={busyProductId === product.publicId}
                 restoreDisabledReason={limitReason}
                 onArchive={setArchiveTarget}
@@ -311,7 +283,7 @@ export function ProductsPage() {
           <ConfirmDialog
             open={archiveTarget !== null}
             title={`Archive “${archiveTarget?.name ?? ''}”?`}
-            text="It can’t be bought anymore and leaves your product list. Past orders and buyers’ access links keep working. You can restore it any time."
+            text="It can’t be bought anymore and leaves your product list. Past orders and buyers’ personal links keep working. You can restore it any time."
             confirmLabel="Archive product"
             tone="warning"
             icon={Archive}

@@ -27,13 +27,18 @@ import { useLandingPageStore } from '../../landing-pages/model/landing-page-stor
 import { useProductStore } from '../../products/model/product-store'
 import { getAudiencePreview, getCampaign } from '../api/campaigns-api'
 import { CampaignResultsBoard } from '../components/CampaignResultsBoard'
+import { CampaignLinksCard } from '../components/CampaignLinksCard'
 import { CampaignStatusAlert } from '../components/CampaignStatusAlert'
 import { FailedRecipientsCard } from '../components/FailedRecipientsCard'
+import { ResendCard } from '../components/ResendCard'
+import { ResendOrigin } from '../components/ResendOrigin'
 import { useCampaignStore } from '../model/campaign-store'
 import { campaignGroup } from '../model/campaign-groups'
 import { isCampaignComplete } from '../model/campaign-progress'
 import { userTimezone } from '../model/schedule'
+import { RESEND_LIMIT } from '../model/types'
 import type { AudiencePreview, CampaignDetail } from '../model/types'
+import { footerReasonOf } from '../model/audience'
 import { useAudienceName } from '../model/use-audience-name'
 
 const POLL_INTERVAL_MS = 3000
@@ -153,7 +158,7 @@ export function CampaignDetailPage() {
     const requeued = await resendFailedForSlug(slug, campaignId)
     if (requeued === null) return
     setConfirming(null)
-    toast({ tone: 'success', title: 'Resending', message: `${plural(requeued, 'email')} ${requeued === 1 ? 'is' : 'are'} on their way.` })
+    toast({ tone: 'success', title: 'Retrying', message: `${plural(requeued, 'email')} ${requeued === 1 ? 'is' : 'are'} on their way.` })
     reload()
   }
 
@@ -188,8 +193,11 @@ export function CampaignDetailPage() {
     const statusKey = campaignStatusKey(campaign)
     const done = statusKey === 'sent' || statusKey === 'sending' || statusKey === 'failed'
     const recipients = campaign.recipientCount
-    // Your other sent campaigns: what "vs your average" compares with.
-    const others = allCampaigns.filter((other) => other.publicId !== campaign.publicId && campaignGroup(other) === 'sent')
+    // Your other sent campaigns: what "vs your average" compares with. Resends go only to people who didn't open, so they
+    // would drag every average down: originals only.
+    const others = allCampaigns.filter(
+      (other) => other.publicId !== campaign.publicId && !other.sourceCampaignPublicId && campaignGroup(other) === 'sent',
+    )
     const audience = audienceName(campaign)
     const zone = userTimezone(new Date(campaign.createdAt)).zone
     const when = campaign.queuedAt
@@ -209,7 +217,7 @@ export function CampaignDetailPage() {
     return (
       <>
         <PageHeader
-          eyebrow={`Campaign · ${audience}`}
+          eyebrow={campaign.sourceCampaignPublicId ? `Campaign · Resend ${campaign.resendRound ?? 1} of ${RESEND_LIMIT}` : `Campaign · ${audience}`}
           title={campaign.subject}
           subtitle={when}
           actions={
@@ -228,7 +236,7 @@ export function CampaignDetailPage() {
                     setConfirming('resend')
                   }}
                 >
-                  Resend failed ({number(campaign.failedCount)})
+                  Retry failed ({number(campaign.failedCount)})
                 </Button>
               )}
               {campaign.status === 'Scheduled' && (
@@ -248,14 +256,17 @@ export function CampaignDetailPage() {
         />
         <div className="stack stack--lg reveal">
           <CampaignStatusAlert campaign={campaign} zone={zone} audienceSize={currentAudienceSize} />
+          {campaign.sourceCampaignPublicId && <ResendOrigin slug={slug} campaign={campaign} />}
           <CampaignResultsBoard
             campaign={campaign}
             audience={audience}
             recipients={statusKey === 'scheduled' ? currentAudienceSize : recipients}
             others={others}
           />
+          <ResendCard slug={slug} campaign={campaign} />
           <div className="dash">
             <div className="span-7 stack">
+              <CampaignLinksCard campaign={campaign} />
               <FailedRecipientsCard
                 recipients={showFailed ? failedRecipients : []}
                 status={showFailed ? failedRecipientsStatus : 'success'}
@@ -282,6 +293,11 @@ export function CampaignDetailPage() {
                   subject={campaign.subject}
                   body={campaign.bodyText}
                   button={campaign.ctaLabel ? { label: campaign.ctaLabel } : undefined}
+                  textLinks={campaign.clicks.links.filter((link) => link.kind === 'Text').map((link) => link.url)}
+                  reason={footerReasonOf(
+                    // A resend keeps the footer of the campaign it follows.
+                    allCampaigns.find((other) => other.publicId === campaign.sourceCampaignPublicId)?.audienceType ?? campaign.audienceType,
+                  )}
                 />
               </Card>
             </div>
@@ -293,7 +309,7 @@ export function CampaignDetailPage() {
           onClose={() => setConfirming(null)}
           dismissible={resendFailedStatus !== 'submitting'}
           size="sm"
-          title={`Resend to ${plural(campaign.failedCount, 'failed recipient')}?`}
+          title={`Retry ${plural(campaign.failedCount, 'failed recipient')}?`}
           description={`We’ll try the ${number(campaign.failedCount)} addresses that failed once more. Addresses that don’t exist will probably fail again. ${
             sendsLeft === null
               ? 'This counts against your monthly sends.'
@@ -306,7 +322,7 @@ export function CampaignDetailPage() {
                 Cancel
               </Button>
               <Button variant="primary" icon={RotateCw} loading={resendFailedStatus === 'submitting'} onClick={() => void confirmResend()}>
-                Resend
+                Retry
               </Button>
             </>
           }

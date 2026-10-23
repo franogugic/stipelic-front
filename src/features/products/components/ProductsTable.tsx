@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { cover } from '../../../shared/lib/cover'
 import { date, number } from '../../../shared/lib/format'
-import { Money, ProductTypeBadge, StatusBadge, productStatusKey, productTypeKey } from '../../../shared/ui/ledger'
+import { FileTypeBadge, FreeBadge, Money, StatusBadge, productStatusKey } from '../../../shared/ui/ledger'
 import type { LandingPage } from '../../landing-pages/model/types'
+import { fileFormatOf, isFreeProduct } from '../model/product-file'
 import type { Product } from '../model/types'
 import { ProductMenu } from './ProductMenu'
 
@@ -38,7 +39,7 @@ export function ProductsTable({
         <thead>
           <tr>
             <th scope="col">Product</th>
-            <th scope="col">Type</th>
+            <th scope="col">File</th>
             <th scope="col">Status</th>
             <th scope="col" className="is-num">
               Price
@@ -49,7 +50,7 @@ export function ProductsTable({
             <th scope="col" className="is-num">
               Revenue
             </th>
-            <th scope="col">Selling page</th>
+            <th scope="col">Page</th>
             <th scope="col" className="is-actions">
               <span className="sr-only">Actions</span>
             </th>
@@ -62,6 +63,8 @@ export function ProductsTable({
             const busy = busyProductId === product.publicId
             const thumb = cover(product.publicId, product.thumbnailUrl)
             const pages = sellingPagesOf(product)
+            const free = isFreeProduct(product)
+            const format = product.fileName ? fileFormatOf(product.fileName) : null
             return (
               <tr key={product.publicId} aria-busy={busy || undefined} className={archived ? 'is-archived' : undefined}>
                 <td className="is-lead">
@@ -75,20 +78,18 @@ export function ProductsTable({
                     </div>
                   </div>
                 </td>
-                <td data-label="Type">
-                  <ProductTypeBadge type={productTypeKey(product.type)} />
-                </td>
+                <td data-label="File">{format ? <FileTypeBadge format={format} /> : <span className="text-muted">—</span>}</td>
                 <td data-label="Status">
                   <StatusBadge kind="product" value={productStatusKey(product.status)} />
                 </td>
                 <td data-label="Price" className="is-num">
-                  <Money amountCents={product.priceCents} currency={currency} />
+                  {free ? <FreeBadge /> : <Money amountCents={product.priceCents} currency={currency} />}
                 </td>
                 <td data-label="Sales" className="is-num">
-                  {number(product.paidOrderCount)}
+                  {free ? <span className="text-muted">—</span> : number(product.paidOrderCount)}
                 </td>
                 <td data-label="Revenue" className="is-num">
-                  <Money amountCents={product.revenueCents} currency={currency} />
+                  {free ? <span className="text-muted">—</span> : <Money amountCents={product.revenueCents} currency={currency} />}
                 </td>
                 <td data-label="Page" className="text-secondary">
                   {pages.length > 0 ? pages[0].title : '—'}

@@ -1,5 +1,6 @@
 import { Badge } from './Badge'
-import { PAGE_TYPES, PRODUCT_TYPES, STATUS } from './status'
+import { FileDown, Gift } from 'lucide-react'
+import { PAGE_TYPES, STATUS } from './status'
 import type { StatusKind } from './status'
 
 /** `kind` + a prototype key (see the *StatusKey mappers in status.ts). Unknown keys render a plain badge. */
@@ -25,13 +26,20 @@ export function PageTypeBadge({ type }: { type: string }) {
   )
 }
 
-export function ProductTypeBadge({ type }: { type: string }) {
-  const entry = PRODUCT_TYPES[type]
-  if (!entry) return <span className="badge">{type}</span>
-  const [text, Icon] = entry
+/** The format of a product's document ("PDF", "EPUB", "ZIP"). */
+export function FileTypeBadge({ format }: { format: string }) {
   return (
-    <Badge tone="outline" icon={Icon}>
-      {text}
+    <Badge tone="outline" icon={FileDown}>
+      {format}
+    </Badge>
+  )
+}
+
+/** A product given away for an email on lead pages, not sold. */
+export function FreeBadge() {
+  return (
+    <Badge tone="accent" icon={Gift}>
+      Free
     </Badge>
   )
 }

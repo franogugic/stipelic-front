@@ -25,8 +25,10 @@ export function ScheduleModal({
   afterReset,
   subject,
   recipientCount,
+  noun = 'subscriber',
   busy,
   error,
+  resend,
   onClose,
   onSchedule,
 }: {
@@ -34,20 +36,29 @@ export function ScheduleModal({
   afterReset: boolean
   subject: string
   recipientCount: number | null
+  /** Who gets it: subscribers, or the buyers of a page. */
+  noun?: 'subscriber' | 'buyer'
   busy: boolean
   /** The API's message when scheduling failed. */
   error: string | null
+  /** A resend of a sent campaign: the time must be before `latest` (the end of the resend window). */
+  resend?: { latest: Date }
   onClose: () => void
   onSchedule: (at: Date) => void
 }) {
   // Fixed per opening: the window and the quick picks are measured from when the modal opened.
   const [openedAt] = useState(() => Date.now())
   const reset = nextReset(openedAt)
-  const picks = afterReset ? [{ label: `After the reset · ${dateShort(reset)}, 09:00`, at: reset }] : quickPicks(openedAt)
+  const windowEnd = resend?.latest
+  const withinWindow = (at: Date) => !windowEnd || at <= windowEnd
+  const picks = (afterReset ? [{ label: `After the reset · ${dateShort(reset)}, 09:00`, at: reset }] : quickPicks(openedAt)).filter((pick) =>
+    withinWindow(pick.at),
+  )
   const initial = afterReset ? reset : picks[0]?.at ?? new Date(openedAt + 24 * 3_600_000)
   const [dateValue, setDateValue] = useState(toDateInput(initial))
   const [timeValue, setTimeValue] = useState(toTimeInput(initial))
-  const { earliest, latest } = scheduleWindow(openedAt)
+  const { earliest, latest: farthest } = scheduleWindow(openedAt)
+  const latest = windowEnd && windowEnd < farthest ? windowEnd : farthest
   const { zone, offset } = userTimezone(new Date(openedAt))
 
   const chosen = parseLocalDateTime(dateValue, timeValue)
@@ -57,7 +68,7 @@ export function ScheduleModal({
       : chosen < earliest
         ? `That time has already passed. Pick a time after ${dateTime(earliest)}.`
         : chosen > latest
-          ? `That’s too far ahead. Pick a time before ${date(latest)}.`
+          ? `That’s too far ahead. Pick a time before ${resend ? dateTime(latest) : date(latest)}.`
           : null
 
   const submit = (event: FormEvent) => {
@@ -73,8 +84,12 @@ export function ScheduleModal({
       open={open}
       onClose={onClose}
       dismissible={!busy}
-      title="Schedule campaign"
-      description={`“${subject}” to ${recipientCount === null ? 'your audience' : plural(recipientCount, 'subscriber')}.`}
+      title={resend ? 'Schedule resend' : 'Schedule campaign'}
+      description={
+        resend
+          ? `“${subject}” to ${recipientCount === null ? 'the people who didn’t open' : `${plural(recipientCount, 'person', 'people')} who didn’t open`}.`
+          : `“${subject}” to ${recipientCount === null ? 'your audience' : plural(recipientCount, noun)}.`
+      }
       icon={CalendarClock}
       tone="accent"
       actions={
@@ -151,8 +166,17 @@ export function ScheduleModal({
           </div>
         </div>
         <p className="field__hint">
-          Pick a time at least {MIN_SCHEDULE_BUFFER_MINUTES} minutes from now and no more than a year ahead (until{' '}
-          {date(latest)}).
+          {resend ? (
+            <>
+              Pick a time at least {MIN_SCHEDULE_BUFFER_MINUTES} minutes from now and before {dateTime(latest)} — resends close 30
+              days after the original was sent.
+            </>
+          ) : (
+            <>
+              Pick a time at least {MIN_SCHEDULE_BUFFER_MINUTES} minutes from now and no more than a year ahead (until{' '}
+              {date(latest)}).
+            </>
+          )}
         </p>
       </form>
     </Modal>
