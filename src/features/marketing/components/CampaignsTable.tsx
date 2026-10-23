@@ -1,4 +1,4 @@
-import { Send } from 'lucide-react'
+import { CornerUpLeft, Send } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { date, dateShort, number, percent } from '../../../shared/lib/format'
 import {
@@ -101,6 +101,11 @@ export function CampaignsTable({
                         <Link className="table__primary" to={`/app/${slug}/emails/campaigns/${campaign.publicId}`}>
                           {campaign.subject}
                         </Link>
+                        {campaign.source && (
+                          <span className="table__secondary">
+                            <CornerUpLeft className="inline-icon" /> Resend {campaign.resendRound ?? 1} of “{campaign.source.subject}”
+                          </span>
+                        )}
                       </td>
                       <td data-label="Audience" className="text-secondary">
                         {audienceName(campaign)}

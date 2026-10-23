@@ -12,6 +12,7 @@ export function SendConfirmModal({
   sendsLeftAfter,
   busy,
   error,
+  resend,
   onCancel,
   onConfirm,
 }: {
@@ -25,12 +26,15 @@ export function SendConfirmModal({
   sendsLeftAfter: number | null
   busy: boolean
   error: string | null
+  /** A resend to non-openers: which one it is ("Resend 2 of 5"). */
+  resend?: { round: number; limit: number }
   onCancel: () => void
   onConfirm: () => void
 }) {
   const items = [
     { term: 'Subject', description: subject },
     { term: 'Audience', description: audienceTitle },
+    ...(resend ? [{ term: 'Resend', description: `${resend.round} of ${resend.limit}` }] : []),
     ...(from ? [{ term: 'From', description: from }] : []),
     ...(sendsLeftAfter === null ? [] : [{ term: 'Sends left after', description: `${number(sendsLeftAfter)} this month` }]),
   ]
@@ -40,7 +44,7 @@ export function SendConfirmModal({
       onClose={onCancel}
       dismissible={!busy}
       size="sm"
-      title={`Send to ${plural(recipientCount, 'subscriber')}?`}
+      title={resend ? `Resend to ${plural(recipientCount, 'person', 'people')}?` : `Send to ${plural(recipientCount, 'subscriber')}?`}
       description="It goes out right away and can’t be stopped once sending finishes."
       icon={Send}
       tone="accent"
@@ -50,7 +54,7 @@ export function SendConfirmModal({
             Cancel
           </Button>
           <Button variant="accent" icon={Send} loading={busy} onClick={onConfirm}>
-            Send now
+            {resend ? 'Resend now' : 'Send now'}
           </Button>
         </>
       }

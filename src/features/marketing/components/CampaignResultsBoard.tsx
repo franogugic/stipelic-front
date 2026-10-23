@@ -23,6 +23,7 @@ export function CampaignResultsBoard({
   /** Your other sent campaigns (this one excluded). */
   others: CampaignListItem[]
 }) {
+  const isResend = Boolean(campaign.sourceCampaignPublicId)
   const statusKey = campaignStatusKey(campaign)
   const done = statusKey === 'sent' || statusKey === 'sending' || statusKey === 'failed'
   const total = campaign.recipientCount
@@ -68,7 +69,10 @@ export function CampaignResultsBoard({
           value={done && delivered > 0 ? percent(share(opens, delivered)) : '—'}
           meta={
             done && delivered > 0
-              ? compare(<PointsBadge value={share(opens, delivered)} average={averageOpen} />, averageOpen)
+              ? isResend
+                ? // A resend only goes to people who hadn't opened: comparing it with the averages would only look bad.
+                  <span>{plural(opens, 'more person', 'more people')} reached for the original</span>
+                : compare(<PointsBadge value={share(opens, delivered)} average={averageOpen} />, averageOpen)
               : notYet
           }
           bar={done && delivered > 0 ? { ratio: share(opens, delivered), tone: 'accent' } : undefined}

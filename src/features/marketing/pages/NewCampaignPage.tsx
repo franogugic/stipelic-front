@@ -25,6 +25,7 @@ import {
 } from '../../../shared/ui/ledger'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import { SendConfirmModal } from '../components/SendConfirmModal'
+import { ResendCampaignPage } from './ResendCampaignPage'
 import { ScheduleModal } from '../components/ScheduleModal'
 import { SendingPanel } from '../components/SendingPanel'
 import { nextReset } from '../model/schedule'
@@ -34,8 +35,17 @@ import type { CampaignDetail } from '../model/types'
 
 type AudienceRow = { value: string; icon: LucideIcon; title: string; meta: string; count: number }
 
-/** New campaign: pick an audience, write the message, then send it now or schedule it. */
+/** New campaign: pick an audience, write the message, then send it now or schedule it. With `?mode=resend&of=<id>`: the
+ * resend wizard for that sent campaign. */
 export function NewCampaignPage() {
+  const { slug = '' } = useParams<{ slug: string }>()
+  const [searchParams] = useSearchParams()
+  const resendOf = searchParams.get('mode') === 'resend' ? searchParams.get('of') : null
+  if (resendOf) return <ResendCampaignPage slug={slug} originalPublicId={resendOf} />
+  return <NewCampaignForm />
+}
+
+function NewCampaignForm() {
   const toast = useToast()
   const navigate = useNavigate()
   const { slug = '' } = useParams<{ slug: string }>()

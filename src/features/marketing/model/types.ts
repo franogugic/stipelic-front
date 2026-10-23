@@ -1,5 +1,49 @@
 import type { AnalyticsPeriod, AnalyticsStep } from '../../analytics/model/types'
-export type CampaignAudienceType = 'LandingPage' | 'Product' | 'All'
+export type CampaignAudienceType = 'LandingPage' | 'Product' | 'All' | 'CampaignNonOpeners'
+
+/** Up to five resends per campaign, within 30 days of the original. */
+export const RESEND_LIMIT = 5
+
+/** Why a non-opener resend is not possible right now (`NOT_SENT` and `IS_RESEND` mean the card is not shown at all). */
+export type ResendReason =
+  | 'TOO_EARLY'
+  | 'TOO_LATE'
+  | 'LIMIT_REACHED'
+  | 'RESEND_PENDING'
+  | 'NOT_SENT'
+  | 'IS_RESEND'
+  | 'NO_RECIPIENTS'
+
+/** A resend as listed under its original. */
+export type ResendHistoryItem = {
+  publicId: string
+  /** 1–5 */
+  round: number
+  status: CampaignStatus
+  subject: string
+  queuedAt: string | null
+  scheduledAt: string | null
+  recipientCount: number
+  deliveredCount: number
+  uniqueOpenCount: number
+}
+
+/** On the original's detail: where resending stands. Everything here is the server's answer, never recomputed. */
+export type NonOpenerResend = {
+  eligible: boolean
+  reason: ResendReason | null
+  /** The live size of the next resend: delivered, opened nothing yet, not unsubscribed. */
+  recipientCount: number
+  /** When the next resend becomes possible (24 h after the last send), and when the window closes (30 days). */
+  eligibleFrom: string | null
+  eligibleUntil: string | null
+  used: number
+  limit: number
+  resends: ResendHistoryItem[]
+}
+
+/** Set on a resend (null on an original): which campaign it follows. */
+export type ResendSource = { publicId: string; subject: string }
 export type CampaignStatus = 'Draft' | 'Queued' | 'Scheduled' | 'Failed' | 'Cancelled'
 export type EmailTemplateStatus = 'Active' | 'Archived'
 
@@ -48,6 +92,11 @@ export type CampaignListItem = {
   sentCount: number
   failedCount: number
   uniqueOpenCount: number
+  /** The original this is a resend of; null for originals. Averages and charts leave resends out. */
+  sourceCampaignPublicId: string | null
+  /** 1–5 for a resend, null for an original. */
+  resendRound: number | null
+  source: ResendSource | null
 }
 
 export type CampaignDetail = {
@@ -68,6 +117,11 @@ export type CampaignDetail = {
   sentCount: number
   failedCount: number
   uniqueOpenCount: number
+  sourceCampaignPublicId: string | null
+  resendRound: number | null
+  source: ResendSource | null
+  /** Originals only; null on a resend. */
+  nonOpenerResend: NonOpenerResend | null
 }
 
 // Content is either taken from a template (`templatePublicId` alone) or sent inline (`subject` +
