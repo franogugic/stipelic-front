@@ -99,8 +99,9 @@ export function VerifyEmailPage() {
           your pages and products will live in.
         </p>
         <div className="cluster cluster--center">
-          <Button variant="accent" icon={ArrowRight} to="/">
-            Set up your workspace
+          {/* "/" takes someone with a session to their workspace (or the welcome page); without one it is the marketing page. */}
+          <Button variant="accent" icon={ArrowRight} to={hasSession ? '/' : '/login'}>
+            {hasSession ? 'Set up your workspace' : 'Log in to set up your workspace'}
           </Button>
         </div>
       </SoloLayout>
