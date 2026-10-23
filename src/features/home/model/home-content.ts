@@ -72,7 +72,8 @@ export const faqItems = (): FaqItem[] => [
   },
   {
     question: 'How do buyers get my product?',
-    answer: 'Every product is a link — a download, a course, a booking page. The buyer receives it by email right after paying.',
+    answer:
+      'Every product is a document — a PDF, EPUB or ZIP. It downloads the moment they pay, and they get a personal link by email to download it again any time.',
   },
   {
     question: 'Can I cancel any time?',

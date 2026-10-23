@@ -82,7 +82,7 @@ function FallbackVisual({ product, shape = 'tall' }: { product: LandingProduct |
   if (!product) return null
   return (
     <div className={`lp__visual lp__visual--fallback lp__visual--${shape}`} role="img" aria-label={product.name}>
-      <span className="lp-fallback__type">Digital download</span>
+      <span className="lp-fallback__type">{product.priceCents > 0 ? 'Instant download' : 'Free download'}</span>
       <span className="lp-fallback__name">{product.name}</span>
       <span className="lp-fallback__price">{wholePrice(product)}</span>
     </div>

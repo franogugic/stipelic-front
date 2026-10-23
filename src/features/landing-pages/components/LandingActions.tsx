@@ -61,7 +61,7 @@ export function BuyButton({
       ) : (
         <span className="lp-buy__note">
           <Lock />
-          Secure card checkout · Instant delivery by email
+          Secure card checkout · Instant download
         </span>
       )}
     </div>
