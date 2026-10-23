@@ -27,6 +27,7 @@ import { useLandingPageStore } from '../../landing-pages/model/landing-page-stor
 import { useProductStore } from '../../products/model/product-store'
 import { getAudiencePreview, getCampaign } from '../api/campaigns-api'
 import { CampaignResultsBoard } from '../components/CampaignResultsBoard'
+import { CampaignLinksCard } from '../components/CampaignLinksCard'
 import { CampaignStatusAlert } from '../components/CampaignStatusAlert'
 import { FailedRecipientsCard } from '../components/FailedRecipientsCard'
 import { ResendCard } from '../components/ResendCard'
@@ -265,6 +266,7 @@ export function CampaignDetailPage() {
           <ResendCard slug={slug} campaign={campaign} />
           <div className="dash">
             <div className="span-7 stack">
+              <CampaignLinksCard campaign={campaign} />
               <FailedRecipientsCard
                 recipients={showFailed ? failedRecipients : []}
                 status={showFailed ? failedRecipientsStatus : 'success'}
@@ -291,6 +293,7 @@ export function CampaignDetailPage() {
                   subject={campaign.subject}
                   body={campaign.bodyText}
                   button={campaign.ctaLabel ? { label: campaign.ctaLabel } : undefined}
+                  textLinks={campaign.clicks.links.filter((link) => link.kind === 'Text').map((link) => link.url)}
                   reason={footerReasonOf(
                     // A resend keeps the footer of the campaign it follows.
                     allCampaigns.find((other) => other.publicId === campaign.sourceCampaignPublicId)?.audienceType ?? campaign.audienceType,

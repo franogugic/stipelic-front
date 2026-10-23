@@ -152,3 +152,135 @@
   background: var(--color-surface-2);
 }
 
+
+.quiet-note + .link-stats {
+  margin-top: var(--space-4);
+}
+/* Link stats — one row per link in an email: where it is, the URL, people and clicks */
+.link-stats {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.link-stats__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+.link-stats__row:first-child {
+  padding-top: 0;
+}
+.link-stats__row:last-child {
+  border-bottom: 0;
+}
+.link-stats__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+.link-stats__where {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.link-stats__text {
+  overflow: hidden;
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.link-stats__url {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.link-stats__url:hover,
+.link-stats__url:focus-visible {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.link-stats__bar {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-3);
+  overflow: hidden;
+}
+.link-stats__bar span {
+  display: block;
+  width: var(--w);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--chart-1);
+}
+.link-stats__nums {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-0-5);
+  flex-shrink: 0;
+  min-width: 84px;
+  text-align: right;
+}
+.link-stats__people {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.link-stats__people strong {
+  font-family: var(--font-display);
+  font-size: var(--display-sm);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--color-text);
+}
+.link-stats__foot {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-divider);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.board__kpis--5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.board__kpis--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.board__kpis--5 .kpi {
+  padding-right: var(--space-5);
+  padding-left: var(--space-5);
+}
+@media (max-width: 1023px) {
+  .board__kpis,
+    .board__kpis--5,
+    .board__stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  .board__kpis--5 .kpi:nth-child(5),
+    .board__kpis--3 .kpi:nth-child(3) {
+      grid-column: 1 / -1;
+      border-left: 0;
+    }
+}
+/* Campaign detail — text links in the email preview (round 5) */
+.email-preview__link {
+  color: var(--brand-text-light, inherit);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+:root[data-theme="dark"] .email-preview__link {
+  color: var(--brand-text-dark, inherit);
+}
+

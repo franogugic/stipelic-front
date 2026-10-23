@@ -101,6 +101,12 @@ export type CampaignListItem = {
   /** 1–5 for a resend, null for an original. */
   resendRound: number | null
   source: ResendSource | null
+  /** False for a campaign sent before click tracking existed. */
+  clickTracked: boolean
+  /** Links in the email (the button and the URLs in the text). */
+  linkCount: number
+  /** People who clicked at least one link. */
+  uniqueClickCount: number
 }
 
 export type CampaignDetail = {
@@ -126,6 +132,27 @@ export type CampaignDetail = {
   source: ResendSource | null
   /** Originals only; null on a resend. */
   nonOpenerResend: NonOpenerResend | null
+  /** False for a campaign sent before click tracking existed: its `clicks` are empty and say nothing. */
+  clickTracked: boolean
+  clicks: CampaignClicks
+}
+
+/** The click statistics of a campaign. `clickRate` is unique clickers ÷ delivered, 0–1 like the open rate. */
+export type CampaignClicks = {
+  uniqueClickers: number
+  totalClicks: number
+  clickRate: number
+  links: CampaignLinkStats[]
+}
+
+/** `kind` is Button (the call to action) or Text (a URL in the message); `label` is the button's text. */
+export type CampaignLinkStats = {
+  url: string
+  position: number
+  kind: 'Button' | 'Text'
+  label: string | null
+  uniqueClicks: number
+  totalClicks: number
 }
 
 // Content is either taken from a template (`templatePublicId` alone) or sent inline (`subject` +

@@ -19,7 +19,7 @@ export function KpiCell({
   meta?: ReactNode
   spark?: { values: number[]; label: string }
   /** A thin bar showing the value as part of the whole; `ratio` is a percentage. */
-  bar?: { ratio: number; tone?: 'accent' | 'success' | 'danger' }
+  bar?: { ratio: number; tone?: 'accent' | 'success' | 'danger' | 'ink' }
 }) {
   return (
     <div className="kpi">

@@ -1,7 +1,8 @@
-import { MailCheck, MailOpen, MailX, Users } from 'lucide-react'
+import { MailCheck, MailOpen, MailX, MousePointerClick, Users } from 'lucide-react'
 import { number, percent, plural } from '../../../shared/lib/format'
 import { KpiCell, PointsBadge, campaignStatusKey } from '../../../shared/ui/ledger'
 import type { CSSProperties } from 'react'
+import { clickInfoOfDetail, clickInfoOfItem } from '../model/clicks'
 import type { CampaignDetail, CampaignListItem } from '../model/types'
 
 const share = (count: number, of: number) => (of > 0 ? (count / of) * 100 : 0)
@@ -38,18 +39,30 @@ export function CampaignResultsBoard({
   const averageDelivery = average((other) => share(other.sentCount, other.recipientCount))
   const averageOpen = average((other) => share(other.uniqueOpenCount, other.sentCount))
   const averageFailed = average((other) => share(other.failedCount, other.recipientCount))
-  const compare = (badge: React.ReactNode, averageValue: number | null) =>
-    averageValue === null ? null : (
+  // Resends go only to people who hadn't opened, so they stay out of every average; so do campaigns sent before click
+  // tracking and emails without links.
+  const clickRates = others.flatMap((other) => {
+    const info = clickInfoOfItem(other)
+    return !other.sourceCampaignPublicId && info.kind === 'tracked' ? [info.rate] : []
+  })
+  const averageClick = clickRates.length > 0 ? clickRates.reduce((sum, rate) => sum + rate, 0) / clickRates.length : null
+  const sending = statusKey === 'sending'
+  const click = clickInfoOfDetail(campaign)
+  const compare = (badge: React.ReactNode, averageValue: number | null) => {
+    // While it is still going out, a comparison with finished campaigns would only look bad.
+    if (sending) return <span>So far — still sending</span>
+    return averageValue === null ? null : (
       <>
         {badge}
         <span>vs your average {percent(averageValue)}</span>
       </>
     )
+  }
   const notYet = <span>After it’s sent</span>
 
   return (
     <section className="card board" aria-label="Campaign results">
-      <div className="board__kpis">
+      <div className="board__kpis board__kpis--5">
         <KpiCell
           label="Recipients"
           icon={Users}
@@ -76,6 +89,25 @@ export function CampaignResultsBoard({
               : notYet
           }
           bar={done && delivered > 0 ? { ratio: share(opens, delivered), tone: 'accent' } : undefined}
+        />
+        <KpiCell
+          label="Click rate"
+          icon={MousePointerClick}
+          value={done && delivered > 0 && click.kind === 'tracked' ? percent(click.rate) : '—'}
+          meta={
+            !done || delivered === 0 ? (
+              notYet
+            ) : click.kind === 'untracked' ? (
+              <span>Click tracking wasn’t on when it was sent</span>
+            ) : click.kind === 'nolinks' ? (
+              <span>No links in this email</span>
+            ) : isResend ? (
+              <span>{plural(campaign.clicks.uniqueClickers, 'person', 'people')} clicked</span>
+            ) : (
+              compare(<PointsBadge value={click.rate} average={averageClick} />, averageClick)
+            )
+          }
+          bar={done && delivered > 0 && click.kind === 'tracked' ? { ratio: click.rate, tone: 'ink' } : undefined}
         />
         <KpiCell
           label="Failed"
@@ -114,7 +146,9 @@ export function CampaignResultsBoard({
                   Still sending <strong>{number(pending)}</strong>
                 </li>
               )}
-              <li className="stackbar__total">{plural(opens, 'person', 'people')} opened it</li>
+              <li className="stackbar__total">
+                {plural(opens, 'person', 'people')} opened it{click.kind === 'tracked' ? ` · ${number(campaign.clicks.uniqueClickers)} clicked` : ''}
+              </li>
             </ul>
           </div>
         </div>
