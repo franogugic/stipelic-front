@@ -31,7 +31,7 @@ function Downloads({ order }: { order: Order }) {
 
 /**
  * Orders in the prototype's ordersTable() layout. `compact` (dashboard) drops the landing page and
- * net columns. Rows stack into labelled blocks on narrow screens (`table--stack`).
+ * downloads columns. The date is the one the period rule counts the order on. Rows stack into labelled blocks on narrow screens (`table--stack`).
  */
 export function OrdersTable({ orders, compact = false }: { orders: Order[]; compact?: boolean }) {
   return (
@@ -47,14 +47,7 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
             <th scope="col" className="is-num">
               Amount
             </th>
-            {!compact && (
-              <>
-                <th scope="col" className="is-num">
-                  Net
-                </th>
-                <th scope="col">Downloads</th>
-              </>
-            )}
+            {!compact && <th scope="col">Downloads</th>}
           </tr>
         </thead>
         <tbody>
@@ -81,7 +74,13 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
                   </td>
                 )}
                 <td data-label="Date" className="num">
-                  {date(order.createdAt)}
+                  {order.status === 'Refunded' ? (
+                    <span data-tooltip={`Ordered ${date(order.createdAt)}, refunded ${date(order.countedAt)}`} tabIndex={0}>
+                      {date(order.countedAt)}
+                    </span>
+                  ) : (
+                    date(order.countedAt)
+                  )}
                 </td>
                 <td data-label="Status">
                   <StatusBadge kind="order" value={order.status.toLowerCase()} />
@@ -90,14 +89,9 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
                   <Money amountCents={order.amountCents} currency={order.currency} />
                 </td>
                 {!compact && (
-                  <>
-                    <td data-label="Net" className="is-num">
-                      <Money amountCents={order.netAmountCents} currency={order.currency} />
-                    </td>
-                    <td data-label="Downloads">
-                      <Downloads order={order} />
-                    </td>
-                  </>
+                  <td data-label="Downloads">
+                    <Downloads order={order} />
+                  </td>
                 )}
               </tr>
             )

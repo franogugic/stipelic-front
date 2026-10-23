@@ -19,11 +19,19 @@ export interface Order {
   /** How often the buyer downloaded the file through their personal link; the last time. */
   downloadCount: number
   lastDownloadedAt: string | null
+  /** The date the period rule counts the order on: paid → PaidAt, refunded → the refund, pending / failed → CreatedAt. */
+  countedAt: string
+  /** The refund time of a Refunded order, else null. */
+  refundedAt: string | null
 }
 
 export interface OrdersPage {
   orders: Order[]
   hasMore: boolean
+  /** Orders matching every filter, period included; null without a period. */
+  total: number | null
+  /** In the period, product, page and search — whatever the status filter says; null without a period. */
+  statusCounts: { all: number; paid: number; pending: number; failed: number; refunded: number } | null
 }
 
 export interface OrderSummary {
@@ -50,6 +58,10 @@ export interface OrderPeriodSummary {
   timezone: string
   currency: string | null
   range: { from: string; to: string }
+  /** Null for "all". */
+  previousRange: { from: string; to: string } | null
+  /** The product the numbers are narrowed to, echoed. */
+  productPublicId: string | null
   paidOrderCount: number
   totalPaidAmountCents: number
   totalPlatformFeeCents: number
@@ -60,8 +72,26 @@ export interface OrderPeriodSummary {
   failedOrderCount: number
   /** Paid + refunded + pending + failed in the period. */
   totalOrderCount: number
+  /** The same figures for the previous window; null for "all". */
+  previous: {
+    paidOrderCount: number
+    totalPaidAmountCents: number
+    refundedOrderCount: number
+    refundedAmountCents: number
+    pendingOrderCount: number
+    failedOrderCount: number
+    totalOrderCount: number
+  } | null
   /** Oldest first, zero-filled; `start` is "yyyy-MM-ddTHH:mm" in `timezone`. */
-  buckets: Array<{ start: string; grossCents: number; netCents: number; refundedCount: number }>
+  buckets: Array<{
+    start: string
+    grossCents: number
+    netCents: number
+    refundedCount: number
+    /** Paid orders counted in the bucket. */
+    paidCount: number
+    refundedCents: number
+  }>
 }
 
 export interface OrderMonthTrend {
