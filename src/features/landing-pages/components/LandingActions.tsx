@@ -1,6 +1,7 @@
 import { ArrowRight, CircleAlert, Lock, MailCheck, Pause } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
+import { ApiError } from '../../../shared/api/http-client'
 
 // The page's one call to action: the buy button (sales pages) or the email form (lead capture). Without handlers
 // they are the editor preview's still pictures.
@@ -75,6 +76,7 @@ type LeadState =
   | { kind: 'success'; email: string }
   | { kind: 'closed' }
   | { kind: 'failed' }
+  | { kind: 'rate-limited' }
 
 export function LeadForm({
   label,
@@ -138,8 +140,9 @@ export function LeadForm({
     try {
       const result = await onSubmit(value, trap)
       setState(result === 'closed' ? { kind: 'closed' } : { kind: 'success', email: value })
-    } catch {
-      setState({ kind: 'failed' })
+    } catch (failure) {
+      // 429: this address (or this device) signed up too often in a short time.
+      setState(failure instanceof ApiError && failure.status === 429 ? { kind: 'rate-limited' } : { kind: 'failed' })
     }
   }
 
@@ -147,9 +150,11 @@ export function LeadForm({
   const error =
     state.kind === 'invalid'
       ? 'Enter a full email address, like ana@example.com.'
-      : state.kind === 'failed'
-        ? 'Something went wrong. Please try again.'
-        : null
+      : state.kind === 'rate-limited'
+        ? 'Too many sign-ups from this address. Please wait a while and try again.'
+        : state.kind === 'failed'
+          ? 'Something went wrong. Please try again.'
+          : null
 
   return (
     <form className={`lp-form ${inverted ? 'lp-form--inverted' : ''} ${error ? 'has-error' : ''}`} noValidate onSubmit={(event) => void submit(event)}>
@@ -177,7 +182,7 @@ export function LeadForm({
           aria-describedby={error ? `${id}-error` : `${id}-hint`}
           onChange={(event) => {
             setEmail(event.target.value)
-            if (state.kind === 'invalid' || state.kind === 'failed') setState({ kind: 'idle' })
+            if (state.kind === 'invalid' || state.kind === 'failed' || state.kind === 'rate-limited') setState({ kind: 'idle' })
           }}
         />
         <button className="lp__cta" type="submit" aria-busy={busy || undefined} tabIndex={onSubmit ? undefined : -1}>
