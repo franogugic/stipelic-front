@@ -89,10 +89,12 @@ export function LeadForm({
   /** The document the page gives away; null for a plain newsletter sign-up (no email is sent). */
   productName?: string | null
   /** Resolves 'closed' when sign-ups are paused; rejects on any other failure. */
-  onSubmit?: (email: string) => Promise<'success' | 'closed'>
+  onSubmit?: (email: string, trap: string) => Promise<'success' | 'closed'>
 }) {
   const id = useId()
   const [email, setEmail] = useState('')
+  // A trap for bots: people never see this field, so anything in it means a script filled the form in.
+  const [trap, setTrap] = useState('')
   const [state, setState] = useState<LeadState>({ kind: 'idle' })
 
   if (state.kind === 'success' || state.kind === 'closed') {
@@ -134,7 +136,7 @@ export function LeadForm({
     }
     setState({ kind: 'submitting' })
     try {
-      const result = await onSubmit(value)
+      const result = await onSubmit(value, trap)
       setState(result === 'closed' ? { kind: 'closed' } : { kind: 'success', email: value })
     } catch {
       setState({ kind: 'failed' })
@@ -154,6 +156,12 @@ export function LeadForm({
       <label className="sr-only" htmlFor={id}>
         Email address
       </label>
+      <div className="lp-form__trap" aria-hidden="true">
+        <label>
+          Leave this empty
+          <input type="text" name="website" tabIndex={-1} autoComplete="off" value={trap} onChange={(event) => setTrap(event.target.value)} />
+        </label>
+      </div>
       <div className="lp-form__row">
         <input
           className="lp-form__input"

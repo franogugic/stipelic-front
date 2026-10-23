@@ -27,10 +27,13 @@ export async function createCheckout(creatorSlug: string, landingPageSlug: strin
   return res.data.checkoutUrl
 }
 
-/** A lead sign-up. A 409 means sign-ups are paused; an address already on the list succeeds like a new one. */
-export async function captureEmail(creatorSlug: string, landingPageSlug: string, email: string): Promise<void> {
+/**
+ * A lead sign-up. A 409 means sign-ups are paused; an address already on the list succeeds like a new one. `website` is the
+ * honeypot field: always empty from a person, so the API can drop a request that has it filled.
+ */
+export async function captureEmail(creatorSlug: string, landingPageSlug: string, email: string, website = ''): Promise<void> {
   await apiRequest<unknown>(
     `/api/public/landing-pages/${encodeURIComponent(creatorSlug)}/${encodeURIComponent(landingPageSlug)}/captures`,
-    { method: 'POST', body: { email } },
+    { method: 'POST', body: { email, website } },
   )
 }
