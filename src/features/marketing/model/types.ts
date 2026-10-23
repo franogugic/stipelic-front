@@ -1,5 +1,5 @@
 import type { AnalyticsPeriod, AnalyticsStep } from '../../analytics/model/types'
-export type CampaignAudienceType = 'LandingPage' | 'Product' | 'All' | 'CampaignNonOpeners'
+export type CampaignAudienceType = 'LandingPage' | 'LandingPageBuyers' | 'Product' | 'All' | 'CampaignNonOpeners'
 
 /** Up to five resends per campaign, within 30 days of the original. */
 export const RESEND_LIMIT = 5
@@ -154,6 +154,8 @@ export type CampaignAudiences = {
   all: { recipientCount: number }
   landingPages: { publicId: string; title: string; recipientCount: number }[]
   products: { publicId: string; name: string; recipientCount: number }[]
+  /** Sales pages with the people who paid through them (an archived page only while it has buyers). */
+  landingPageBuyers: { publicId: string; title: string; recipientCount: number }[]
 }
 
 export type FailedRecipient = {

@@ -25,6 +25,7 @@ export function ScheduleModal({
   afterReset,
   subject,
   recipientCount,
+  noun = 'subscriber',
   busy,
   error,
   resend,
@@ -35,6 +36,8 @@ export function ScheduleModal({
   afterReset: boolean
   subject: string
   recipientCount: number | null
+  /** Who gets it: subscribers, or the buyers of a page. */
+  noun?: 'subscriber' | 'buyer'
   busy: boolean
   /** The API's message when scheduling failed. */
   error: string | null
@@ -85,7 +88,7 @@ export function ScheduleModal({
       description={
         resend
           ? `“${subject}” to ${recipientCount === null ? 'the people who didn’t open' : `${plural(recipientCount, 'person', 'people')} who didn’t open`}.`
-          : `“${subject}” to ${recipientCount === null ? 'your audience' : plural(recipientCount, 'subscriber')}.`
+          : `“${subject}” to ${recipientCount === null ? 'your audience' : plural(recipientCount, noun)}.`
       }
       icon={CalendarClock}
       tone="accent"

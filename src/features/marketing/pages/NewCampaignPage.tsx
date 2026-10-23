@@ -1,13 +1,12 @@
-import { ArrowUpRight, CalendarClock, CircleAlert, Info, Package, PanelsTopLeft, Send, Users } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { ArrowUpRight, CalendarClock, CircleAlert, Info, Send, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { date, dateTime, number, plural } from '../../../shared/lib/format'
+import { useKeyedLoad } from '../../../shared/lib/use-keyed-load'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { EmailPreview } from '../../../shared/ui/EmailPreview'
 import {
   Alert,
-  Badge,
   Button,
   Card,
   ConfirmDialog,
@@ -24,16 +23,88 @@ import {
   useToast,
 } from '../../../shared/ui/ledger'
 import { useCreatorStore } from '../../creators/model/creator-store'
+import { listLandingPages } from '../../landing-pages/api/landing-pages-api'
+import type { LandingPage } from '../../landing-pages/model/types'
+import { listProducts } from '../../products/api/products-api'
 import { SendConfirmModal } from '../components/SendConfirmModal'
 import { ResendCampaignPage } from './ResendCampaignPage'
 import { ScheduleModal } from '../components/ScheduleModal'
 import { SendingPanel } from '../components/SendingPanel'
+import { audienceLabel, footerReasonOf, isBuyersAudience, selectionFromUrl, urlFromSelection } from '../model/audience'
 import { nextReset } from '../model/schedule'
 import { BODY_MAX_LENGTH, CTA_LABEL_MAX_LENGTH, CTA_URL_MAX_LENGTH, SUBJECT_MAX_LENGTH } from '../model/mail-content-rules'
 import { useCampaignComposer } from '../model/use-campaign-composer'
-import type { CampaignDetail } from '../model/types'
+import type { CampaignAudienceType, CampaignDetail } from '../model/types'
 
-type AudienceRow = { value: string; icon: LucideIcon; title: string; meta: string; count: number }
+type AudienceRow = { value: string; type: CampaignAudienceType; name: string; title: string; meta: string; count: number }
+type AudienceGroup = { id: string; title?: string; note?: string; rows: AudienceRow[] }
+
+const BUYERS_NOTE = 'Paid orders only — pending, failed and refunded ones don’t count. Anyone who unsubscribed is always left out.'
+
+const PAGE_STATUS_META: Record<string, string> = { Published: 'Sales page', Draft: 'Sales page · draft', Archived: 'Sales page · archived' }
+
+/** The wizard's audiences in groups — All, Sign-ups, Products, Buyers — each with its live count. */
+function audienceGroups(
+  audiences: NonNullable<ReturnType<typeof useCampaignComposer>['audiences']>,
+  pages: LandingPage[],
+  products: Map<string, string>,
+  productPrices: Map<string, number>,
+): AudienceGroup[] {
+  const pageOf = new Map(pages.map((page) => [page.publicId, page]))
+  return ([
+    {
+      id: 'all',
+      rows: [{ value: 'all', type: 'All' as const, name: '', title: 'All subscribers', meta: 'Everyone who is subscribed', count: audiences.all.recipientCount }],
+    },
+    {
+      id: 'signups',
+      title: 'Sign-ups',
+      // Lead pages collect sign-ups; any other page only appears once someone has subscribed through it.
+      rows: audiences.landingPages
+        .filter((page) => pageOf.get(page.publicId)?.type === 'LeadGen' || page.recipientCount > 0)
+        .map((page) => {
+        const full = pageOf.get(page.publicId)
+        const gives = full?.productPublicId ? products.get(full.productPublicId) : undefined
+        return {
+          value: `LandingPage:${page.publicId}`,
+          type: 'LandingPage' as const,
+          name: page.title,
+          title: `Sign-ups from ${page.title}`,
+          meta: gives ? `Got ${gives} for their email` : 'Newsletter sign-ups',
+          count: page.recipientCount,
+        }
+      }),
+    },
+    {
+      id: 'products',
+      title: 'Products',
+      // Products that sell; a free one appears through its sign-up page above, unless it already has subscribers.
+      rows: audiences.products
+        .filter((product) => productPrices.get(product.publicId) !== 0 || product.recipientCount > 0)
+        .map((product) => ({
+        value: `Product:${product.publicId}`,
+        type: 'Product' as const,
+        name: product.name,
+        title: product.name,
+        meta: 'Subscribed on its pages',
+        count: product.recipientCount,
+      })),
+    },
+    {
+      id: 'buyers',
+      title: 'Buyers',
+      note: BUYERS_NOTE,
+      rows: audiences.landingPageBuyers.map((page) => ({
+        value: `LandingPageBuyers:${page.publicId}`,
+        type: 'LandingPageBuyers' as const,
+        name: page.title,
+        title: `Buyers from ${page.title}`,
+        meta: PAGE_STATUS_META[pageOf.get(page.publicId)?.status ?? 'Published'] ?? 'Sales page',
+        count: page.recipientCount,
+      })),
+    },
+  ] satisfies AudienceGroup[]).filter((group) => group.rows.length > 0)
+}
 
 /** New campaign: pick an audience, write the message, then send it now or schedule it. With `?mode=resend&of=<id>`: the
  * resend wizard for that sent campaign. */
@@ -58,8 +129,14 @@ function NewCampaignForm() {
   const creator = currentCreator?.slug === slug ? currentCreator : null
   const creatorLoading = currentCreatorStatus === 'idle' || currentCreatorStatus === 'loading'
 
-  const [searchParams] = useSearchParams()
-  const composer = useCampaignComposer({ slug, initialTemplateId: searchParams.get('template') })
+  const [searchParams, setSearchParams] = useSearchParams()
+  const composer = useCampaignComposer({
+    slug,
+    initialTemplateId: searchParams.get('template'),
+    requestedSelection: selectionFromUrl(searchParams.get('audience')),
+  })
+  const pagesLoad = useKeyedLoad(slug ? `pages|${slug}` : null, () => listLandingPages(slug, true))
+  const productsLoad = useKeyedLoad(slug ? `products|${slug}` : null, () => listProducts(slug, true))
   const { content, recipientCount, remaining, overLimit } = composer
 
   // The reset date shown in the over-limit note is measured from when the page opened.
@@ -82,32 +159,36 @@ function NewCampaignForm() {
   if (!slug) return null
 
   const audiences = composer.audiences
-  const rows: AudienceRow[] = audiences
-    ? [
-        { value: 'all', icon: Users, title: 'All subscribers', meta: 'Everyone who is subscribed', count: audiences.all.recipientCount },
-        ...audiences.landingPages.map((page) => ({
-          value: `LandingPage:${page.publicId}`,
-          icon: PanelsTopLeft,
-          title: page.title,
-          meta: 'Landing page',
-          count: page.recipientCount,
-        })),
-        ...audiences.products.map((product) => ({
-          value: `Product:${product.publicId}`,
-          icon: Package,
-          title: product.name,
-          meta: 'Product',
-          count: product.recipientCount,
-        })),
-      ]
+  const productNames = new Map(productsLoad.load.status === 'success' ? productsLoad.load.data.map((product) => [product.publicId, product.name]) : [])
+  const productPrices = new Map(productsLoad.load.status === 'success' ? productsLoad.load.data.map((product) => [product.publicId, product.priceCents]) : [])
+  const groups = audiences
+    ? audienceGroups(audiences, pagesLoad.load.status === 'success' ? pagesLoad.load.data : [], productNames, productPrices)
     : []
+  const rows = groups.flatMap((group) => group.rows)
   const selected = rows.find((row) => row.value === composer.selection) ?? null
+  const buyers = isBuyersAudience(composer.audienceType)
+  const noun = buyers ? 'buyer' : 'subscriber'
+  const everyAudienceEmpty = audiences !== null && rows.every((row) => row.count === 0)
+  const selectedLabel = selected ? audienceLabel(selected.type, selected.name) : ''
+  const pick = (value: string) => {
+    composer.setSelection(value)
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        const key = urlFromSelection(value)
+        if (key) next.set('audience', key)
+        else next.delete('audience')
+        return next
+      },
+      { replace: true },
+    )
+  }
   const noAudience = recipientCount === 0
   const left = remaining ?? 0
   const sendTip = overLimit
     ? `Only ${number(left)} sends left this month — schedule it for after the reset`
     : noAudience
-      ? 'This audience has no subscribers yet'
+      ? 'Nobody to send to yet'
       : undefined
 
   const brandName = creatorSettings?.brandName || creator?.name || ''
@@ -145,7 +226,7 @@ function NewCampaignForm() {
     toast({
       tone: 'success',
       title: 'Campaign scheduled',
-      message: `It goes out on ${dateTime(at)}${count === null ? '' : ` to ${plural(count, 'subscriber')}`}.`,
+      message: `It goes out on ${dateTime(at)}${count === null ? '' : ` to ${plural(count, noun)}`}.`,
     })
     navigate(`/app/${slug}/emails`)
   }
@@ -174,13 +255,23 @@ function NewCampaignForm() {
         </div>
       )
     }
-    if (noAudience && selected) {
+    if (noAudience && everyAudienceEmpty) {
       return (
-        <Alert tone="warning" icon={Users} title="No one to send to yet" live>
-          {selected.value === 'all'
-            ? 'Nobody has subscribed yet. Share a page to start collecting emails.'
-            : `Nobody has subscribed through ${selected.title} yet. Choose another audience, or share a page that sells it to start collecting emails.`}
-        </Alert>
+        <div className="alert alert--warning" role="alert">
+          <Users />
+          <div className="alert__body">
+            <p className="alert__title">No one to send to yet</p>
+            <p>
+              Nobody has subscribed or bought anything yet. Share a landing page to collect your first emails and sales — they show up here as
+              audiences.
+            </p>
+            <div className="cluster">
+              <Button variant="secondary" icon={ArrowUpRight} to={`/app/${slug}/landing-pages`}>
+                Your landing pages
+              </Button>
+            </div>
+          </div>
+        </div>
       )
     }
     if (composer.previewStatus === 'error') {
@@ -194,10 +285,11 @@ function NewCampaignForm() {
     }
     if (composer.previewStatus === 'loading' || recipientCount === null) return <SkeletonBlock />
     return (
-      <Alert tone="info" icon={Info} title={plural(recipientCount, 'recipient')}>
+      <Alert tone="info" icon={Info} title={`${plural(recipientCount, 'recipient')} · ${selectedLabel}`}>
+        {buyers && 'Buyers who didn’t tick “keep me posted” at checkout get it too; the footer tells them why. '}
         {remaining === null
           ? `Your plan has unlimited sends. This campaign uses ${number(recipientCount)}.`
-          : `You have ${number(left)} sends left this month. This campaign uses ${number(recipientCount)}.`}
+          : `You have ${number(left)} sends left this month — this campaign uses ${number(recipientCount)}.`}
       </Alert>
     )
   }
@@ -232,7 +324,7 @@ function NewCampaignForm() {
       />
       <div className="grid grid--2 grid--gap-lg">
         <div className="stack stack--lg">
-          <Card title="Audience" subtitle="Only active subscribers receive it">
+          <Card title="Audience" subtitle="People who unsubscribed never get it">
             {!audiences ? (
               composer.audiencesStatus === 'error' ? (
                 <Alert tone="danger" icon={CircleAlert} title="Couldn’t load your audiences" />
@@ -240,27 +332,51 @@ function NewCampaignForm() {
                 <SkeletonRows count={3} />
               )
             ) : (
-              <div className="stack stack--sm" role="radiogroup" aria-label="Audience">
-                {rows.map((row) => (
-                  <label className="choice" key={row.value}>
-                    <input
-                      className="choice__input"
-                      type="radio"
-                      name="audience"
-                      checked={row.value === composer.selection}
-                      onChange={() => composer.setSelection(row.value)}
-                    />
-                    <span className="cluster cluster--between cluster--nowrap">
-                      <span className="cluster cluster--nowrap">
-                        <row.icon className="choice__icon" />
-                        <span className="stack stack--xs">
-                          <span className="choice__title">{row.title}</span>
-                          <span className="text-xs text-muted">{row.meta}</span>
+              <div className="option-list" role="radiogroup" aria-label="Audience">
+                {groups.map((group) => (
+                  <div
+                    className="option-list__group"
+                    key={group.id}
+                    {...(group.title ? { role: 'group', 'aria-labelledby': `aud-${group.id}` } : {})}
+                  >
+                    {group.title && (
+                      <p className="option-list__heading" id={`aud-${group.id}`}>
+                        {group.title}
+                      </p>
+                    )}
+                    {group.note && (
+                      <p className="option-list__note">
+                        <Info />
+                        <span>{group.note}</span>
+                      </p>
+                    )}
+                    {group.rows.map((row) => (
+                      <label className={`option-row${row.count ? '' : ' is-empty'}`} key={row.value}>
+                        <input
+                          className="option-row__input"
+                          type="radio"
+                          name="audience"
+                          checked={row.value === composer.selection}
+                          disabled={row.count === 0}
+                          onChange={() => pick(row.value)}
+                        />
+                        <span className="option-row__radio" aria-hidden="true" />
+                        <span className="option-row__text">
+                          <span className="option-row__title">{row.title}</span>
+                          <span className="option-row__meta">
+                            {row.count > 0
+                              ? row.meta
+                              : row.type === 'LandingPageBuyers'
+                                ? 'No buyers yet — you can pick it after the first sale'
+                                : 'Nobody yet'}
+                          </span>
                         </span>
-                      </span>
-                      <Badge tone={row.count ? undefined : 'warning'}>{plural(row.count, 'recipient')}</Badge>
-                    </span>
-                  </label>
+                        <span className={`option-row__count${row.count ? '' : ' is-zero'}`}>
+                          {row.count ? plural(row.count, row.type === 'LandingPageBuyers' ? 'buyer' : 'subscriber') : '0'}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 ))}
               </div>
             )}
@@ -350,6 +466,7 @@ function NewCampaignForm() {
             body={content.bodyText}
             button={content.ctaLabel.trim() ? { label: content.ctaLabel.trim() } : undefined}
             device={device}
+            reason={footerReasonOf(composer.audienceType)}
           />
         </Card>
       </div>
@@ -358,7 +475,8 @@ function NewCampaignForm() {
         open={confirmingSend}
         recipientCount={recipientCount ?? 0}
         subject={content.subject.trim()}
-        audienceTitle={selected?.title ?? ''}
+        audienceTitle={selectedLabel}
+        noun={noun}
         from={supportEmail ? `${brandName} <${supportEmail}>` : null}
         sendsLeftAfter={remaining === null ? null : Math.max(0, left - (recipientCount ?? 0))}
         busy={composer.isSending}
@@ -373,6 +491,7 @@ function NewCampaignForm() {
           afterReset={schedule.afterReset}
           subject={content.subject.trim()}
           recipientCount={recipientCount}
+          noun={noun}
           busy={composer.isSending}
           error={composer.sendError}
           onClose={() => setSchedule(null)}

@@ -30,6 +30,7 @@ import { SendingPanel } from '../components/SendingPanel'
 import { useCampaignStore } from '../model/campaign-store'
 import { BODY_MAX_LENGTH, CTA_LABEL_MAX_LENGTH, CTA_URL_MAX_LENGTH, SUBJECT_MAX_LENGTH } from '../model/mail-content-rules'
 import { ESTIMATED_OPENS, nextResendRound, resendStateOf, suggestedResendSubject } from '../model/resend'
+import { footerReasonOf } from '../model/audience'
 import { nextReset } from '../model/schedule'
 import type { AudiencePreview, CampaignDetail } from '../model/types'
 import { RESEND_LIMIT } from '../model/types'
@@ -452,6 +453,7 @@ export function ResendCampaignPage({ slug, originalPublicId }: { slug: string; o
               body={fields.bodyText}
               button={fields.ctaLabel.trim() ? { label: fields.ctaLabel.trim() } : undefined}
               device={device}
+              reason={footerReasonOf(original.audienceType)}
             />
           </Card>
         </div>

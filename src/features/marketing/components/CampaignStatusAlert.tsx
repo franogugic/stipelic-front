@@ -2,6 +2,7 @@ import { Ban, CalendarClock, CircleAlert, Send } from 'lucide-react'
 import { dateTime, plural } from '../../../shared/lib/format'
 import { Alert, Meter, campaignStatusKey } from '../../../shared/ui/ledger'
 import type { CampaignDetail } from '../model/types'
+import { isBuyersAudience } from '../model/audience'
 
 /** The banner at the top of a campaign: delivery progress, the schedule, the failure reason or the cancellation. */
 export function CampaignStatusAlert({ campaign, zone, audienceSize }: { campaign: CampaignDetail; zone: string; audienceSize: number | null }) {
@@ -25,7 +26,7 @@ export function CampaignStatusAlert({ campaign, zone, audienceSize }: { campaign
           : 'It goes to everyone in the audience at that moment'}
         {audienceSize === null
           ? '.'
-          : ` — currently ${campaign.sourceCampaignPublicId ? plural(audienceSize, 'person', 'people') : plural(audienceSize, 'subscriber')}.`}
+          : ` — currently ${campaign.sourceCampaignPublicId ? plural(audienceSize, 'person', 'people') : plural(audienceSize, isBuyersAudience(campaign.audienceType) ? 'buyer' : 'subscriber')}.`}
       </Alert>
     )
   }

@@ -14,6 +14,7 @@ export function EmailPreview({
   body,
   button,
   device = 'desktop',
+  reason = 'joined',
 }: {
   brandName: string
   supportEmail: string
@@ -22,6 +23,8 @@ export function EmailPreview({
   body: string
   button?: { label: string }
   device?: 'desktop' | 'mobile'
+  /** Why the person gets it, as the footer says: they joined the list, or they bought from the brand. */
+  reason?: 'joined' | 'bought'
 }) {
   const paragraphs = body.split(/\n{2,}/)
   return (
@@ -47,7 +50,7 @@ export function EmailPreview({
           <span className="email-preview__button">{button?.label}</span>
         </p>
         <p className="email-preview__footer">
-          You’re receiving this because you joined {brandName}. <u>Unsubscribe</u>
+          You’re receiving this because you {reason === 'bought' ? 'bought from' : 'joined'} {brandName}. <u>Unsubscribe</u>
           <br />
           Sent with Luma
         </p>

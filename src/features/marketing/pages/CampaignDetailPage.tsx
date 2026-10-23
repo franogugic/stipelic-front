@@ -37,6 +37,7 @@ import { isCampaignComplete } from '../model/campaign-progress'
 import { userTimezone } from '../model/schedule'
 import { RESEND_LIMIT } from '../model/types'
 import type { AudiencePreview, CampaignDetail } from '../model/types'
+import { footerReasonOf } from '../model/audience'
 import { useAudienceName } from '../model/use-audience-name'
 
 const POLL_INTERVAL_MS = 3000
@@ -290,6 +291,10 @@ export function CampaignDetailPage() {
                   subject={campaign.subject}
                   body={campaign.bodyText}
                   button={campaign.ctaLabel ? { label: campaign.ctaLabel } : undefined}
+                  reason={footerReasonOf(
+                    // A resend keeps the footer of the campaign it follows.
+                    allCampaigns.find((other) => other.publicId === campaign.sourceCampaignPublicId)?.audienceType ?? campaign.audienceType,
+                  )}
                 />
               </Card>
             </div>

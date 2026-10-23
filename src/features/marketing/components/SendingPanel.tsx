@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { number, plural, time } from '../../../shared/lib/format'
 import { Button, Meter, PageHeader } from '../../../shared/ui/ledger'
 import { getCampaign } from '../api/campaigns-api'
+import { isBuyersAudience } from '../model/audience'
 import { isCampaignComplete } from '../model/campaign-progress'
 import type { CampaignDetail } from '../model/types'
 
@@ -48,6 +49,7 @@ export function SendingPanel({
   const overview = `/app/${slug}/emails`
   const detail = resend ? `/app/${slug}/emails/campaigns/${resend.originalPublicId}` : `/app/${slug}/emails/campaigns/${id}`
   const who = resend ? 'who didn’t open' : ''
+  const noun = isBuyersAudience(campaign.audienceType) ? 'buyer' : 'subscriber'
   const subject = `“${campaign.subject}”`
   return (
     <>
@@ -68,8 +70,8 @@ export function SendingPanel({
           <div className="stack stack--sm">
             <h2 className="state__title" id="sending-title">
               {complete
-                ? `Sent to ${resend ? plural(campaign.sentCount, 'person', 'people') : plural(campaign.sentCount, 'subscriber')}${who ? ` ${who}` : ''}`
-                : `On its way to ${resend ? plural(campaign.recipientCount, 'person', 'people') : plural(campaign.recipientCount, 'subscriber')}${who ? ` ${who}` : ''}`}
+                ? `Sent to ${resend ? plural(campaign.sentCount, 'person', 'people') : plural(campaign.sentCount, noun)}${who ? ` ${who}` : ''}`
+                : `On its way to ${resend ? plural(campaign.recipientCount, 'person', 'people') : plural(campaign.recipientCount, noun)}${who ? ` ${who}` : ''}`}
             </h2>
             <p className="text-secondary">
               {complete

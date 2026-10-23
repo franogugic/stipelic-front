@@ -11,7 +11,7 @@ import type {
   SendCampaignRequest,
 } from './types'
 
-// Value of the audience select: 'all', or '<LandingPage|Product>:<publicId>'.
+// Value of the audience select: 'all', or '<LandingPage|Product|LandingPageBuyers>:<publicId>'.
 const ALL_SELECTION = 'all'
 
 type Content = { subject: string; bodyText: string; ctaLabel: string; ctaUrl: string }
@@ -25,11 +25,21 @@ function audienceOptions(audiences: CampaignAudiences | null) {
     { value: ALL_SELECTION, recipientCount: audiences.all.recipientCount },
     ...audiences.landingPages.map((p) => ({ value: `LandingPage:${p.publicId}`, recipientCount: p.recipientCount })),
     ...audiences.products.map((p) => ({ value: `Product:${p.publicId}`, recipientCount: p.recipientCount })),
+    ...audiences.landingPageBuyers.map((p) => ({ value: `LandingPageBuyers:${p.publicId}`, recipientCount: p.recipientCount })),
   ]
 }
 
 /** State and rules of the "new campaign" form. `initialTemplateId` starts the form from that template once it is loaded. */
-export function useCampaignComposer({ slug, initialTemplateId = null }: { slug: string; initialTemplateId?: string | null }) {
+export function useCampaignComposer({
+  slug,
+  initialTemplateId = null,
+  requestedSelection = null,
+}: {
+  slug: string
+  initialTemplateId?: string | null
+  /** The audience the link asked for (`?audience=`); used while it has recipients and the user has not picked. */
+  requestedSelection?: string | null
+}) {
   const audiences = useCampaignStore((s) => s.audiences)
   const audiencesStatus = useCampaignStore((s) => s.audiencesStatus)
   const loadAudiences = useCampaignStore((s) => s.loadAudiences)
@@ -58,7 +68,8 @@ export function useCampaignComposer({ slug, initialTemplateId = null }: { slug: 
   }, [slug, loadAudiences, loadTemplates])
 
   const options = useMemo(() => audienceOptions(audiences), [audiences])
-  const selection = pickedSelection ?? options.find((o) => o.recipientCount > 0)?.value ?? ALL_SELECTION
+  const requested = options.find((o) => o.value === requestedSelection && o.recipientCount > 0)?.value
+  const selection = pickedSelection ?? requested ?? options.find((o) => o.recipientCount > 0)?.value ?? ALL_SELECTION
 
   const audienceType: CampaignAudienceType =
     selection === ALL_SELECTION ? 'All' : (selection.split(':')[0] as CampaignAudienceType)
