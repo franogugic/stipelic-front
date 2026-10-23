@@ -1,6 +1,6 @@
 import { Download, Link2Off } from 'lucide-react'
 import { date, initials, number, plural } from '../../../shared/lib/format'
-import { Avatar, Money, StatusBadge } from '../../../shared/ui/ledger'
+import { Avatar, Money, StatusBadge, orderBadgeKey } from '../../../shared/ui/ledger'
 import type { Order } from '../model/types'
 
 /** How often the buyer used their personal link — and "Link off" once the order was refunded. */
@@ -83,10 +83,15 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
                   )}
                 </td>
                 <td data-label="Status">
-                  <StatusBadge kind="order" value={order.status.toLowerCase()} />
+                  <StatusBadge kind="order" value={orderBadgeKey(order)} />
                 </td>
                 <td data-label="Amount" className="is-num">
                   <Money amountCents={order.amountCents} currency={order.currency} />
+                  {orderBadgeKey(order) === 'partly' && (
+                    <span className="table__secondary" data-tooltip="The buyer keeps the file; this part of the payment went back to them." tabIndex={0}>
+                      <Money amountCents={order.refundedCents} currency={order.currency} /> refunded
+                    </span>
+                  )}
                 </td>
                 {!compact && (
                   <td data-label="Downloads">

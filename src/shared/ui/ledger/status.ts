@@ -20,7 +20,7 @@ export type StatusKind =
 type StatusEntry = readonly [BadgeTone, string, boolean?]
 
 export const STATUS: Record<StatusKind, Record<string, StatusEntry>> = {
-  order: { paid: ['success', 'Paid'], pending: ['warning', 'Pending'], failed: ['danger', 'Failed'], refunded: ['neutral', 'Refunded'] },
+  order: { paid: ['success', 'Paid'], pending: ['warning', 'Pending'], failed: ['danger', 'Failed'], refunded: ['neutral', 'Refunded'], partly: ['info', 'Partly refunded'] },
   page: { published: ['success', 'Published'], draft: ['neutral', 'Draft'], archived: ['outline', 'Archived'] },
   product: { active: ['success', 'Active'], draft: ['neutral', 'Draft'], archived: ['outline', 'Archived'] },
   campaign: {
@@ -61,6 +61,10 @@ const lower = (value: string) => value.toLowerCase()
 
 /** Order: Pending, Paid, Failed, Refunded. */
 export const orderStatusKey = (apiValue: string) => lower(apiValue)
+
+/** The badge key of an order: a Paid order that got part of its money back is "partly" (the API keeps it Paid). */
+export const orderBadgeKey = (order: { status: string; amountCents: number; refundedCents?: number }) =>
+  order.status === 'Paid' && (order.refundedCents ?? 0) > 0 && (order.refundedCents ?? 0) < order.amountCents ? 'partly' : lower(order.status)
 
 /** Landing page: Draft, Published, Archived. */
 export const pageStatusKey = (apiValue: string) => lower(apiValue)
