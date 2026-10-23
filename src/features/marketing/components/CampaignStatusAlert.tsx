@@ -20,8 +20,12 @@ export function CampaignStatusAlert({ campaign, zone, audienceSize }: { campaign
   if (key === 'scheduled' && campaign.scheduledAt) {
     return (
       <Alert tone="info" icon={CalendarClock} title={`Scheduled for ${dateTime(campaign.scheduledAt)} (your time, ${zone})`}>
-        It goes to everyone in the audience at that moment
-        {audienceSize === null ? '.' : ` — currently ${plural(audienceSize, 'subscriber')}.`}
+        {campaign.sourceCampaignPublicId
+          ? 'It goes to the people who haven’t opened the original or an earlier resend by then'
+          : 'It goes to everyone in the audience at that moment'}
+        {audienceSize === null
+          ? '.'
+          : ` — currently ${campaign.sourceCampaignPublicId ? plural(audienceSize, 'person', 'people') : plural(audienceSize, 'subscriber')}.`}
       </Alert>
     )
   }

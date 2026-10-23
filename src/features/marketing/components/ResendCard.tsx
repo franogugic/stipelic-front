@@ -68,8 +68,9 @@ export function ResendCard({ slug, campaign }: { slug: string; campaign: Campaig
   if (!state) return null
 
   const resends = [...state.resends].sort((a, b) => a.round - b.round)
-  const reach = campaign.uniqueOpenCount + resends.reduce((total, resend) => total + resend.uniqueOpenCount, 0)
-  const thanksToResends = reach - campaign.uniqueOpenCount
+  // The server counts each person once, across the original and every sent resend.
+  const reach = state.openedAnyCount
+  const thanksToResends = state.openedThroughResendsCount
   const maxed = state.reason === 'LIMIT_REACHED'
   const reason = whyNot(state)
   const people = plural(state.recipientCount, 'person', 'people')
@@ -207,7 +208,8 @@ export function ResendCard({ slug, campaign }: { slug: string; campaign: Campaig
                       )}
                     </td>
                     <td data-label="Recipients" className="is-num">
-                      {number(row.recipients)}
+                      {/* A scheduled resend has no recipients yet: they are worked out when it goes out. */}
+                      {row.status === 'Scheduled' || row.status === 'Cancelled' ? <span className="text-muted">—</span> : number(row.recipients)}
                     </td>
                     <td data-label="Opened">
                       {row.status === 'Scheduled' || row.status === 'Cancelled' ? (
@@ -231,7 +233,7 @@ export function ResendCard({ slug, campaign }: { slug: string; campaign: Campaig
         </div>
         <p className="resend__total">
           {number(reach)} of {number(campaign.sentCount)} people have opened at least one send
-          {state.used > 0 && (
+          {resends.some((resend) => resend.status === 'Queued') && (
             <>
               {' '}
               — <strong>{number(thanksToResends)}</strong> of them thanks to resends

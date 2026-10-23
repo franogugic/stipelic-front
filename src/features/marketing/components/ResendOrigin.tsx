@@ -15,8 +15,11 @@ export function ResendOrigin({ slug, campaign }: { slug: string; campaign: Campa
           Resend {round} of {RESEND_LIMIT} · “{campaign.source?.subject ?? '—'}”
         </p>
         <p>
-          Sent to the people who hadn’t opened the original{round > 1 ? ' or an earlier resend' : ''}
-          {campaign.queuedAt ? ` by ${date(campaign.queuedAt)}` : ''}.
+          {campaign.queuedAt
+            ? `Sent to the people who hadn’t opened the original${round > 1 ? ' or an earlier resend' : ''} by ${date(campaign.queuedAt)}.`
+            : campaign.status === 'Scheduled'
+              ? `Goes to the people who haven’t opened the original${round > 1 ? ' or an earlier resend' : ''} by then.`
+              : `Meant for the people who hadn’t opened the original${round > 1 ? ' or an earlier resend' : ''}.`}
         </p>
       </div>
       {campaign.sourceCampaignPublicId && (

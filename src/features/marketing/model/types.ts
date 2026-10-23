@@ -39,6 +39,10 @@ export type NonOpenerResend = {
   eligibleUntil: string | null
   used: number
   limit: number
+  /** People who opened the original or any sent resend, each person once. */
+  openedAnyCount: number
+  /** Of those, the people who opened a resend but not the original. */
+  openedThroughResendsCount: number
   resends: ResendHistoryItem[]
 }
 
