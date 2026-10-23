@@ -1,18 +1,18 @@
 import { Download, Send, Trash2, Users } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { date, number, plural } from '../../../shared/lib/format'
+import { useKeyedLoad } from '../../../shared/lib/use-keyed-load'
 import { AppShell } from '../../../shared/ui/AppShell'
 import {
   Badge,
   Button,
-  Card,
   ConfirmDialog,
   EmptyState,
   ErrorState,
-  HBars,
   PageHeader,
   Select,
+  SkeletonBlock,
   SkeletonCards,
   SkeletonRows,
   StatusBadge,
@@ -21,8 +21,11 @@ import {
   subscriberStatusKey,
   useToast,
 } from '../../../shared/ui/ledger'
-import { deleteContact, exportContacts, getContactStats, searchContacts } from '../api/contacts-api'
+import { PageControls } from '../../analytics/components/PageControls'
+import { usePagePeriod } from '../../analytics/model/use-page-period'
+import { deleteContact, exportContacts, getContactPeriodStats, getContactStats, searchContacts } from '../api/contacts-api'
 import { GrowthCard } from '../components/GrowthCard'
+import { JoinedCard } from '../components/JoinedCard'
 import { SubscribersBoard } from '../components/SubscribersBoard'
 import type { Contact, ContactStats } from '../model/types'
 
@@ -42,8 +45,9 @@ type Results = { key: string; contacts: Contact[]; hasMore: boolean; error: bool
 
 export function SubscribersPage() {
   const { slug = '' } = useParams<{ slug: string }>()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const { period, setPeriod, params: searchParams, update } = usePagePeriod('subscribers')
   const toast = useToast()
+  const periodStats = useKeyedLoad(slug ? `${slug}|${period.id}` : null, () => getContactPeriodStats(slug, period.id))
 
   const [stats, setStats] = useState<Stats | null>(null)
   const [search, setSearch] = useState('')
@@ -105,6 +109,7 @@ export function SubscribersPage() {
   const retry = () => {
     setStats(null)
     loadStats()
+    periodStats.reload()
     setResults(null)
     setAttempt((value) => value + 1)
   }
@@ -169,16 +174,7 @@ export function SubscribersPage() {
     }
   }
 
-  const setStatusFilter = (key: string) =>
-    setSearchParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        if (key === 'all') next.delete('status')
-        else next.set('status', key)
-        return next
-      },
-      { replace: true },
-    )
+  const setStatusFilter = (key: string) => update({ status: key === 'all' ? null : key })
 
   const clearFilters = () => {
     setSearch('')
@@ -282,30 +278,64 @@ export function SubscribersPage() {
     }
     const statusCount = (key: string) =>
       key === 'active' ? data.active : key === 'unsubscribed' ? data.unsubscribed : data.total
+    const periodData = periodStats.load.status === 'success' ? periodStats.load.data : null
     return (
       <div className="stack stack--lg reveal">
-        <SubscribersBoard stats={data} />
-        <div className="dash">
-          <div className="span-8">
-            <GrowthCard slug={slug} />
+        <PageControls
+          period={period.id}
+          onPeriod={setPeriod}
+          series={
+            periodData
+              ? { period: periodData.period, timezone: periodData.timezone, since: periodData.range.from, range: periodData.range, previousRange: periodData.previousRange }
+              : null
+          }
+          loading={periodStats.load.status === 'loading'}
+          updatedAt={periodStats.load.status === 'success' ? periodStats.load.at : new Date()}
+          sinceNote="your first subscriber"
+        />
+        {periodStats.load.status === 'error' ? (
+          <section className="card">
+            <ErrorState
+              compact
+              title="We couldn’t load your numbers"
+              text="The figures for this period didn’t load. Your list is safe — try again in a moment."
+              onRetry={periodStats.reload}
+            />
+          </section>
+        ) : periodData ? (
+          <>
+            <SubscribersBoard stats={periodData} />
+            <div className="dash">
+              <div className="span-8">
+                <GrowthCard stats={periodData} />
+              </div>
+              <div className="span-4">
+                <JoinedCard stats={periodData} onShowAll={() => setPeriod('all')} />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <SkeletonCards count={4} />
+            <div className="dash">
+              <div className="span-8">
+                <SkeletonBlock />
+              </div>
+              <div className="span-4">
+                <SkeletonBlock />
+              </div>
+            </div>
+          </>
+        )}
+        <section className="card" aria-labelledby="subscriber-list-title">
+          <div className="card__header">
+            <div className="card__heading">
+              <h2 className="card__title" id="subscriber-list-title">
+                Everyone on your list
+              </h2>
+              <p className="card__subtitle">{plural(data.total, 'person', 'people')} · any date</p>
+            </div>
           </div>
-          <div className="span-4">
-            <Card title="Where they joined" subtitle="Some joined on more than one page">
-              {data.sources.length > 0 ? (
-                <div className="fill-stack">
-                  <HBars rows={data.sources.map((source) => ({ label: source.title, value: source.count, display: number(source.count) }))} />
-                  <p className="fill-stack__foot">
-                    <span>{plural(data.sources.length, 'page')} collecting emails</span>
-                    <strong>{plural(data.total, 'person', 'people')}</strong>
-                  </p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted">No sources yet.</p>
-              )}
-            </Card>
-          </div>
-        </div>
-        <section className="card" aria-label="Subscriber list">
           <TableFilterBar
             noun="email"
             statuses={STATUS_FILTERS}

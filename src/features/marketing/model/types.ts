@@ -199,17 +199,33 @@ export type ContactStats = {
   monthly: Array<{ month: string; joined: number; unsubscribed: number }>
 }
 
-/** `GET …/contacts/stats?period=` — the same all-time headline counts, with the growth cut to one period. */
+/** `GET …/contacts/stats?period=` — the all-time headline counts, and the period's growth, the period before and the
+ * sources of the people who joined in it. */
 export type ContactPeriodStats = {
+  /** All-time. */
   total: number
   active: number
   newThisMonth: number
   unsubscribed: number
-  sources: ContactStats['sources']
+  importedThisMonth: number
+  imported: number
   period: AnalyticsPeriod
   step: AnalyticsStep
   timezone: string
   range: { from: string; to: string }
+  /** Null for "all". */
+  previousRange: { from: string; to: string } | null
+  /** Contacts in the list when the period started. */
+  startTotal: number
+  /** New contacts in the period (the sum of the buckets). */
+  joined: number
+  /** Opt-outs in the period. */
+  unsubscribedInPeriod: number
+  /** Of `joined`, created by a CSV import. */
+  importedInPeriod: number
+  previous: { joined: number; unsubscribed: number; imported: number } | null
   /** Oldest first, zero-filled; `start` is "yyyy-MM-ddTHH:mm" in `timezone`. `total` is the running size of the list at the end of the bucket. */
-  buckets: Array<{ start: string; joined: number; unsubscribed: number; total: number }>
+  buckets: Array<{ start: string; joined: number; unsubscribed: number; total: number; imported: number }>
+  /** Who joined in the period, each contact once, at the source of its first capture; the rows add up to `joined`. */
+  sources: Array<{ kind: 'page' | 'import'; landingPagePublicId: string | null; title: string; count: number }>
 }
