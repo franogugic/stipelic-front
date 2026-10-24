@@ -32,6 +32,10 @@ type RequestOptions = Omit<RequestInit, 'body' | 'credentials'> & {
   body?: unknown
 }
 
+/** The marker the API expects on every non-GET request (hardening S1). */
+export const CSRF_HEADER = 'X-Requested-With'
+const CSRF_VALUE = 'luma'
+
 const getApiBaseUrl = () => import.meta.env.VITE_API_BASE_URL ?? ''
 
 export async function apiRequest<TResponse>(
@@ -42,9 +46,13 @@ export async function apiRequest<TResponse>(
 
   // A form (a file upload) goes out as multipart: the browser sets the content type and its boundary.
   const isForm = body instanceof FormData
+  const changesData = !['GET', 'HEAD', 'OPTIONS'].includes((requestInit.method ?? 'GET').toUpperCase())
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     headers: {
       ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+      // Every request that changes data carries this marker. A page on another site cannot add a custom header without
+      // a CORS preflight the API refuses, so the API can reject a state change that lacks it (CSRF).
+      ...(changesData ? { [CSRF_HEADER]: CSRF_VALUE } : {}),
       ...headers,
     },
     ...requestInit,

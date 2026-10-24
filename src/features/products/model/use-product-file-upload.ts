@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { ApiError } from '../../../shared/api/http-client'
+import { uploadErrorText } from '../../../shared/lib/upload-error-text'
 import { uploadProductFile } from '../../../shared/api/media-api'
 import type { ConfirmedProductFile } from '../../../shared/api/media-api'
 import { contentTypeOf, validateProductFile } from './product-file'
@@ -33,7 +33,7 @@ export function useProductFileUpload({ slug }: { slug: string }) {
         setPending(await uploadProductFile(slug, file, contentTypeOf(file.name), setProgress))
       } catch (failure) {
         // The server's message names what was wrong with the real file (a fake PDF, a file over the limit).
-        setError(failure instanceof ApiError ? failure.message : 'Upload failed. Please try again.')
+        setError(uploadErrorText(failure))
       } finally {
         setUploading(false)
       }

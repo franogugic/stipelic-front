@@ -115,9 +115,9 @@ function LivePage({ creatorSlug, pageSlug, page }: { creatorSlug: string; pageSl
     return () => window.removeEventListener('pageshow', onPageShow)
   }, [])
 
-  const signUp = async (email: string): Promise<'success' | 'closed'> => {
+  const signUp = async (email: string, trap: string): Promise<'success' | 'closed'> => {
     try {
-      await captureEmail(creatorSlug, pageSlug, email)
+      await captureEmail(creatorSlug, pageSlug, email, trap)
       return 'success'
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) return 'closed'
