@@ -7,7 +7,6 @@ import type {
   CreatorPlan,
   CreatorSettings,
   CreatorSubscriptionCheckoutResult,
-  PayoutCountry,
   UpdateCreatorSettingsRequest,
 } from '../model/types'
 
@@ -53,10 +52,9 @@ export function updateCreatorSettings(slug: string, request: UpdateCreatorSettin
   ).then(unwrapApiResponse)
 }
 
+/** ISO country codes a workspace can be created in: the countries Stripe Connect can pay out to from our platform. */
 export function getPayoutCountries() {
-  return apiRequest<ApiResponse<PayoutCountry[]>>('/api/creators/payout-countries').then(
-    unwrapApiResponse,
-  )
+  return apiRequest<ApiResponse<string[]>>('/api/creators/payout-countries').then(unwrapApiResponse)
 }
 
 export function startConnectOnboarding() {

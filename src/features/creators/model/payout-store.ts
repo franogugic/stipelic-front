@@ -1,13 +1,13 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
 import { getPayoutCountries, startConnectOnboarding } from '../api/creators-api'
-import type { PayoutCountry } from './types'
 
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
 type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error'
 
 type PayoutState = {
-  payoutCountries: PayoutCountry[]
+  /** ISO country codes, as the API lists them. */
+  payoutCountries: string[]
   payoutCountriesStatus: LoadStatus
 
   connectOnboardingStatus: SubmitStatus
@@ -20,7 +20,7 @@ type PayoutState = {
 }
 
 const initialPayoutState = {
-  payoutCountries: [] as PayoutCountry[],
+  payoutCountries: [] as string[],
   payoutCountriesStatus: 'idle' as LoadStatus,
 
   connectOnboardingStatus: 'idle' as SubmitStatus,

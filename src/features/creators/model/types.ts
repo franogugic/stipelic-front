@@ -27,8 +27,6 @@ export type CreatorSubscriptionCheckoutResult = {
   checkoutUrl: string | null
 }
 
-export type PayoutMode = 'StripeConnect' | 'BankTransfer'
-
 export type Creator = {
   publicId: string
   name: string
@@ -42,16 +40,10 @@ export type Creator = {
   cancelAtPeriodEnd: boolean
   currentPeriodEnd: string | null
   countryCode: string
-  payoutMode: PayoutMode
   stripeConnectDetailsSubmitted: boolean
   stripeConnectPayoutsEnabled: boolean
-  hasPayoutProfile: boolean
+  /** Stripe reports payouts enabled on the workspace's connected account. */
   payoutReady: boolean
-}
-
-export type PayoutCountry = {
-  code: string
-  payoutMode: PayoutMode
 }
 
 export type ConnectOnboardingLinkResult = {

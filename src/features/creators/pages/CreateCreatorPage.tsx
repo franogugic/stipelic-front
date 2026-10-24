@@ -21,7 +21,8 @@ import { createSlug, validateCreateCreatorForm } from '../model/create-creator-v
 import type { CreateCreatorFieldName } from '../model/create-creator-validation'
 import { useCreatorStore } from '../model/creator-store'
 import { usePayoutStore } from '../model/payout-store'
-import type { CreateCreatorFormValues, CreatorPlan, PayoutMode } from '../model/types'
+import { countryName } from '../components/payouts/payout-format'
+import type { CreateCreatorFormValues, CreatorPlan } from '../model/types'
 
 /** The API has no "recommended" flag; the prototype marks Pro. */
 const RECOMMENDED_PLAN_CODE = 'pro'
@@ -39,8 +40,6 @@ const STEP_FIELDS: Record<Step, CreateCreatorFieldName[]> = {
 
 /** The API's code for a create that failed because the address is taken. */
 const SLUG_TAKEN_CODE = 'CREATOR_SLUG_TAKEN'
-
-const regionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' })
 
 function browserTimezone() {
   try {
@@ -85,6 +84,7 @@ export function CreateCreatorPage() {
   const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
 
   const payoutCountries = usePayoutStore((s) => s.payoutCountries)
+  const countriesFailed = usePayoutStore((s) => s.payoutCountriesStatus === 'error')
   const loadPayoutCountries = usePayoutStore((s) => s.loadPayoutCountries)
 
   useDocumentTitle('Create workspace · Luma')
@@ -102,7 +102,7 @@ export function CreateCreatorPage() {
   const countries = useMemo(
     () =>
       payoutCountries
-        .map((country) => ({ ...country, name: regionDisplayNames.of(country.code) ?? country.code }))
+        .map((code) => ({ code, name: countryName(code) }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [payoutCountries],
   )
@@ -282,7 +282,14 @@ export function CreateCreatorPage() {
                 </InputGroup>
               )}
             </Field>
-            <Field label="Country" hint="Decides how your earnings are paid out." error={fieldError('countryCode')}>
+            <Field
+              label="Country"
+              hint="Where your business is based. You can sell from any country listed here."
+              error={
+                fieldError('countryCode') ??
+                (countriesFailed ? 'We couldn’t load the list of countries. Reload the page to try again.' : undefined)
+              }
+            >
               {(control) => (
                 <Select
                   {...control}
@@ -319,7 +326,7 @@ export function CreateCreatorPage() {
                 />
               ))}
             </div>
-            {selectedCountry && <PayoutAlert country={selectedCountry.name} payoutMode={selectedCountry.payoutMode} />}
+            {selectedCountry && <PayoutAlert country={selectedCountry.name} />}
           </>
         )}
 
@@ -442,15 +449,10 @@ function PlanCard({ plan, checked, onSelect }: { plan: CreatorPlan; checked: boo
   )
 }
 
-function PayoutAlert({ country, payoutMode }: { country: string; payoutMode: PayoutMode }) {
-  return payoutMode === 'BankTransfer' ? (
-    <Alert tone="info" icon={Landmark} title={`${country} · Bank transfer payouts`}>
-      Your earnings are collected on Luma and paid to your bank account (IBAN) when you request a payout.
-    </Alert>
-  ) : (
+function PayoutAlert({ country }: { country: string }) {
+  return (
     <Alert tone="info" icon={Landmark} title={`${country} · Stripe payouts`}>
-      Your earnings go straight to your own Stripe account. Creators in Serbia or BiH are paid by bank transfer (IBAN)
-      instead.
+      Your earnings go straight to your own Stripe account. You connect it from Payouts after you create the workspace.
     </Alert>
   )
 }
