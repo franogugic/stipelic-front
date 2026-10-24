@@ -1,4 +1,4 @@
-import { Landmark, LayoutDashboard, LogOut, Mail, Package, PanelsTopLeft, Receipt, Settings, ShieldCheck, Users, X } from 'lucide-react'
+import { Landmark, LayoutDashboard, LogOut, Mail, Package, PanelsTopLeft, Receipt, Settings, Users, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
@@ -11,7 +11,7 @@ import type { NavSection } from './nav-sections'
 export type { NavSection } from './nav-sections'
 
 type SidebarProps = {
-  /** The workspace address; empty on a platform page of an admin without a workspace (only the Admin group shows). */
+  /** The workspace address. */
   slug: string
   activeSection: NavSection
   /** Closes the mobile drawer; only the drawer's close button uses it. */
@@ -50,12 +50,6 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-const ADMIN_GROUP: NavGroup = {
-  id: 'admin',
-  label: 'Admin',
-  items: [{ section: 'admin-payouts', label: 'Payouts', icon: ShieldCheck, href: () => '/admin/payouts' }],
-}
-
 function NavGroupList({ group, slug, active }: { group: NavGroup; slug: string; active: string }) {
   const labelId = `nav-label-${group.id}`
   return (
@@ -88,7 +82,6 @@ export function Sidebar({ slug, activeSection, onCloseDrawer }: SidebarProps) {
 
   const fullName = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email : ''
   const brandName = settings?.brandName || creator?.name || ''
-  const isAdmin = Boolean(user?.roles?.includes('platform_admin'))
 
   return (
     <div className="sidebar">
@@ -109,7 +102,6 @@ export function Sidebar({ slug, activeSection, onCloseDrawer }: SidebarProps) {
       )}
       <nav className="nav" aria-label="Main">
         {slug && NAV_GROUPS.map((group) => <NavGroupList key={group.id} group={group} slug={slug} active={activeSection} />)}
-        {isAdmin && <NavGroupList group={ADMIN_GROUP} slug={slug} active={activeSection} />}
       </nav>
       <div className="sidebar__foot">
         <ThemeSwitch />

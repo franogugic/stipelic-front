@@ -1,5 +1,4 @@
 import { Route, Routes } from 'react-router-dom'
-import { AdminPayoutsPage } from '../../features/admin/pages/AdminPayoutsPage'
 import { ConfirmEmailChangePage } from '../../features/auth/pages/ConfirmEmailChangePage'
 import { ForgotPasswordPage } from '../../features/auth/pages/ForgotPasswordPage'
 import { CheckInboxPage } from '../../features/auth/pages/CheckInboxPage'
@@ -33,7 +32,6 @@ import { ProductFormPage } from '../../features/products/pages/ProductFormPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { OrdersPage } from '../../features/orders/pages/OrdersPage'
 import { NotFoundPage } from '../../shared/ui/NotFoundPage'
-import { AdminRoute } from './AdminRoute'
 import { AuthBootstrap } from './AuthBootstrap'
 import { HomeRoute } from './HomeRoute'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -86,9 +84,6 @@ export function AppRouter() {
           <Route path="/creators/new" element={<CreateCreatorPage />} />
         </Route>
 
-        <Route element={<AdminRoute />}>
-          <Route path="/admin/payouts" element={<AdminPayoutsPage />} />
-        </Route>
 
         <Route path="*" element={<NotFoundPage />} />
       </Route>

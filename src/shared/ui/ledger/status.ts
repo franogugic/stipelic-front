@@ -10,7 +10,6 @@ export type StatusKind =
   | 'page'
   | 'product'
   | 'campaign'
-  | 'payout'
   | 'subscriber'
   | 'template'
   | 'subscription'
@@ -30,7 +29,6 @@ export const STATUS: Record<StatusKind, Record<string, StatusEntry>> = {
     failed: ['danger', 'Failed'],
     cancelled: ['outline', 'Cancelled'],
   },
-  payout: { pending: ['warning', 'Pending'], paid: ['success', 'Paid'], failed: ['danger', 'Failed'], cancelled: ['outline', 'Cancelled'] },
   subscriber: { active: ['success', 'Active'], unsubscribed: ['outline', 'Unsubscribed'] },
   template: { active: ['success', 'Active'], archived: ['outline', 'Archived'] },
   subscription: {
@@ -74,9 +72,6 @@ export const pageTypeKey = (apiValue: string) => (apiValue === 'LeadGen' ? 'lead
 
 /** Product: Draft, Active, Archived. */
 export const productStatusKey = (apiValue: string) => lower(apiValue)
-
-/** Payout: Pending, Paid, Failed, Cancelled. */
-export const payoutStatusKey = (apiValue: string) => lower(apiValue)
 
 /** Email template: Active, Archived. */
 export const templateStatusKey = (apiValue: string) => lower(apiValue)
