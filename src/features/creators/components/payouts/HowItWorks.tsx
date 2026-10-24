@@ -3,7 +3,7 @@ import { PayoutsNetNote } from './PayoutsNetNote'
 
 const STEPS: Array<[number: string, title: string, text: string]> = [
   ['1', 'A customer pays', 'Card payment through Stripe checkout.'],
-  ['2', 'It joins your balance', 'Every paid order adds to what you’re owed, order by order.'],
+  ['2', 'It goes to your Stripe account', 'Every paid order lands in the Stripe account you connected.'],
   ['3', 'Money reaches you', 'Stripe pays out to your bank automatically.'],
 ]
 

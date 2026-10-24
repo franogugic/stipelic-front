@@ -1,18 +1,14 @@
-import { CircleAlert, Landmark, Trash2, TriangleAlert, Wallet, X } from 'lucide-react'
+import { CircleAlert, Trash2, TriangleAlert, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { money, number } from '../../../../shared/lib/format'
+import { useNavigate } from 'react-router-dom'
+import { number } from '../../../../shared/lib/format'
 import { Alert, Button, ConfirmDialog, useToast } from '../../../../shared/ui/ledger'
 import { listCampaigns } from '../../../marketing/api/campaigns-api'
 import { getHomeSummary, getOrderSummary } from '../../../orders/api/orders-api'
-import { getPayoutSummary } from '../../api/payouts-api'
 import { useCreatorStore } from '../../model/creator-store'
-import type { Creator, PayoutSummary } from '../../model/types'
+import type { Creator } from '../../model/types'
 
 type Counts = { pages?: number; products?: number; orders?: number; subscribers?: number; campaigns?: number }
-
-const BALANCE_CODE = 'WORKSPACE_HAS_BALANCE'
-const BLOCKED_MESSAGE = 'Request a payout of your remaining balance before deleting this workspace.'
 
 /** Settings → Danger zone: what deleting the workspace removes, and the confirmed delete. */
 export function DangerTab({ slug, creator }: { slug: string; creator: Creator }) {
@@ -22,10 +18,9 @@ export function DangerTab({ slug, creator }: { slug: string; creator: Creator })
   const resetDeleteFeedback = useCreatorStore((s) => s.resetDeleteCreatorFeedback)
 
   const [counts, setCounts] = useState<Counts>({})
-  const [payout, setPayout] = useState<PayoutSummary | null>(null)
   const [open, setOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [blocked, setBlocked] = useState<{ message: string; hasBalance: boolean } | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -41,10 +36,6 @@ export function DangerTab({ slug, creator }: { slug: string; creator: Creator })
     listCampaigns(slug)
       .then((campaigns) => patch({ campaigns: campaigns.length }))
       .catch(() => undefined)
-    // Money left on the workspace blocks the delete; the server enforces it too, this just says so up front.
-    getPayoutSummary(slug)
-      .then((summary) => active && setPayout(summary))
-      .catch(() => undefined)
     return () => {
       active = false
     }
@@ -58,18 +49,17 @@ export function DangerTab({ slug, creator }: { slug: string; creator: Creator })
     [counts.campaigns, 'email campaigns'],
   ]
   const paid = creator.planCode !== 'free'
-  const moneyLeft = payout !== null && (payout.balanceCents > 0 || payout.pendingPayoutCents > 0)
 
   const close = () => {
     if (deleting) return
     setOpen(false)
-    setBlocked(null)
+    setDeleteError(null)
     resetDeleteFeedback()
   }
 
   const confirmDelete = async () => {
     setDeleting(true)
-    setBlocked(null)
+    setDeleteError(null)
     const ok = await deleteCreatorProfile()
     setDeleting(false)
     if (ok) {
@@ -78,11 +68,7 @@ export function DangerTab({ slug, creator }: { slug: string; creator: Creator })
       navigate('/', { replace: true })
       return
     }
-    const { deleteError, deleteErrorCode } = useCreatorStore.getState()
-    setBlocked({
-      message: deleteError ?? 'We could not delete this workspace. Please try again.',
-      hasBalance: deleteErrorCode === BALANCE_CODE,
-    })
+    setDeleteError(useCreatorStore.getState().deleteError ?? 'We could not delete this workspace. Please try again.')
   }
 
   return (
@@ -97,31 +83,6 @@ export function DangerTab({ slug, creator }: { slug: string; creator: Creator })
           </div>
         </div>
         <div className="card__body stack">
-          {moneyLeft && payout && (
-            <Alert
-              tone="danger"
-              icon={Wallet}
-              title="You still have money in Luma"
-              live
-              action={
-                <>
-                  <dl className="kv danger-zone__money">
-                    <dt>Available balance</dt>
-                    <dd>{money(payout.balanceCents, payout.currency)}</dd>
-                    <dt>Pending payout</dt>
-                    <dd>{money(payout.pendingPayoutCents, payout.currency)}</dd>
-                  </dl>
-                  <div>
-                    <Button variant="primary" icon={Landmark} to={`/app/${slug}/payouts`}>
-                      Go to payouts
-                    </Button>
-                  </div>
-                </>
-              }
-            >
-              {BLOCKED_MESSAGE}
-            </Alert>
-          )}
           <p className="text-secondary">This deletes:</p>
           <ul className="danger-zone__list" role="list">
             {rows.map(([count, label]) => (
@@ -137,7 +98,7 @@ export function DangerTab({ slug, creator }: { slug: string; creator: Creator })
             subscribers first if you want to keep them.
           </Alert>
           <div>
-            <Button variant="danger" icon={Trash2} disabledReason={moneyLeft ? BLOCKED_MESSAGE : undefined} onClick={() => setOpen(true)}>
+            <Button variant="danger" icon={Trash2} onClick={() => setOpen(true)}>
               Delete workspace…
             </Button>
           </div>
@@ -159,24 +120,9 @@ export function DangerTab({ slug, creator }: { slug: string; creator: Creator })
         onCancel={close}
         onConfirm={() => void confirmDelete()}
       >
-        {blocked && (
-          <Alert
-            className="modal__alert"
-            tone="danger"
-            icon={blocked.hasBalance ? Wallet : CircleAlert}
-            title={blocked.hasBalance ? 'You still have money in Luma' : undefined}
-            live
-            action={
-              blocked.hasBalance ? (
-                <div>
-                  <Link className="link" to={`/app/${slug}/payouts`}>
-                    Go to payouts
-                  </Link>
-                </div>
-              ) : undefined
-            }
-          >
-            {blocked.message}
+        {deleteError && (
+          <Alert className="modal__alert" tone="danger" icon={CircleAlert} live>
+            {deleteError}
           </Alert>
         )}
       </ConfirmDialog>

@@ -242,10 +242,6 @@
   box-shadow: var(--shadow-sm);
 }
 
-.danger-zone__money {
-  margin: var(--space-1) 0;
-}
-
 /* Creator-branded result pages (purchase success, unsubscribe) */
 .lp-done {
   display: flex;
