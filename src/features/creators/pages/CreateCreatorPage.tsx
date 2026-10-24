@@ -43,9 +43,9 @@ const SLUG_TAKEN_CODE = 'CREATOR_SLUG_TAKEN'
 
 function browserTimezone() {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Sarajevo'
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Zagreb'
   } catch {
-    return 'Europe/Sarajevo'
+    return 'Europe/Zagreb'
   }
 }
 

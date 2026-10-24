@@ -3,30 +3,35 @@
 
 export const MOCK_CREATORS: Array<[name: string, city: string]> = [
   ['MH Studio', 'Split'],
-  ['Lejla Writes', 'Sarajevo'],
-  ['Kotor Guide', 'Kotor'],
-  ['Ana Illustrates', 'Skopje'],
-  ['Nikolić Fitness', 'Novi Sad'],
-  ['Emina Yoga', 'Mostar'],
-  ['Prishtina Code', 'Prishtina'],
+  ['Lejla Writes', 'Zadar'],
+  ['Dubrovnik Guide', 'Dubrovnik'],
+  ['Ana Illustrates', 'Trieste'],
+  ['Nikolić Fitness', 'Osijek'],
+  ['Emina Yoga', 'Pula'],
+  ['Rijeka Code', 'Rijeka'],
   ['Golob Ceramics', 'Ljubljana'],
   ['Radić Sound', 'Zagreb'],
   ['Petek Botanicals', 'Maribor'],
 ]
 
-export const MOCK_COUNTRIES: Array<{ code: string; name: string; payout: 'stripe' | 'iban' }> = [
-  { code: 'HR', name: 'Croatia', payout: 'stripe' },
-  { code: 'SI', name: 'Slovenia', payout: 'stripe' },
-  { code: 'RS', name: 'Serbia', payout: 'iban' },
-  { code: 'BA', name: 'Bosnia and Herzegovina', payout: 'iban' },
-  { code: 'ME', name: 'Montenegro', payout: 'iban' },
-  { code: 'MK', name: 'North Macedonia', payout: 'iban' },
-  { code: 'AL', name: 'Albania', payout: 'iban' },
-  { code: 'XK', name: 'Kosovo', payout: 'iban' },
-  { code: 'BG', name: 'Bulgaria', payout: 'stripe' },
-  { code: 'RO', name: 'Romania', payout: 'stripe' },
-  { code: 'GR', name: 'Greece', payout: 'stripe' },
+/** A few of the countries creators can sell from (the API's payout-countries list has them all: every EU country,
+ * Norway, Liechtenstein, Switzerland, the UK, the US and Canada). Every one of them is paid out through Stripe. */
+export const MOCK_COUNTRIES: Array<{ code: string; name: string }> = [
+  { code: 'HR', name: 'Croatia' },
+  { code: 'SI', name: 'Slovenia' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'FR', name: 'France' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'BG', name: 'Bulgaria' },
+  { code: 'GR', name: 'Greece' },
 ]
+
+/** The number of EU member states; creators can sell from every one of them. */
+export const EU_COUNTRY_COUNT = 27
 
 /** Revenue per month, oldest first (Oct 2025 – Sep 2026), in cents. */
 export const MOCK_MONTHLY_REVENUE_CENTS = [
@@ -66,9 +71,9 @@ export const faqItems = (): FaqItem[] => [
       'No. You build pages from ready-made sections, fill in your text and images, and publish. Your logo and colour are applied everywhere automatically.',
   },
   {
-    question: 'I live in Serbia or Bosnia. Can I get paid?',
+    question: 'Which countries can I sell from?',
     answer:
-      'Yes. In countries Stripe doesn’t support, Luma collects your sales and you request a payout to your bank account (IBAN) whenever you like.',
+      'Luma is built for creators in Croatia and across the EU. You’re paid through your own Stripe account, so you can sell from any EU country — and from Norway, Liechtenstein, Switzerland, the UK, the US and Canada.',
   },
   {
     question: 'How do buyers get my product?',
