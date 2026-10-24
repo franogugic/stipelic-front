@@ -117,7 +117,7 @@ export function PublishBlockedModal({
         return {
           title: 'Set up payouts first',
           description:
-            'This is a sales page, so it takes real payments. Tell us where to send your money before it goes live — it takes about five minutes.',
+            'This is a sales page, so it takes real payments. Connect your Stripe account first, so the money from your sales can reach you — it takes about five minutes.',
           icon: Landmark,
           body: <p className="text-sm text-secondary">Lead capture pages can be published without payouts.</p>,
           actions: (

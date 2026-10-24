@@ -14,6 +14,9 @@ import { parseSectionContent } from '../model/section-content'
 import { DEFAULT_BRAND_COLOR } from '../model/section-library'
 import type { LandingPageWithSections, PublicCreatorPages } from '../model/types'
 
+/** 409 from checkout: the creator's Stripe account can't be paid out to yet. */
+const PAYOUTS_NOT_READY = 'PAYOUTS_NOT_READY'
+
 type Load =
   | { status: 'loading' }
   | { status: 'ready'; page: LandingPageWithSections }
@@ -100,9 +103,13 @@ function LivePage({ creatorSlug, pageSlug, page }: { creatorSlug: string; pageSl
       return null
     } catch (error) {
       setRedirecting(false)
-      return error instanceof ApiError && error.status === 409
-        ? 'Checkout isn’t available right now. Please try again later.'
-        : 'We couldn’t open checkout. Please try again.'
+      if (error instanceof ApiError && error.status === 409) {
+        // The creator hasn't finished connecting Stripe, so the sale has nowhere to go yet.
+        return error.code === PAYOUTS_NOT_READY
+          ? 'This creator isn’t taking payments yet. Please try again later.'
+          : 'Checkout isn’t available right now. Please try again later.'
+      }
+      return 'We couldn’t open checkout. Please try again.'
     }
   }
 
