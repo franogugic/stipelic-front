@@ -16,7 +16,7 @@ import {
   SkeletonBlock,
   SkeletonRows,
   StatusBadge,
-  orderStatusKey,
+  orderBadgeKey,
   pageStatusKey,
   productStatusKey,
   subscriberStatusKey,
@@ -345,7 +345,7 @@ export function ProductDetailPage() {
                             <Money amountCents={order.amountCents} currency={order.currency} />
                           </span>
                           <span className="cluster cluster--sm">
-                            {order.status !== 'Paid' && <StatusBadge kind="order" value={orderStatusKey(order.status)} />}
+                            {(order.status !== 'Paid' || orderBadgeKey(order) === 'partly') && <StatusBadge kind="order" value={orderBadgeKey(order)} />}
                             <span className="table__secondary">{date(order.createdAt)}</span>
                           </span>
                         </PersonRow>

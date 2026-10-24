@@ -23,6 +23,8 @@ export interface Order {
   countedAt: string
   /** The refund time of a Refunded order, else null. */
   refundedAt: string | null
+  /** Money returned to the buyer: all of amountCents on a Refunded order, a part of it on a Paid one (partly refunded, the file stays available). */
+  refundedCents: number
 }
 
 export interface OrdersPage {
