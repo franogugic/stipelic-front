@@ -210,6 +210,21 @@
   color: var(--color-danger);
 }
 
+.danger-zone__list--keep {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.danger-zone__list--keep li {
+  background: var(--color-surface-2);
+  align-items: flex-start;
+}
+
+.danger-zone__list--keep svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--color-success);
+}
+
 .payout-hero__title {
   font-size: var(--display-md);
 }
