@@ -1,18 +1,5 @@
 // Static illustration content for the homepage, taken from the prototype's mock data (designer-prototype/js/mock-data.js).
-// It is never real user data: the hero mock, the bento visuals and the creators strip only show what Luma looks like.
-
-export const MOCK_CREATORS: Array<[name: string, city: string]> = [
-  ['MH Studio', 'Split'],
-  ['Lejla Writes', 'Zadar'],
-  ['Dubrovnik Guide', 'Dubrovnik'],
-  ['Ana Illustrates', 'Trieste'],
-  ['Nikolić Fitness', 'Osijek'],
-  ['Emina Yoga', 'Pula'],
-  ['Rijeka Code', 'Rijeka'],
-  ['Golob Ceramics', 'Ljubljana'],
-  ['Radić Sound', 'Zagreb'],
-  ['Petek Botanicals', 'Maribor'],
-]
+// It is never real user data: the hero mock and the bento visuals only show what Luma looks like, with sample data.
 
 /** A few of the countries creators can sell from (the API's payout-countries list has them all: every EU country,
  * Norway, Liechtenstein, Switzerland, the UK, the US and Canada). Every one of them is paid out through Stripe. */

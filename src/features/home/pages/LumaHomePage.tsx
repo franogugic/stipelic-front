@@ -16,13 +16,12 @@ import {
   Zap,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { monogram } from '../../../shared/lib/format'
 import { PRIVACY_URL, TERMS_URL, isLinked } from '../../../shared/lib/legal-links'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
-import { Avatar, Brand, Button, ThemeToggleButton } from '../../../shared/ui/ledger'
+import { Brand, Button, ThemeToggleButton } from '../../../shared/ui/ledger'
 import { AnalyticsVisual, AudienceVisual, EmailVisual, HeroMock } from '../components/MockVisuals'
 import { PricingPlans } from '../components/PricingPlans'
-import { EU_COUNTRY_COUNT, MOCK_COUNTRIES, MOCK_CREATORS, SUPPORT_EMAIL, faqItems } from '../model/home-content'
+import { EU_COUNTRY_COUNT, MOCK_COUNTRIES, SUPPORT_EMAIL, faqItems } from '../model/home-content'
 import { usePageChrome, useScrollReveal } from '../model/use-page-chrome'
 
 /** The public marketing page of Luma at `/`, for logged-out visitors. Markup and classes from designer-prototype/app/home.html. */
@@ -142,27 +141,6 @@ export function LumaHomePage() {
                 </p>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* Creators marquee */}
-        <section className="mk-proof" aria-label="Who Luma is for">
-          <p className="mk-proof__label">Made for independent creators in Croatia and across the EU</p>
-          <div className="mk-marquee">
-            <ul className="mk-marquee__track" role="list">
-              {/* Rendered twice so the loop is seamless; the copy is hidden from assistive tech. */}
-              {[false, true].flatMap((copy) =>
-                MOCK_CREATORS.map(([name, city]) => (
-                  <li key={`${copy}-${name}`} aria-hidden={copy ? true : undefined}>
-                    <Avatar size="sm" neutral>
-                      {monogram(name)}
-                    </Avatar>
-                    <span className="mk-marquee__name">{name}</span>
-                    <span className="mk-marquee__city">{city}</span>
-                  </li>
-                )),
-              )}
-            </ul>
           </div>
         </section>
 
@@ -373,45 +351,6 @@ export function LumaHomePage() {
                 </li>
               ))}
             </ul>
-          </div>
-        </section>
-
-        {/* Quote */}
-        <section className="mk-section mk-quote" aria-label="What creators say">
-          <div className="mk-wrap">
-            <figure className="mk-quote__figure" data-reveal>
-              <blockquote className="mk-quote__text">
-                “I moved my presets from three different tools to Luma in an afternoon.{' '}
-                <span className="mark">The first sale came in before dinner.</span>”
-              </blockquote>
-              <figcaption className="mk-quote__by">
-                <Avatar size="lg">MH</Avatar>
-                <span>
-                  <strong>Marko Horvat</strong>
-                  <span className="text-muted">Photographer &amp; designer, Split</span>
-                </span>
-              </figcaption>
-            </figure>
-            <div className="mk-quotes">
-              <figure className="mk-mini-quote" data-reveal>
-                <blockquote>“The dashboard is the first thing I open every morning. It’s calm, and it’s all there.”</blockquote>
-                <figcaption>
-                  <Avatar size="sm" neutral>
-                    AS
-                  </Avatar>
-                  Ana Stojanovska · Ana Illustrates
-                </figcaption>
-              </figure>
-              <figure className="mk-mini-quote" data-reveal>
-                <blockquote>“54% open rate on my launch email. I didn’t know that was possible.”</blockquote>
-                <figcaption>
-                  <Avatar size="sm" neutral>
-                    SN
-                  </Avatar>
-                  Stefan Nikolić · Nikolić Fitness
-                </figcaption>
-              </figure>
-            </div>
           </div>
         </section>
 
