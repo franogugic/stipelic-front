@@ -56,7 +56,7 @@ type CreatorState = {
   checkoutError: string | null
   deleteStatus: CreatorDeleteStatus
   deleteError: string | null
-  /** The API's error code of a failed delete, e.g. WORKSPACE_HAS_BALANCE. */
+  /** The API's error code of a failed delete, if it sent one. */
   deleteErrorCode: string | null
   cancelSubscriptionStatus: CreatorCancelSubscriptionStatus
   cancelSubscriptionError: string | null

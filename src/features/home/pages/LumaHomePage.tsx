@@ -16,13 +16,12 @@ import {
   Zap,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { monogram } from '../../../shared/lib/format'
 import { PRIVACY_URL, TERMS_URL, isLinked } from '../../../shared/lib/legal-links'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
-import { Avatar, Brand, Button, ThemeToggleButton } from '../../../shared/ui/ledger'
+import { Brand, Button, ThemeToggleButton } from '../../../shared/ui/ledger'
 import { AnalyticsVisual, AudienceVisual, EmailVisual, HeroMock } from '../components/MockVisuals'
 import { PricingPlans } from '../components/PricingPlans'
-import { MOCK_COUNTRIES, MOCK_CREATORS, SUPPORT_EMAIL, faqItems } from '../model/home-content'
+import { EU_COUNTRY_COUNT, MOCK_COUNTRIES, SUPPORT_EMAIL, faqItems } from '../model/home-content'
 import { usePageChrome, useScrollReveal } from '../model/use-page-chrome'
 
 /** The public marketing page of Luma at `/`, for logged-out visitors. Markup and classes from designer-prototype/app/home.html. */
@@ -68,8 +67,8 @@ export function LumaHomePage() {
           <div className="mk-hero__grid" aria-hidden="true" />
           <div className="mk-wrap mk-hero__text">
             <a className="mk-pill" href="#payouts" data-reveal>
-              <span className="mk-pill__tag">New</span>
-              <span>Bank payouts for creators in Serbia, BiH &amp; Montenegro</span>
+              <span className="mk-pill__tag">EU</span>
+              <span>Paid out to your own Stripe account, anywhere in the EU</span>
               <ArrowRight />
             </a>
             <h1 className="mk-hero__title" id="hero-title" data-reveal>
@@ -79,7 +78,7 @@ export function LumaHomePage() {
             </h1>
             <p className="mk-hero__lead" data-reveal>
               A landing page that sells, card checkout, email campaigns and payouts — one calm place to run your creative
-              business, built for the Balkans.
+              business, built for creators in Croatia and the EU.
             </p>
             <div className="mk-hero__ctas" data-reveal>
               <Button to="/register" variant="accent" size="lg">
@@ -127,8 +126,8 @@ export function LumaHomePage() {
                 <Landmark />
               </span>
               <div>
-                <p className="mk-float__label">Payout sent</p>
-                <p className="mk-float__value">€820.00 → RS35 •••• 1379</p>
+                <p className="mk-float__label">Stripe payout</p>
+                <p className="mk-float__value">€820.00 to your bank</p>
               </div>
             </div>
             <div className="mk-float mk-float--email" aria-hidden="true">
@@ -142,27 +141,6 @@ export function LumaHomePage() {
                 </p>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* Creators marquee */}
-        <section className="mk-proof" aria-label="Creators using Luma">
-          <p className="mk-proof__label">Independent creators from Triglav to Ohrid sell with Luma</p>
-          <div className="mk-marquee">
-            <ul className="mk-marquee__track" role="list">
-              {/* Rendered twice so the loop is seamless; the copy is hidden from assistive tech. */}
-              {[false, true].flatMap((copy) =>
-                MOCK_CREATORS.map(([name, city]) => (
-                  <li key={`${copy}-${name}`} aria-hidden={copy ? true : undefined}>
-                    <Avatar size="sm" neutral>
-                      {monogram(name)}
-                    </Avatar>
-                    <span className="mk-marquee__name">{name}</span>
-                    <span className="mk-marquee__city">{city}</span>
-                  </li>
-                )),
-              )}
-            </ul>
           </div>
         </section>
 
@@ -331,7 +309,7 @@ export function LumaHomePage() {
                 <span className="mk-step__num">03</span>
                 <h3 className="mk-step__title">Get paid</h3>
                 <p className="mk-step__text">
-                  Straight to your Stripe account — or, where Stripe doesn’t reach, a bank transfer to any IBAN.
+                  Straight to your own Stripe account, which pays out to your bank.
                 </p>
               </li>
             </ol>
@@ -342,18 +320,18 @@ export function LumaHomePage() {
         <section className="mk-section mk-ink" id="payouts" aria-labelledby="payouts-title">
           <div className="mk-wrap mk-payouts">
             <div className="mk-payouts__text" data-reveal>
-              <p className="eyebrow mk-ink__eyebrow">Paid everywhere in the region</p>
+              <p className="eyebrow mk-ink__eyebrow">Payouts through Stripe</p>
               <h2 className="mk-h2" id="payouts-title">
-                Stripe doesn’t cover Belgrade or Sarajevo. <em>We do.</em>
+                Paid straight to <em>your</em> Stripe account.
               </h2>
               <p className="mk-head__lead">
-                Where Stripe works, money goes straight to your account. Everywhere else, Luma collects your sales and pays
-                them out to your bank on request — no workarounds, no foreign company needed.
+                Buyers pay by card through Stripe Checkout, and every sale goes to the Stripe account you connect. Stripe
+                then pays it out to your bank — from Croatia and every other EU country.
               </p>
               <dl className="mk-stats">
                 <div>
-                  <dt>Countries</dt>
-                  <dd>{MOCK_COUNTRIES.length}</dd>
+                  <dt>EU countries</dt>
+                  <dd>{EU_COUNTRY_COUNT}</dd>
                 </div>
                 <div>
                   <dt>Code needed</dt>
@@ -361,70 +339,18 @@ export function LumaHomePage() {
                 </div>
               </dl>
             </div>
-            <ul className="mk-countries" role="list" data-reveal>
-              {MOCK_COUNTRIES.map((country) => {
-                const iban = country.payout === 'iban'
-                const Icon = iban ? Landmark : Zap
-                return (
-                  <li className="mk-country" key={country.code}>
-                    <span className="mk-country__code">{country.code}</span>
-                    <span className="mk-country__name">{country.name}</span>
-                    <span className={['mk-country__method', iban && 'is-iban'].filter(Boolean).join(' ')}>
-                      <Icon />
-                      {iban ? 'Bank transfer' : 'Stripe'}
-                    </span>
-                  </li>
-                )
-              })}
+            <ul className="mk-countries" role="list" aria-label="Some of the countries you can sell from" data-reveal>
+              {MOCK_COUNTRIES.map((country) => (
+                <li className="mk-country" key={country.code}>
+                  <span className="mk-country__code">{country.code}</span>
+                  <span className="mk-country__name">{country.name}</span>
+                  <span className="mk-country__method">
+                    <Zap />
+                    Stripe
+                  </span>
+                </li>
+              ))}
             </ul>
-          </div>
-        </section>
-
-        {/* Quote */}
-        <section className="mk-section mk-quote" aria-label="What creators say">
-          <div className="mk-wrap">
-            <figure className="mk-quote__figure" data-reveal>
-              <blockquote className="mk-quote__text">
-                “I moved my presets from three different tools to Luma in an afternoon.{' '}
-                <span className="mark">The first sale came in before dinner.</span>”
-              </blockquote>
-              <figcaption className="mk-quote__by">
-                <Avatar size="lg">MH</Avatar>
-                <span>
-                  <strong>Marko Horvat</strong>
-                  <span className="text-muted">Photographer &amp; designer, Split</span>
-                </span>
-              </figcaption>
-            </figure>
-            <div className="mk-quotes">
-              <figure className="mk-mini-quote" data-reveal>
-                <blockquote>“My readers in Bosnia can finally pay me, and I get paid to my own bank.”</blockquote>
-                <figcaption>
-                  <Avatar size="sm" neutral>
-                    LO
-                  </Avatar>
-                  Lejla Omerović · Lejla Writes
-                </figcaption>
-              </figure>
-              <figure className="mk-mini-quote" data-reveal>
-                <blockquote>“The dashboard is the first thing I open every morning. It’s calm, and it’s all there.”</blockquote>
-                <figcaption>
-                  <Avatar size="sm" neutral>
-                    AS
-                  </Avatar>
-                  Ana Stojanovska · Ana Illustrates
-                </figcaption>
-              </figure>
-              <figure className="mk-mini-quote" data-reveal>
-                <blockquote>“54% open rate on my launch email. I didn’t know that was possible.”</blockquote>
-                <figcaption>
-                  <Avatar size="sm" neutral>
-                    SN
-                  </Avatar>
-                  Stefan Nikolić · Nikolić Fitness
-                </figcaption>
-              </figure>
-            </div>
           </div>
         </section>
 
@@ -502,7 +428,7 @@ export function LumaHomePage() {
             <span>
               <Brand to="/" />
             </span>
-            <p className="text-sm text-secondary">Landing pages, checkout, email and payouts for creators across the Balkans.</p>
+            <p className="text-sm text-secondary">Landing pages, checkout, email and payouts for creators in Croatia and the EU.</p>
           </div>
           <nav className="mk-footer__col" aria-label="Product">
             <p className="eyebrow">Product</p>

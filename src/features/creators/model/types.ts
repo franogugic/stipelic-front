@@ -27,8 +27,6 @@ export type CreatorSubscriptionCheckoutResult = {
   checkoutUrl: string | null
 }
 
-export type PayoutMode = 'StripeConnect' | 'BankTransfer'
-
 export type Creator = {
   publicId: string
   name: string
@@ -42,16 +40,10 @@ export type Creator = {
   cancelAtPeriodEnd: boolean
   currentPeriodEnd: string | null
   countryCode: string
-  payoutMode: PayoutMode
   stripeConnectDetailsSubmitted: boolean
   stripeConnectPayoutsEnabled: boolean
-  hasPayoutProfile: boolean
+  /** Stripe reports payouts enabled on the workspace's connected account. */
   payoutReady: boolean
-}
-
-export type PayoutCountry = {
-  code: string
-  payoutMode: PayoutMode
 }
 
 export type ConnectOnboardingLinkResult = {
@@ -92,25 +84,6 @@ export type UpdateCreatorSettingsRequest = {
   language: string
 }
 
-export type PayoutStatus = 'Pending' | 'Paid' | 'Failed' | 'Cancelled'
-
-export type PendingPayoutRequest = {
-  publicId: string
-  amountCents: number
-  requestedAt: string
-}
-
-export type PayoutSummary = {
-  currency: string
-  /** What can be requested now (open requests are already taken out). */
-  balanceCents: number
-  pendingPayoutCents: number
-  minPayoutCents: number
-  totalPaidOutCents: number
-  /** The open request (at most one), or null. */
-  pendingRequest: PendingPayoutRequest | null
-}
-
 export type PayoutSchedule = {
   interval: 'manual' | 'daily' | 'weekly' | 'monthly' | string
   delayDays: number
@@ -124,27 +97,4 @@ export type ConnectPayoutDetails = {
   detailsSubmittedAt: string | null
   payoutsEnabledAt: string | null
   payoutSchedule: PayoutSchedule | null
-}
-
-export type Payout = {
-  publicId: string
-  amountCents: number
-  currency: string
-  status: PayoutStatus
-  bankReference: string | null
-  note: string | null
-  createdAt: string
-  paidAt: string | null
-}
-
-export type PayoutProfile = {
-  accountHolderName: string
-  maskedIban: string
-  bankCountryCode: string
-}
-
-export type UpdatePayoutProfileRequest = {
-  accountHolderName: string
-  iban: string
-  bankCountryCode: string
 }

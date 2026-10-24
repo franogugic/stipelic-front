@@ -2,11 +2,10 @@ import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '../../../shared/ui/AppShell'
 import { EmptyState, PageHeader, SkeletonCards } from '../../../shared/ui/ledger'
-import { BankTransferPayouts } from '../components/payouts/BankTransferPayouts'
 import { ConnectPayouts } from '../components/payouts/ConnectPayouts'
 import { useCreatorStore } from '../model/creator-store'
 
-/** How the workspace gets paid: Stripe Connect or bank transfer, by the creator's payout mode. */
+/** How the workspace gets paid: always through the creator's own connected Stripe account. */
 export function CreatorPayoutsPage() {
   const { slug = '' } = useParams<{ slug: string }>()
   const currentCreator = useCreatorStore((s) => s.currentCreator)
@@ -30,11 +29,7 @@ export function CreatorPayoutsPage() {
       )
     }
     if (!creator) return <EmptyState title="Workspace not found" text="This address doesn’t match your workspace." />
-    return creator.payoutMode === 'StripeConnect' ? (
-      <ConnectPayouts slug={slug} creator={creator} />
-    ) : (
-      <BankTransferPayouts slug={slug} creator={creator} />
-    )
+    return <ConnectPayouts slug={slug} creator={creator} />
   }
 
   return (

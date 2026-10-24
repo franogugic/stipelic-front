@@ -78,9 +78,7 @@ export function WorkspaceBanners({ slug }: { slug: string }) {
           title="Payouts aren’t set up yet."
           action={{ label: 'Set up payouts', variant: 'secondary', to: `/app/${slug}/payouts` }}
         >
-          {creator.payoutMode === 'BankTransfer'
-            ? 'Add your bank details so you can request payouts of your earnings.'
-            : 'Connect a Stripe account so your earnings can reach you.'}
+          Connect a Stripe account so your earnings can reach you.
         </Banner>
       )}
       {status === 'suspended' && (

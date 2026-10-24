@@ -131,7 +131,7 @@ export function ConnectPayouts({ slug, creator }: { slug: string; creator: Creat
             <div className="stack stack--sm">
               {[
                 'A photo ID — passport or ID card',
-                'A bank account (IBAN) in your name',
+                'A bank account in your name',
                 'Your home address and date of birth',
                 'About five minutes',
               ].map((item) => (

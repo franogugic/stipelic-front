@@ -23,7 +23,7 @@ function AuthArt() {
         <div className="auth__float"><p className="text-xs" style={{ opacity: 0.6 }}>Campaign sent</p><p>September studio notes · 54% opened</p></div>
       </div>
       <p className="auth__quote">Build it, sell it,<br /><em>get paid.</em></p>
-      <p style={{ opacity: 0.7 }}>Landing pages, checkout, email and payouts for creators across the Balkans.</p>
+      <p style={{ opacity: 0.7 }}>Landing pages, checkout, email and payouts for creators in Croatia and the EU.</p>
     </aside>
   )
 }
