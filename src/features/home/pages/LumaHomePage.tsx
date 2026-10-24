@@ -126,8 +126,8 @@ export function LumaHomePage() {
                 <Landmark />
               </span>
               <div>
-                <p className="mk-float__label">Payout sent</p>
-                <p className="mk-float__value">€820.00 → RS35 •••• 1379</p>
+                <p className="mk-float__label">Stripe payout</p>
+                <p className="mk-float__value">€820.00 to your bank</p>
               </div>
             </div>
             <div className="mk-float mk-float--email" aria-hidden="true">
