@@ -1,5 +1,6 @@
 import { ArrowRight, Check, Link2Off, Mail, MailCheck, Send, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { SoloLayout } from '../../../shared/ui/SoloLayout'
@@ -99,8 +100,9 @@ export function VerifyEmailPage() {
           your pages and products will live in.
         </p>
         <div className="cluster cluster--center">
-          <Button variant="accent" icon={ArrowRight} to="/">
-            Set up your workspace
+          {/* "/" takes someone with a session to their workspace (or the welcome page); without one it is the marketing page. */}
+          <Button variant="accent" icon={ArrowRight} to={hasSession ? '/' : '/login'}>
+            {hasSession ? 'Set up your workspace' : 'Log in to set up your workspace'}
           </Button>
         </div>
       </SoloLayout>
@@ -125,13 +127,59 @@ export function VerifyEmailPage() {
     )
   }
 
-  // Not designed in the prototype: the expired layout without the resend action.
+  // Not designed in the prototype: the expired layout without the resend action, worded for why the link cannot be used.
+  const reason = LINK_PROBLEMS[verifyEmailOutcome ?? ''] ?? LINK_PROBLEMS.invalid
   return (
     <SoloLayout user={hasSession}>
       <StateArt icon={Link2Off} badge={X} tone="state--error" />
-      <h1 className="solo__title">This link isn't <em>valid</em></h1>
-      <p className="solo__text">Open the newest verification email we sent you, or log in to request a new link.</p>
-      <div className="cluster cluster--center"><BackToLoginButton /></div>
+      <h1 className="solo__title">{reason.title}</h1>
+      <p className="solo__text">{reason.text}</p>
+      <div className="cluster cluster--center">
+        {reason.primary ? (
+          <Button variant="primary" to="/login">
+            {reason.primary}
+          </Button>
+        ) : (
+          <BackToLoginButton />
+        )}
+      </div>
     </SoloLayout>
   )
+}
+
+const LINK_PROBLEMS: Record<string, { title: ReactNode; text: string; primary?: string }> = {
+  replaced: {
+    title: (
+      <>
+        This link was <em>replaced</em>
+      </>
+    ),
+    text: 'We sent you a newer verification email. Use the link in the latest one.',
+  },
+  used: {
+    title: (
+      <>
+        This link was already <em>used</em>
+      </>
+    ),
+    text: 'Your email is already verified — log in to continue.',
+    primary: 'Log in',
+  },
+  expired: {
+    title: (
+      <>
+        This link has <em>expired</em>
+      </>
+    ),
+    text: 'Verification links are valid for 24 hours. Log in and we’ll send you a new one.',
+    primary: 'Log in',
+  },
+  invalid: {
+    title: (
+      <>
+        This link isn’t <em>valid</em>
+      </>
+    ),
+    text: 'Open the newest verification email we sent you, or log in to request a new link.',
+  },
 }

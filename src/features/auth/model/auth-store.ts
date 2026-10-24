@@ -13,6 +13,13 @@ import {
 } from '../api/auth-api'
 import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues, VerifyEmailOutcome } from './types'
 
+/** The 400 codes of a verification link that cannot be used, and the screen each one gets. */
+const VERIFY_REJECTION_OUTCOMES: Record<string, VerifyEmailOutcome> = {
+  VERIFICATION_LINK_REPLACED: 'replaced',
+  VERIFICATION_LINK_USED: 'used',
+  VERIFICATION_LINK_EXPIRED: 'expired',
+}
+
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
 type AsyncStatus = 'idle' | 'submitting' | 'success' | 'error'
 type SessionStatus = 'checking' | 'authenticated' | 'unauthenticated'
@@ -376,14 +383,16 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? error.message
           : 'We could not verify your email. Please request a new verification link.'
 
-      // Only a rejected token is an invalid link; anything else means the check could not be made.
+      // Only a rejected token is an invalid link; anything else means the check could not be made. The API says why a
+      // link was rejected: a newer one was sent, it was already used, or it is older than 24 hours.
       const isRejectedToken = error instanceof ApiError && error.status === 400
+      const rejectedOutcome = isRejectedToken ? VERIFY_REJECTION_OUTCOMES[error.code ?? ''] : undefined
       set({
         verifyEmailStatus: 'error',
         verifyEmailMessage: null,
         verifyEmailError: message,
         verifyEmailErrorStatus: error instanceof ApiError ? error.status : null,
-        verifyEmailOutcome: isRejectedToken ? 'invalid' : 'failed',
+        verifyEmailOutcome: rejectedOutcome ?? (isRejectedToken ? 'invalid' : 'failed'),
       })
     }
   },

@@ -28,14 +28,24 @@ export function BackToLoginButton() {
   )
 }
 
-/** A link is being checked (not designed: the state illustration alone, announced to screen readers). */
-export function SoloChecking({ icon, label }: { icon: LucideIcon; label: string }) {
+/**
+ * A link is being checked (not designed: the state illustration alone, announced to screen readers). Pass `text` for a wait
+ * that can take seconds, so the person sees what is happening: `label` becomes the visible title.
+ */
+export function SoloChecking({ icon, label, text }: { icon: LucideIcon; label: string; text?: string }) {
   const hasSession = useHasSession()
   return (
     <SoloLayout user={hasSession}>
       <div aria-busy="true">
         <StateArt icon={icon} />
-        <span className="sr-only" role="status">{label}</span>
+        {text ? (
+          <div role="status">
+            <h1 className="solo__title">{label}</h1>
+            <p className="solo__text">{text}</p>
+          </div>
+        ) : (
+          <span className="sr-only" role="status">{label}</span>
+        )}
       </div>
     </SoloLayout>
   )

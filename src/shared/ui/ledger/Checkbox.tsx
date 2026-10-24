@@ -19,14 +19,9 @@ export function Checkbox({
     <label className={['check', className].filter(Boolean).join(' ')}>
       <input className="check__input" type={type} {...rest} />
       <span className="check__text">
-        {hint ? (
-          <>
-            <span>{label}</span>
-            <span className="check__hint">{hint}</span>
-          </>
-        ) : (
-          label
-        )}
+        {/* One flex item, so links inside the label stay in the line of text instead of each becoming a block. */}
+        <span>{label}</span>
+        {hint && <span className="check__hint">{hint}</span>}
       </span>
     </label>
   )

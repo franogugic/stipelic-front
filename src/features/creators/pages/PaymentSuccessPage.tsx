@@ -55,7 +55,13 @@ export function PaymentSuccessPage() {
     )
   }
 
-  return <SoloChecking icon={CreditCard} label="Confirming your payment…" />
+  return (
+    <SoloChecking
+      icon={CreditCard}
+      label="Confirming your payment…"
+      text="Stripe has your payment; we’re activating your plan. This usually takes a few seconds — you can stay on this page."
+    />
+  )
 }
 
 function Activated({ creator }: { creator: Creator }) {
