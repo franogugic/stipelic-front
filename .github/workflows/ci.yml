@@ -85,3 +85,16 @@ jobs:
             VITE_SUPPORT_EMAIL=${{ vars.SUPPORT_EMAIL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy
+    needs: image
+    # Until the production host exists, main publishes the image without deploying it.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/deploy.yml
+    with:
+      tag: ${{ github.sha }}
+    secrets: inherit
