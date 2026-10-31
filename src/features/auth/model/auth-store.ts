@@ -285,6 +285,11 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? error.message
           : 'We could not create your account. Please try again.'
 
+      // 403 REGISTRATION_CLOSED: the API says it is closed even though this page thought it was open (a cached answer).
+      if (error instanceof ApiError && error.code === 'REGISTRATION_CLOSED') {
+        useFeaturesStore.getState().apply({ ...useFeaturesStore.getState().features, openRegistration: false })
+      }
+
       set({ registerStatus: 'error', registerError: message })
       return null
     }

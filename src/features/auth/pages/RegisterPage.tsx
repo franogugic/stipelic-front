@@ -4,9 +4,12 @@ import { useId, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PRIVACY_URL, TERMS_URL } from '../../../shared/lib/legal-links'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
+import { useFeatures } from '../../../shared/model/features-store'
+import { LoadingPage } from '../../../shared/ui/LoadingPage'
 import { Alert, Button, Checkbox, Field, Input } from '../../../shared/ui/ledger'
 import { AuthSplitLayout } from '../components/AuthSplitLayout'
 import { PasswordChecklist } from '../components/PasswordChecklist'
+import { PrivateBetaNotice } from '../components/PrivateBetaNotice'
 import { useAuthStore } from '../model/auth-store'
 import { validateRegisterForm } from '../model/register-validation'
 import type { RegisterFieldName } from '../model/register-validation'
@@ -35,7 +38,9 @@ export function RegisterPage() {
   const validation = useMemo(() => validateRegisterForm(values), [values])
   const isSubmitting = registerStatus === 'submitting'
 
-  useDocumentTitle('Sign up · Luma')
+  const { ready, openRegistration } = useFeatures()
+
+  useDocumentTitle(ready && !openRegistration ? 'Private beta · Luma' : 'Sign up · Luma')
 
   const getVisibleError = (field: RegisterFieldName) =>
     touchedFields[field] ? validation.fieldErrors[field] : undefined
@@ -58,6 +63,10 @@ export function RegisterPage() {
   }
 
   const termsError = getVisibleError('acceptTerms')
+
+  // Closed beta: no form. Wait for the answer so the form never flashes before the notice.
+  if (!ready) return <LoadingPage />
+  if (!openRegistration) return <PrivateBetaNotice />
 
   return (
     <AuthSplitLayout>
