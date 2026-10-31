@@ -1,6 +1,8 @@
-import { CircleAlert, Send } from 'lucide-react'
+import { CircleAlert, Clock, Send } from 'lucide-react'
 import { number, plural } from '../../../shared/lib/format'
 import { Alert, Button, KeyValue, Modal } from '../../../shared/ui/ledger'
+import { overDailyQuota, sendingEstimateLine } from '../model/sending-estimate'
+import type { AudiencePreview } from '../model/types'
 
 /** "Send to N subscribers (or buyers)?" — the last look before an immediate send. */
 export function SendConfirmModal({
@@ -13,6 +15,7 @@ export function SendConfirmModal({
   busy,
   error,
   resend,
+  estimate = null,
   noun = 'subscriber',
   onCancel,
   onConfirm,
@@ -29,6 +32,8 @@ export function SendConfirmModal({
   error: string | null
   /** A resend to non-openers: which one it is ("Resend 2 of 5"). */
   resend?: { round: number; limit: number }
+  /** What the audience preview says about this send: skipped contacts, the time it takes, the daily quota. */
+  estimate?: AudiencePreview | null
   /** Who gets it: subscribers, or the buyers of a page. */
   noun?: 'subscriber' | 'buyer'
   onCancel: () => void
@@ -41,6 +46,22 @@ export function SendConfirmModal({
     ...(from ? [{ term: 'From', description: from }] : []),
     ...(sendsLeftAfter === null ? [] : [{ term: 'Sends left after', description: `${number(sendsLeftAfter)} this month` }]),
   ]
+  const estimateLine = sendingEstimateLine(estimate)
+  const overQuota = overDailyQuota(estimate)
+  const details = (
+    <div className="stack">
+      {estimateLine && (
+        <p className="text-sm text-secondary" data-testid="sending-estimate">
+          {estimateLine}
+        </p>
+      )}
+      {overQuota !== null && estimate && (
+        <Alert tone="warning" icon={Clock} live>
+          Only {number(Math.max(0, estimate.quotaRemainingToday ?? 0))} can go out today under the sending quota. The other {number(overQuota)} send after it resets.
+        </Alert>
+      )}
+    </div>
+  )
   return (
     <Modal
       open={open}
@@ -62,16 +83,15 @@ export function SendConfirmModal({
         </>
       }
     >
-      {error ? (
-        <div className="stack">
+      <div className="stack">
+        {error && (
           <Alert tone="danger" icon={CircleAlert} live>
             {error}
           </Alert>
-          <KeyValue items={items} />
-        </div>
-      ) : (
+        )}
         <KeyValue items={items} />
-      )}
+        {(estimateLine || overQuota !== null) && details}
+      </div>
     </Modal>
   )
 }

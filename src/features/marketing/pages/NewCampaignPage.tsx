@@ -481,6 +481,7 @@ function NewCampaignForm() {
         subject={content.subject.trim()}
         audienceTitle={selectedLabel}
         noun={noun}
+        estimate={composer.preview}
         from={supportEmail ? `${brandName} <${supportEmail}>` : null}
         sendsLeftAfter={remaining === null ? null : Math.max(0, left - (recipientCount ?? 0))}
         busy={composer.isSending}

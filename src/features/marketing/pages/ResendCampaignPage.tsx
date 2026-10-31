@@ -472,6 +472,7 @@ export function ResendCampaignPage({ slug, originalPublicId }: { slug: string; o
           busy={busy}
           error={sendError}
           resend={{ round, limit: resend.limit }}
+          estimate={preview}
           onCancel={() => setConfirming(false)}
           onConfirm={() => void sendNow()}
         />

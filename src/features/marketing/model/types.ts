@@ -175,6 +175,12 @@ export type AudiencePreview = {
   monthlyLimit: number
   usedThisMonth: number
   remaining: number
+  /** Contacts left out because SES reported the address (`recipientCount` is already net of them). Null when unknown. */
+  suppressedCount?: number | null
+  /** How long sending to `recipientCount` takes at the current rate. Null when unknown. */
+  estimatedSeconds?: number | null
+  /** Sends left under today's sending quota; null when there is no daily quota. */
+  quotaRemainingToday?: number | null
 }
 
 export type CampaignAudiences = {
