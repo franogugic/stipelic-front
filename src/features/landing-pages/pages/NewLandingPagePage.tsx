@@ -16,7 +16,6 @@ import { AiBriefCard } from '../components/ai/AiBriefCard'
 import { AiGenerating, GIVE_UP_AFTER_SECONDS } from '../components/ai/AiGenerating'
 import { AI_STEPS, briefErrors, emptyBrief, failureOf, usageLine } from '../model/ai-draft'
 import type { AiBrief, AiFailure, AiUsage, BriefErrors } from '../model/ai-draft'
-import { markAiDraft } from '../model/ai-draft-flag'
 import { useLandingPageStore } from '../model/landing-page-store'
 
 type ProductsLoad = { status: 'loading' | 'error' } | { status: 'success'; products: Product[] }
@@ -197,7 +196,6 @@ function NewLandingPage({ slug }: { slug: string }) {
       const pageId = await ensureDraft()
       if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError')
       await generateAiDraft(slug, pageId, current, controller.signal)
-      markAiDraft(pageId)
       draftRef.current = null
       navigate(`/app/${slug}/landing-pages/${pageId}/edit`)
     } catch (error) {

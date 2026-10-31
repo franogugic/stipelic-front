@@ -53,6 +53,8 @@ export type LandingPage = {
   productName: string | null
   productThumbnailUrl: string | null
   customDomain: string | null
+  /** Written by the AI page builder and not published since (set by the ai-draft endpoint, cleared on publish). */
+  aiDraft?: boolean
   createdAt: string
   updatedAt: string
   totalViews: number

@@ -23,7 +23,7 @@ export async function generateAiDraft(slug: string, pageId: string, brief: AiBri
     body: {
       goal: brief.goal,
       audience: brief.audience.trim(),
-      offer: brief.goal === 'free_product' ? brief.productId : brief.offer.trim(),
+      ...(brief.goal === 'free_product' ? { productId: brief.productId } : { offerText: brief.offer.trim() }),
       brand: brief.brand.trim(),
       tone: brief.tone,
       benefits: brief.benefits.map((benefit) => benefit.trim()),

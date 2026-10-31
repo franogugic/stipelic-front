@@ -1,18 +1,10 @@
-// The AI draft banner ("AI draft — review before publishing") has no server flag in the F7-B contract, so the browser
-// remembers which pages came from the AI builder. It is a convenience: with storage unavailable the banner just
-// doesn't show (the placeholder-testimonials publish block does not depend on it).
+// The AI draft banner ("AI draft — review before publishing") shows while the page carries the server's `aiDraft` flag
+// (set by the ai-draft endpoint, cleared on publish). Only the "Got it" dismissal is remembered in the browser; with
+// storage unavailable the banner simply comes back on the next visit.
 
-const key = (pageId: string) => `cp.aiDraft.${pageId}`
+const key = (pageId: string) => `cp.aiDraftDismissed.${pageId}`
 
-export function markAiDraft(pageId: string) {
-  try {
-    window.localStorage.setItem(key(pageId), '1')
-  } catch {
-    // No banner on this device.
-  }
-}
-
-export const isAiDraft = (pageId: string) => {
+export const isAiDraftDismissed = (pageId: string) => {
   try {
     return window.localStorage.getItem(key(pageId)) === '1'
   } catch {
@@ -20,11 +12,10 @@ export const isAiDraft = (pageId: string) => {
   }
 }
 
-/** The creator has reviewed the draft (dismissed the banner or published the page). */
-export function clearAiDraft(pageId: string) {
+export function dismissAiDraft(pageId: string) {
   try {
-    window.localStorage.removeItem(key(pageId))
+    window.localStorage.setItem(key(pageId), '1')
   } catch {
-    // Nothing to clear.
+    // The banner returns next time.
   }
 }

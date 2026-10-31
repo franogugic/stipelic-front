@@ -47,7 +47,7 @@ import { SectionsCard } from '../components/editor/SectionsCard'
 import { useLeaveGuard } from '../../../shared/lib/use-leave-guard'
 import { draftReducer, emptyDraft, hasUnsavedLinkTargets, toSaveRequest } from '../model/editor-draft'
 import type { Draft, DraftSection } from '../model/editor-draft'
-import { clearAiDraft, isAiDraft } from '../model/ai-draft-flag'
+import { dismissAiDraft, isAiDraftDismissed } from '../model/ai-draft-flag'
 import { useLandingPageStore } from '../model/landing-page-store'
 import { placeholderCount, placeholderIssues } from '../model/placeholder'
 import { DEFAULT_BRAND_COLOR, kindOf } from '../model/section-library'
@@ -186,8 +186,8 @@ function EditorContent() {
   const [publishBlock, setPublishBlock] = useState<PublishBlock | null>(null)
   const [published, setPublished] = useState<{ wasLive: boolean } | null>(null)
   const [leaveTo, setLeaveTo] = useState<string | null>(null)
-  // An AI draft keeps its review banner until the creator dismisses it or publishes (remembered per page in the browser).
-  const [aiReview, setAiReview] = useState(() => isAiDraft(pageId))
+  // An AI draft (the page's `aiDraft` flag, cleared by the API on publish) keeps its review banner until "Got it".
+  const [aiDismissed, setAiDismissed] = useState(() => isAiDraftDismissed(pageId))
   const [placeholdersOpen, setPlaceholdersOpen] = useState(false)
   const [dragTarget, setDragTarget] = useState<{ draggedKey: string; afterKey: string } | null>(null)
 
@@ -305,8 +305,8 @@ function EditorContent() {
   }
 
   const dismissAiReview = () => {
-    clearAiDraft(pageId)
-    setAiReview(false)
+    dismissAiDraft(pageId)
+    setAiDismissed(true)
   }
 
   const onPublish = async () => {
@@ -323,7 +323,6 @@ function EditorContent() {
       setLoad((state) => (state.status === 'ready' ? { ...state, page: { ...state.page, status: 'Published' } } : state))
       patchListedPage({ status: 'Published' })
       setPublished({ wasLive })
-      dismissAiReview()
     } catch (error) {
       const block = publishBlockOf(error)
       if (error instanceof ApiError && error.status === 409 && error.code === 'PLACEHOLDER_TESTIMONIALS') setPlaceholdersOpen(true)
@@ -513,7 +512,7 @@ function EditorContent() {
           </>
         }
       />
-      {aiReview && page.status === 'Draft' && (
+      {page.aiDraft === true && !aiDismissed && page.status === 'Draft' && (
         <AiDraftBanner
           hasPlaceholders={issues.length > 0}
           onFix={() => fixTestimonials(issues[0].sectionKey)}

@@ -30,6 +30,18 @@ export function mockUsage(): AiUsage {
   return { used, limit: LIMIT, resetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString() }
 }
 
+const flagKey = (pageId: string) => `cp.mockAi.draft.${pageId}`
+
+/** The flag the endpoint would set: the draft written by the mock, until it is published. */
+export function withMockFlag(page: LandingPageWithSections): LandingPageWithSections {
+  try {
+    if (page.status === 'Published') window.localStorage.removeItem(flagKey(page.publicId))
+    return { ...page, aiDraft: window.localStorage.getItem(flagKey(page.publicId)) === '1' }
+  } catch {
+    return page
+  }
+}
+
 const countOne = () => {
   try {
     window.localStorage.setItem(USED_KEY, String(mockUsage().used + 1))
@@ -92,5 +104,10 @@ export async function mockGenerateAiDraft(slug: string, pageId: string, brief: A
     sections: ordered.map((section, index) => ({ ...section, sortOrder: index })),
   })
   countOne()
-  return saved
+  try {
+    window.localStorage.setItem(flagKey(pageId), '1')
+  } catch {
+    // No banner in the mock.
+  }
+  return { ...saved, aiDraft: true }
 }

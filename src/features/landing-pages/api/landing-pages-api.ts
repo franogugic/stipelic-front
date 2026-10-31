@@ -19,6 +19,8 @@ export async function listLandingPages(slug: string, includeArchived = false): P
 
 export async function getLandingPage(slug: string, pageId: string): Promise<LandingPageWithSections> {
   const res = await apiRequest<ApiResponse<LandingPageWithSections>>(`/api/creators/${slug}/landing-pages/${pageId}`)
+  // Until F7-B sends `aiDraft`, the dev mock stands in for the flag.
+  if (import.meta.env.DEV && import.meta.env.VITE_MOCK_AI) return (await import('./ai-draft-mock')).withMockFlag(res.data)
   return res.data
 }
 
