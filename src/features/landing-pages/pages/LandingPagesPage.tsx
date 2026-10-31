@@ -201,7 +201,7 @@ export function LandingPagesPage() {
   }
 
   const newPageButton = (
-    <Button variant="primary" icon={Plus} disabledReason={limitReason} onClick={() => openCreate()}>
+    <Button variant="primary" icon={Plus} disabledReason={limitReason} onClick={() => navigate(`/app/${slug}/landing-pages/new`)}>
       New landing page
     </Button>
   )
@@ -215,7 +215,7 @@ export function LandingPagesPage() {
           icon={PanelsTopLeft}
           title="No landing pages yet"
           text="Create your first page to sell a product or collect emails."
-          action={limitReason ? undefined : { label: 'New landing page', icon: Plus, variant: 'primary', onClick: () => openCreate() }}
+          action={limitReason ? undefined : { label: 'New landing page', icon: Plus, variant: 'primary', onClick: () => navigate(`/app/${slug}/landing-pages/new`) }}
         />
       )
     }

@@ -24,6 +24,9 @@ export type AiBrief = {
 
 export type AiUsage = { used: number; limit: number; resetsAt: string | null }
 
+/** "4 of 50 generations this month" — next to the button that uses one. */
+export const usageLine = (usage: AiUsage) => `${usage.used.toLocaleString('en')} of ${usage.limit.toLocaleString('en')} generations this month`
+
 export const AI_MAX = { title: 80, audience: 200, offer: 300, brand: 160, benefit: 120, cta: 40 } as const
 export const AI_STEPS = ['The goal', 'Audience and offer', 'Voice and button'] as const
 export const AI_TONES: Array<{ value: AiTone; label: string }> = [

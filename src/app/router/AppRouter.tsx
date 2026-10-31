@@ -16,6 +16,7 @@ import { WelcomePage } from '../../features/creators/pages/WelcomePage'
 import { LandingPageAnalyticsPage } from '../../features/landing-pages/pages/LandingPageAnalyticsPage'
 import { LandingPageEditorPage } from '../../features/landing-pages/pages/LandingPageEditorPage'
 import { LandingPagesPage } from '../../features/landing-pages/pages/LandingPagesPage'
+import { NewLandingPagePage } from '../../features/landing-pages/pages/NewLandingPagePage'
 import { DownloadPage } from '../../features/delivery/pages/DownloadPage'
 import { OrderSuccessPage } from '../../features/landing-pages/pages/OrderSuccessPage'
 import { PublicLandingPage } from '../../features/landing-pages/pages/PublicLandingPage'
@@ -68,6 +69,7 @@ export function AppRouter() {
           <Route path="/app/:slug/products/:productId" element={<ProductDetailPage />} />
           <Route path="/app/:slug/products/:productId/edit" element={<ProductFormPage />} />
           <Route path="/app/:slug/landing-pages" element={<LandingPagesPage />} />
+          <Route path="/app/:slug/landing-pages/new" element={<NewLandingPagePage />} />
           <Route path="/app/:slug/landing-pages/:pageId" element={<LandingPageAnalyticsPage />} />
           <Route path="/app/:slug/landing-pages/:pageId/edit" element={<LandingPageEditorPage />} />
           <Route path="/app/:slug/emails" element={<EmailsPage />} />
