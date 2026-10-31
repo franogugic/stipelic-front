@@ -19,10 +19,15 @@ function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
   return response.data
 }
 
+/** How the browser sends the file to storage. S3: a presigned POST, a form of `fields` with the file last. Azure: a PUT of
+ * the file with `headers`. An API from before the S3 change sends neither `method` nor `headers` (an Azure PUT). */
 type UploadUrlResponse = {
   uploadUrl: string
   blobUrl: string
   expiresAt: string
+  method?: 'POST' | 'PUT'
+  fields?: Record<string, string>
+  headers?: Record<string, string>
 }
 
 type ConfirmUploadResponse = {
@@ -59,61 +64,87 @@ export function confirmUpload(slug: string, blobUrl: string) {
   ).then(unwrapApiResponse)
 }
 
-/** Orchestrates the full direct-to-blob flow: request a SAS URL, PUT the file straight to Azure (never
+/** Orchestrates the full direct-to-storage flow: request an upload ticket, send the file straight to storage (never
  * through our API — no `credentials: 'include'`, this isn't our origin), then confirm. Returns the final
- * blob URL to store in the target field (ThumbnailUrl/LogoUrl/imageUrl). */
+ * image URL to store in the target field (ThumbnailUrl/LogoUrl/imageUrl). */
 export async function uploadImage(
   slug: string,
   purpose: MediaUploadPurpose,
   file: File,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
-  const { uploadUrl, blobUrl } = await requestUploadUrl(slug, purpose, file.type)
+  const ticket = await requestUploadUrl(slug, purpose, file.type)
 
-  await putBlob(uploadUrl, file, file.type, onProgress)
+  await sendToStorage(ticket, file, file.type, onProgress)
 
-  const { url } = await confirmUpload(slug, blobUrl)
+  const { url } = await confirmUpload(slug, ticket.blobUrl)
   return url
 }
 
-/** The product's document: request a SAS URL for the private container, PUT the file straight to Azure, then confirm — the
- * server reads the real blob (size and first bytes) and answers with the reference the product save takes. */
+/** The product's document: request an upload ticket for the private bucket, send the file straight to storage, then
+ * confirm — the server reads the stored file (size and first bytes) and answers with the reference the product save
+ * takes. */
 export async function uploadProductFile(
   slug: string,
   file: File,
   contentType: string,
   onProgress?: (percent: number) => void,
 ): Promise<ConfirmedProductFile> {
-  const { uploadUrl, blobUrl } = await requestUploadUrl(slug, 'ProductFile', contentType)
-  await putBlob(uploadUrl, file, contentType, onProgress)
-  return confirmProductFile(slug, blobUrl, file.name)
+  const ticket = await requestUploadUrl(slug, 'ProductFile', contentType)
+  await sendToStorage(ticket, file, contentType, onProgress)
+  return confirmProductFile(slug, ticket.blobUrl, file.name)
 }
 
 const UPLOAD_FAILED = 'Upload to storage failed. Please try again.'
 
+type StorageRequest = {
+  method: 'POST' | 'PUT'
+  headers: Record<string, string>
+  body: FormData | File
+}
+
+/** The request the ticket describes. A POST's policy covers every field, so they go exactly as given and the file last
+ * (S3 ignores fields after it); the browser sets the multipart Content-Type itself. */
+function storageRequest(ticket: UploadUrlResponse, file: File, contentType: string): StorageRequest {
+  if (ticket.method === 'POST') {
+    const form = new FormData()
+    for (const [name, value] of Object.entries(ticket.fields ?? {})) form.append(name, value)
+    form.append('file', file)
+    return { method: 'POST', headers: {}, body: form }
+  }
+
+  return {
+    method: 'PUT',
+    headers: ticket.headers ?? { 'x-ms-blob-type': 'BlockBlob', 'Content-Type': contentType },
+    body: file,
+  }
+}
+
 // fetch cannot report upload progress, so a caller that wants it gets an XMLHttpRequest; everyone else keeps fetch.
-function putBlob(uploadUrl: string, file: File, contentType: string, onProgress?: (percent: number) => void): Promise<void> {
+function sendToStorage(
+  ticket: UploadUrlResponse,
+  file: File,
+  contentType: string,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  const { method, headers, body } = storageRequest(ticket, file, contentType)
+
   if (!onProgress) {
-    return fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'x-ms-blob-type': 'BlockBlob', 'Content-Type': contentType },
-      body: file,
-    }).then((response) => {
+    return fetch(ticket.uploadUrl, { method, headers, body }).then((response) => {
       if (!response.ok) throw new Error(UPLOAD_FAILED)
     })
   }
 
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest()
-    request.open('PUT', uploadUrl)
-    request.setRequestHeader('x-ms-blob-type', 'BlockBlob')
-    request.setRequestHeader('Content-Type', contentType)
+    request.open(method, ticket.uploadUrl)
+    for (const [name, value] of Object.entries(headers)) request.setRequestHeader(name, value)
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100))
     }
     request.onload = () => (request.status >= 200 && request.status < 300 ? resolve() : reject(new Error(UPLOAD_FAILED)))
     request.onerror = () => reject(new Error(UPLOAD_FAILED))
     request.onabort = () => reject(new Error(UPLOAD_FAILED))
-    request.send(file)
+    request.send(body)
   })
 }
