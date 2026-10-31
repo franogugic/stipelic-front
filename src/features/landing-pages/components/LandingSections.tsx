@@ -1,4 +1,4 @@
-import { ArrowDown, Check, Menu, Plus } from 'lucide-react'
+import { ArrowDown, Check, Menu, Plus, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -238,38 +238,58 @@ function ProductSection({ variant, content, ctx }: { variant: string; content: P
   )
 }
 
-function TestimonialsSection({ variant, content }: { variant: string; content: TestimonialsContent }) {
+/** In the editor a placeholder quote (from the AI builder) carries a warning right where it sits: it blocks publishing. */
+function PlaceholderWarning() {
+  return (
+    <div className="lp-wrap placeholder-card" role="note">
+      <TriangleAlert />
+      <div className="placeholder-card__body">
+        <p className="placeholder-card__title">Placeholder testimonial — not a real quote</p>
+        <p>Publishing is blocked until you replace it with a real quote and name, or remove it.</p>
+      </div>
+    </div>
+  )
+}
+
+function TestimonialsSection({ variant, content, editor }: { variant: string; content: TestimonialsContent; editor?: boolean }) {
+  const warning = editor && content.items.some((item) => item.placeholder) ? <PlaceholderWarning /> : null
   if (variant === 'single') {
     const [quote] = content.items
     if (!quote) return null
     return (
-      <figure className="lp-wrap lp-quote-single">
-        <span className="lp-quote-single__mark" aria-hidden="true">
-          “
-        </span>
-        <blockquote>{quote.quote}</blockquote>
-        <figcaption>
-          <strong>{quote.author}</strong>
-          {quote.role && ` · ${quote.role}`}
-        </figcaption>
-      </figure>
+      <>
+        {warning}
+        <figure className={`lp-wrap lp-quote-single${quote.placeholder ? ' lp-quote--placeholder' : ''}`}>
+          <span className="lp-quote-single__mark" aria-hidden="true">
+            “
+          </span>
+          <blockquote>{quote.quote}</blockquote>
+          <figcaption>
+            <strong>{quote.author}</strong>
+            {quote.role && ` · ${quote.role}`}
+          </figcaption>
+        </figure>
+      </>
     )
   }
   return (
-    <div className="lp-wrap">
-      {content.heading && <h2 className="lp__h2">{rich(content.heading)}</h2>}
-      <div className="lp-quotes">
-        {content.items.map((quote, index) => (
-          <figure className="lp-quote" key={index}>
-            <blockquote className="lp__logo">“{quote.quote}”</blockquote>
-            <figcaption>
-              {quote.author}
-              {quote.role && ` · ${quote.role}`}
-            </figcaption>
-          </figure>
-        ))}
+    <>
+      {warning}
+      <div className="lp-wrap">
+        {content.heading && <h2 className="lp__h2">{rich(content.heading)}</h2>}
+        <div className="lp-quotes">
+          {content.items.map((quote, index) => (
+            <figure className={`lp-quote${quote.placeholder ? ' lp-quote--placeholder' : ''}`} key={index}>
+              <blockquote className="lp__logo">“{quote.quote}”</blockquote>
+              <figcaption>
+                {quote.author}
+                {quote.role && ` · ${quote.role}`}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -328,7 +348,7 @@ function FooterSection({ variant, content, ctx }: { variant: string; content: Fo
   )
 }
 
-function SectionBody({ section, ctx }: { section: RenderedSection; ctx: LandingContext }) {
+function SectionBody({ section, ctx, editor }: { section: RenderedSection; ctx: LandingContext; editor?: boolean }) {
   switch (section.type) {
     case 'Navbar':
       return <NavbarSection variant={section.variant} content={section.content} ctx={ctx} />
@@ -339,7 +359,7 @@ function SectionBody({ section, ctx }: { section: RenderedSection; ctx: LandingC
     case 'ProductDetails':
       return <ProductSection variant={section.variant} content={section.content} ctx={ctx} />
     case 'Testimonials':
-      return <TestimonialsSection variant={section.variant} content={section.content} />
+      return <TestimonialsSection variant={section.variant} content={section.content} editor={editor} />
     case 'Faq':
       return <FaqSection variant={section.variant} content={section.content} />
     case 'Gallery':
@@ -368,7 +388,7 @@ export function LandingSection({ section, ctx, editor }: { section: RenderedSect
       data-section-label={editor ? kind.name : undefined}
       style={section.background ? ({ '--sec-bg': section.background } as CSSProperties) : undefined}
     >
-      <SectionBody section={section} ctx={ctx} />
+      <SectionBody section={section} ctx={ctx} editor={editor} />
     </Tag>
   )
 }

@@ -38,6 +38,7 @@ import {
 } from '../components/editor/EditorDialogs'
 import type { PublishBlock } from '../components/editor/EditorDialogs'
 import { LeadDocumentHint } from '../components/editor/LeadDocument'
+import { AiDraftBanner, PlaceholdersBlockedModal, PublishBlockedAlert } from '../components/editor/PlaceholderNotices'
 import { PageSettingsModal } from '../components/editor/PageSettingsModal'
 import type { PageSettingsValues } from '../components/editor/PageSettingsModal'
 import { NothingSelected, SectionForm } from '../components/editor/SectionForm'
@@ -46,7 +47,9 @@ import { SectionsCard } from '../components/editor/SectionsCard'
 import { useLeaveGuard } from '../../../shared/lib/use-leave-guard'
 import { draftReducer, emptyDraft, hasUnsavedLinkTargets, toSaveRequest } from '../model/editor-draft'
 import type { Draft, DraftSection } from '../model/editor-draft'
+import { clearAiDraft, isAiDraft } from '../model/ai-draft-flag'
 import { useLandingPageStore } from '../model/landing-page-store'
+import { placeholderCount, placeholderIssues } from '../model/placeholder'
 import { DEFAULT_BRAND_COLOR, kindOf } from '../model/section-library'
 import type { LandingPageWithSections, SectionTemplate } from '../model/types'
 
@@ -183,6 +186,9 @@ function EditorContent() {
   const [publishBlock, setPublishBlock] = useState<PublishBlock | null>(null)
   const [published, setPublished] = useState<{ wasLive: boolean } | null>(null)
   const [leaveTo, setLeaveTo] = useState<string | null>(null)
+  // An AI draft keeps its review banner until the creator dismisses it or publishes (remembered per page in the browser).
+  const [aiReview, setAiReview] = useState(() => isAiDraft(pageId))
+  const [placeholdersOpen, setPlaceholdersOpen] = useState(false)
   const [dragTarget, setDragTarget] = useState<{ draggedKey: string; afterKey: string } | null>(null)
 
   const page = load.status === 'ready' ? load.page : null
@@ -289,8 +295,26 @@ function EditorContent() {
     if (await save()) toast({ title: 'Changes saved' })
   }
 
+  // Publishing waits for every placeholder testimonial to become real (or go): the API refuses it too.
+  const issues = placeholderIssues(draft.sections)
+
+  const fixTestimonials = (sectionKey: string) => {
+    setPlaceholdersOpen(false)
+    dispatch({ type: 'select', key: sectionKey })
+    setPanel('edit')
+  }
+
+  const dismissAiReview = () => {
+    clearAiDraft(pageId)
+    setAiReview(false)
+  }
+
   const onPublish = async () => {
     if (!page) return
+    if (placeholderCount(placeholderIssues(draftRef.current.sections)) > 0) {
+      setPlaceholdersOpen(true)
+      return
+    }
     if (draftRef.current.dirty && !(await save())) return
     const wasLive = page.status === 'Published'
     setPublishing(true)
@@ -299,9 +323,11 @@ function EditorContent() {
       setLoad((state) => (state.status === 'ready' ? { ...state, page: { ...state.page, status: 'Published' } } : state))
       patchListedPage({ status: 'Published' })
       setPublished({ wasLive })
+      dismissAiReview()
     } catch (error) {
       const block = publishBlockOf(error)
-      if (block) setPublishBlock(block)
+      if (error instanceof ApiError && error.status === 409 && error.code === 'PLACEHOLDER_TESTIMONIALS') setPlaceholdersOpen(true)
+      else if (block) setPublishBlock(block)
       else
         toast({
           tone: 'danger',
@@ -487,6 +513,13 @@ function EditorContent() {
           </>
         }
       />
+      {aiReview && page.status === 'Draft' && (
+        <AiDraftBanner
+          hasPlaceholders={issues.length > 0}
+          onFix={() => fixTestimonials(issues[0].sectionKey)}
+          onDismiss={dismissAiReview}
+        />
+      )}
       {page.type === 'LeadGen' && (
         <LeadDocumentHint
           product={products.find((candidate) => candidate.publicId === page.productPublicId) ?? null}
@@ -523,6 +556,7 @@ function EditorContent() {
               onAdd={() => setPickerOpen(true)}
               onDelete={setDeleteTarget}
               onDragTarget={onDragTarget}
+              notice={<PublishBlockedAlert issues={issues} onFix={fixTestimonials} />}
             />
           </div>
           <div className="editor__panel editor__panel--edit">
@@ -583,6 +617,16 @@ function EditorContent() {
         onCancel={() => setDeleteTarget(null)}
       />
       <UnpublishDialog open={unpublishOpen} busy={unpublishing} onConfirm={() => void onUnpublish()} onCancel={() => setUnpublishOpen(false)} />
+      <PlaceholdersBlockedModal
+        open={placeholdersOpen}
+        issues={issues}
+        onEdit={fixTestimonials}
+        onDeleteSection={(key) => {
+          setPlaceholdersOpen(false)
+          setDeleteTarget(draft.sections.find((section) => section.key === key) ?? null)
+        }}
+        onClose={() => setPlaceholdersOpen(false)}
+      />
       <PublishBlockedModal block={publishBlock} slug={slug} planName={creator?.planName ?? null} onClose={() => setPublishBlock(null)} />
       <PublishedModal
         open={published !== null}

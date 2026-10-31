@@ -516,3 +516,59 @@
       width: 100%;
     }
 }
+
+/* The "not ready to publish" list (the publish dialog), from the prototype. */
+.publish-check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.publish-check__item {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.publish-check__item--blocking {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.publish-check__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-danger-solid);
+  color: var(--color-on-danger);
+}
+
+.publish-check__icon--warn {
+  background: var(--color-surface-3);
+  color: var(--color-text-secondary);
+}
+
+.publish-check__icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.publish-check .cluster {
+  margin-top: var(--space-2);
+}
+
+.publish-check__needs {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+

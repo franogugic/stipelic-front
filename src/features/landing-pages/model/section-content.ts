@@ -43,9 +43,21 @@ export type FooterContent = {
   copyright: string
 }
 
+/**
+ * `placeholder` marks a sample quote from the AI builder: it is not real and blocks publishing until it is replaced.
+ * `edited` is the editor's own memory of a placeholder being worked on (never saved) — see `placeholder.ts`.
+ */
+export type TestimonialItem = {
+  quote: string
+  author: string
+  role: string
+  placeholder?: true
+  edited?: { quote: string; author: string; role: string }
+}
+
 export type TestimonialsContent = {
   heading: string
-  items: { quote: string; author: string; role: string }[]
+  items: TestimonialItem[]
 }
 
 export type FaqContent = {
@@ -121,6 +133,7 @@ const PARSERS: { [T in SectionType]: (raw: Json) => SectionContentMap[T] } = {
       quote: str(record(item).quote),
       author: str(record(item).author),
       role: str(record(item).role),
+      ...(record(item).placeholder === true ? { placeholder: true as const } : {}),
     })),
   }),
   Faq: (raw) => ({
@@ -151,7 +164,12 @@ export function parseSectionContent<T extends SectionType>(type: T, contentJson:
 
 /** The edited content over the original JSON, so keys this editor doesn't know survive a save. */
 export function serializeSectionContent(original: string, content: SectionContent): string {
-  return JSON.stringify({ ...parseJsonObject(original), ...content })
+  const merged: Record<string, unknown> = { ...parseJsonObject(original), ...content }
+  // A placeholder quote's half-done edits stay in the editor: only the sample text and its flag are saved.
+  if (Array.isArray(merged.items) && merged.items.some((item) => record(item).edited !== undefined)) {
+    merged.items = merged.items.map((item) => Object.fromEntries(Object.entries(record(item)).filter(([key]) => key !== 'edited')))
+  }
+  return JSON.stringify(merged)
 }
 
 /** Navbar links point at a section by its public id. */

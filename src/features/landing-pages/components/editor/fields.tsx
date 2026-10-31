@@ -39,18 +39,20 @@ export function TextField({
   placeholder,
   rows,
   maxLength,
+  error,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   hint?: ReactNode
+  error?: ReactNode
   optional?: boolean
   placeholder?: string
   rows?: number
   maxLength?: number
 }) {
   return (
-    <Field label={label} hint={hint} optional={optional}>
+    <Field label={label} hint={hint} error={error} optional={optional}>
       {(control) =>
         rows ? (
           <Textarea {...control} rows={rows} value={value} placeholder={placeholder} maxLength={maxLength} onChange={(event) => onChange(event.target.value)} />
@@ -103,8 +105,8 @@ export function Repeater<T>({
   noun: string
   items: T[]
   onChange: (items: T[]) => void
-  summary: (item: T) => string
-  renderFields: (item: T, update: (item: T) => void) => ReactNode
+  summary: (item: T) => ReactNode
+  renderFields: (item: T, update: (item: T) => void, remove: () => void) => ReactNode
   createItem: () => T
   max: number
   /** The item open at first; -1 for all closed. */
@@ -197,7 +199,7 @@ export function Repeater<T>({
               </div>
             </div>
             <div className="repeater__body" id={bodyId} hidden={!isOpen}>
-              {renderFields(item, (next) => onChange(items.map((current, i) => (i === index ? next : current))))}
+              {renderFields(item, (next) => onChange(items.map((current, i) => (i === index ? next : current))), () => remove(index))}
             </div>
           </div>
         )

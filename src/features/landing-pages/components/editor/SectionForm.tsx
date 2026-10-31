@@ -1,12 +1,13 @@
-import { Image, Info, Lock, MousePointerClick, Package, Plus } from 'lucide-react'
+import { Circle, CircleCheck, Image, Info, Lock, MousePointerClick, Package, Plus, Quote, Trash2 } from 'lucide-react'
 import { useId, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useImageUpload } from '../../../../shared/lib/use-image-upload'
 import { money } from '../../../../shared/lib/format'
-import { Badge, Card, CardBody, EmptyState, Field, Menu, Select, Uploader } from '../../../../shared/ui/ledger'
+import { Badge, Button, Card, CardBody, EmptyState, Field, Menu, Select, Uploader } from '../../../../shared/ui/ledger'
 import type { DraftAction, DraftSection } from '../../model/editor-draft'
 import { isMovable } from '../../model/editor-draft'
+import { editPlaceholder, placeholderNeeds } from '../../model/placeholder'
 import { sectionMenuItems } from './section-menu'
 import { CONTENT_LIMITS, hrefTarget, sectionHref } from '../../model/section-content'
 import type {
@@ -17,6 +18,7 @@ import type {
   HeroContent,
   NavbarContent,
   ProductDetailsContent,
+  TestimonialItem,
   TestimonialsContent,
 } from '../../model/section-content'
 import { SECTION_BACKGROUNDS, defaultCopyright, kindOf, variantsOf } from '../../model/section-library'
@@ -318,6 +320,8 @@ function ProductForm({ content, onChange, ctx }: { content: ProductDetailsConten
 }
 
 function TestimonialsForm({ content, onChange }: { content: TestimonialsContent; onChange: (content: TestimonialsContent) => void }) {
+  // Opens the placeholder being worked on (half-done first, then the first one left), else the first quote.
+  const firstOpen = [content.items.findIndex((item) => item.placeholder && item.edited), content.items.findIndex((item) => item.placeholder), 0].find((index) => index >= 0) ?? 0
   return (
     <>
       <TextField label="Heading" optional value={content.heading} maxLength={140} onChange={(heading) => onChange({ ...content, heading })} />
@@ -326,18 +330,80 @@ function TestimonialsForm({ content, onChange }: { content: TestimonialsContent;
           noun="quote"
           items={content.items}
           max={CONTENT_LIMITS.quotes}
-          summary={(item) => (item.author || item.quote ? `${item.author} — “${item.quote}”` : '')}
-          createItem={() => ({ quote: '', author: '', role: '' })}
+          defaultOpen={firstOpen}
+          summary={(item) =>
+            item.placeholder ? (
+              <span className="repeater__flag">
+                <Quote />
+                Placeholder
+              </span>
+            ) : item.author || item.quote ? (
+              `${item.author} — “${item.quote}”`
+            ) : (
+              ''
+            )
+          }
+          createItem={(): TestimonialItem => ({ quote: '', author: '', role: '' })}
           onChange={(items) => onChange({ ...content, items })}
-          renderFields={(item, update) => (
-            <>
-              <TextField label="Quote" rows={3} value={item.quote} maxLength={400} onChange={(quote) => update({ ...item, quote })} />
-              <div className="form-row">
-                <TextField label="Author" value={item.author} maxLength={60} onChange={(author) => update({ ...item, author })} />
-                <TextField label="Role" optional value={item.role} maxLength={60} onChange={(role) => update({ ...item, role })} />
+          renderFields={(item, update, remove) => {
+            if (!item.placeholder) {
+              return (
+                <>
+                  <TextField label="Quote" rows={3} value={item.quote} maxLength={400} onChange={(quote) => update({ ...item, quote })} />
+                  <div className="form-row">
+                    <TextField label="Author" value={item.author} maxLength={60} onChange={(author) => update({ ...item, author })} />
+                    <TextField label="Role" optional value={item.role} maxLength={60} onChange={(role) => update({ ...item, role })} />
+                  </div>
+                </>
+              )
+            }
+            const needs = placeholderNeeds(item)
+            const edited = item.edited ?? { quote: '', author: '', role: '' }
+            const set = (patch: Partial<typeof edited>) => update(editPlaceholder(item, { ...edited, ...patch }))
+            return (
+              <div className="stack">
+                <p className="quiet-note">
+                  <Lock />
+                  <span>A placeholder blocks publishing. It counts as real once both the quote and the author’s name are real — or remove it.</span>
+                </p>
+                <ul className="placeholder-needs" role="list" aria-label="Still needed">
+                  <li className={needs.quote ? '' : 'is-done'}>
+                    {needs.quote ? <Circle /> : <CircleCheck />}
+                    <span>A real quote</span>
+                  </li>
+                  <li className={needs.author ? '' : 'is-done'}>
+                    {needs.author ? <Circle /> : <CircleCheck />}
+                    <span>The author’s real name</span>
+                  </li>
+                </ul>
+                <TextField
+                  label="Quote"
+                  rows={3}
+                  value={edited.quote}
+                  placeholder={item.quote}
+                  maxLength={400}
+                  error={!needs.author && needs.quote ? 'Still needed: the quote itself.' : undefined}
+                  onChange={(quote) => set({ quote })}
+                />
+                <div className="form-row">
+                  <TextField
+                    label="Author"
+                    value={edited.author}
+                    placeholder={item.author}
+                    maxLength={60}
+                    error={!needs.quote && needs.author ? 'Still needed: the author’s real name.' : undefined}
+                    onChange={(author) => set({ author })}
+                  />
+                  <TextField label="Role" optional value={edited.role} placeholder={item.role} maxLength={60} onChange={(role) => set({ role })} />
+                </div>
+                <div>
+                  <Button variant="danger-ghost" size="sm" icon={Trash2} onClick={remove}>
+                    Remove this quote
+                  </Button>
+                </div>
               </div>
-            </>
-          )}
+            )
+          }}
         />
       </FormGroup>
     </>

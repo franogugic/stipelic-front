@@ -1,6 +1,6 @@
 import { GripVertical, Lock, Plus } from 'lucide-react'
 import { Fragment, useEffect, useId, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { Button, Menu } from '../../../../shared/ui/ledger'
 import type { DraftAction, DraftSection } from '../../model/editor-draft'
 import { isMovable } from '../../model/editor-draft'
@@ -23,6 +23,7 @@ export function SectionsCard({
   onAdd,
   onDelete,
   onDragTarget,
+  notice,
 }: {
   sections: DraftSection[]
   selectedKey: string | null
@@ -32,6 +33,8 @@ export function SectionsCard({
   onDelete: (section: DraftSection) => void
   /** While dragging: the section the dragged one would land after, for the preview's drop marker. */
   onDragTarget: (target: { draggedKey: string; afterKey: string } | null) => void
+  /** Above the list, e.g. "Publishing is blocked". */
+  notice?: ReactNode
 }) {
   const titleId = useId()
   const [picked, setPicked] = useState<{ key: string; from: number } | null>(null)
@@ -100,6 +103,7 @@ export function SectionsCard({
         <Button variant="ghost" size="sm" iconOnly icon={Plus} aria-label="Add section" data-tooltip="Add section" onClick={onAdd} />
       </div>
       <div className="card__body">
+        {notice}
         <ol className="sortable" aria-label="Page sections, in order">
           {sections.map((section, index) => {
             const kind = kindOf(section.type)
