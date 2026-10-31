@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
+import { betaErrorText } from '../../../shared/lib/beta-copy'
 import {
   cancelCreatorSubscription,
   continueOnFreePlan as requestContinueOnFreePlan,
@@ -311,9 +312,8 @@ export const useCreatorStore = create<CreatorState>((set) => ({
       return checkout
     } catch (error) {
       const message =
-        error instanceof ApiError
-          ? error.message
-          : 'We could not start checkout. Please try again.'
+        betaErrorText(error) ??
+        (error instanceof ApiError ? error.message : 'We could not start checkout. Please try again.')
 
       set({ checkoutStatus: 'error', checkoutError: message })
       return null
@@ -361,7 +361,7 @@ export const useCreatorStore = create<CreatorState>((set) => ({
       window.location.assign(url)
       return null
     } catch (error) {
-      return error instanceof ApiError ? error.message : 'Could not open billing portal. Please try again.'
+      return betaErrorText(error) ?? (error instanceof ApiError ? error.message : 'Could not open billing portal. Please try again.')
     }
   },
 

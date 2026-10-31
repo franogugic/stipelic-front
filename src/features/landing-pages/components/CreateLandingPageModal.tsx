@@ -9,6 +9,7 @@ import { fileFormatOf } from '../../products/model/product-file'
 import type { Product } from '../../products/model/types'
 import { useLandingPageStore } from '../model/landing-page-store'
 import type { LandingPage, LandingPageType } from '../model/types'
+import { useFeatures } from '../../../shared/model/features-store'
 
 const MAX_LENGTH = 100
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -65,7 +66,9 @@ export function CreateLandingPageModal({
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
   const [slugEdited, setSlugEdited] = useState(false)
-  const [type, setType] = useState<LandingPageType>(initialProductId ? 'Sales' : 'LeadGen')
+  // Closed beta: no sales pages, only lead capture.
+  const { paymentsOn } = useFeatures()
+  const [type, setType] = useState<LandingPageType>(initialProductId && paymentsOn ? 'Sales' : 'LeadGen')
   const [productId, setProductId] = useState(initialProductId ?? '')
   const [initialApplied, setInitialApplied] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
@@ -234,6 +237,7 @@ export function CreateLandingPageModal({
               title="Collect emails"
               text="Give away a free document in exchange for an email address."
             />
+            {paymentsOn && (
             <Choice
               name="page-type"
               value="Sales"
@@ -247,6 +251,7 @@ export function CreateLandingPageModal({
               title="Sell a product"
               text="Card checkout through Stripe. Buyers download the file right away."
             />
+            )}
           </div>
         </fieldset>
         <Field

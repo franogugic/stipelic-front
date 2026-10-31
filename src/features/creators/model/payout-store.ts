@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
+import { betaErrorText } from '../../../shared/lib/beta-copy'
 import { getPayoutCountries, startConnectOnboarding } from '../api/creators-api'
 
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -52,9 +53,8 @@ export const usePayoutStore = create<PayoutState>((set, get) => ({
       return result.url
     } catch (error) {
       const message =
-        error instanceof ApiError
-          ? error.message
-          : 'We could not start Stripe onboarding. Please try again.'
+        betaErrorText(error) ??
+        (error instanceof ApiError ? error.message : 'We could not start Stripe onboarding. Please try again.')
       set({ connectOnboardingStatus: 'error', connectOnboardingError: message })
       return null
     }

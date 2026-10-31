@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { ApiError } from '../../../shared/api/http-client'
+import { betaErrorText } from '../../../shared/lib/beta-copy'
 import { archiveProduct, createProduct, listProducts, restoreProduct, updateProduct } from '../api/products-api'
 import type { CreateProductRequest, Product, UpdateProductRequest } from './types'
 
@@ -68,7 +69,7 @@ export const useProductStore = create<ProductState>((set) => ({
       set((s) => ({ products: [product, ...s.products], createStatus: 'success' }))
       return product
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Failed to create product.'
+      const message = betaErrorText(err) ?? (err instanceof ApiError ? err.message : 'Failed to create product.')
       set({ createStatus: 'error', createError: message })
       return null
     }
@@ -84,7 +85,7 @@ export const useProductStore = create<ProductState>((set) => ({
       }))
       return updated
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Failed to update product.'
+      const message = betaErrorText(err) ?? (err instanceof ApiError ? err.message : 'Failed to update product.')
       set({ updateStatus: 'error', updateError: message })
       return null
     }
