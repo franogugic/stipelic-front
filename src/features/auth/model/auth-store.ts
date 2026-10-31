@@ -11,6 +11,7 @@ import {
   resetPassword,
   verifyEmail,
 } from '../api/auth-api'
+import { useFeaturesStore } from '../../../shared/model/features-store'
 import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues, VerifyEmailOutcome } from './types'
 
 /** The 400 codes of a verification link that cannot be used, and the screen each one gets. */
@@ -242,6 +243,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const user = await getCurrentUser()
+      useFeaturesStore.getState().apply(user.features)
       set({
         currentUser: user,
         accountStatus: getAccountStatus(user),

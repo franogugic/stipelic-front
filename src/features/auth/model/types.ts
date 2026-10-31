@@ -20,6 +20,8 @@ export type AuthUser = {
   isEmailVerified?: boolean
   status?: string
   roles?: string[]
+  /** The deployment's switches, repeated in `/auth/me` (the same object as `GET /api/features`). */
+  features?: { paymentsEnabled: boolean; openRegistration: boolean }
 }
 
 export type AccountStatus = 'pendingVerification' | 'active'
