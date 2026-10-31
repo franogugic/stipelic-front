@@ -1,0 +1,15 @@
+# Only what the image build needs: the sources, package files and config at the root.
+**/node_modules/
+dist/
+dist-ssr/
+.git/
+.github/
+.claude/
+.vscode/
+.idea/
+**/.DS_Store
+*.log
+# Local env files hold developer logins; the build gets its public values through --build-arg only.
+.env
+.env.*
+!.env.example
