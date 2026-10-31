@@ -128,4 +128,6 @@ export interface HomeSummary {
   customerCount: number
   refundedOrderCount: number
   refundedAmountCents: number
+  /** AI page builder generations this month (F7-B); absent until the API sends it. */
+  aiGenerations?: { used: number; limit: number; resetsAt: string | null }
 }
