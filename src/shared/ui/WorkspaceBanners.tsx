@@ -1,8 +1,13 @@
-import { CalendarClock, CircleAlert, CreditCard, Landmark, ShieldAlert } from 'lucide-react'
+import { useState } from 'react'
+import { CalendarClock, CircleAlert, CreditCard, Landmark, ShieldAlert, Sparkles } from 'lucide-react'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { date } from '../lib/format'
+import { SUPPORT_EMAIL } from '../../features/home/model/home-content'
 import { useFeatures } from '../model/features-store'
 import { Banner, useToast } from './ledger'
+
+/** How long before a granted plan ends the banner starts. */
+const GRANT_WARNING_MS = 7 * 24 * 60 * 60 * 1000
 
 /**
  * Workspace banners shown above every shell page, in this order: unpaid, cancelling, payouts missing,
@@ -10,7 +15,9 @@ import { Banner, useToast } from './ledger'
  */
 export function WorkspaceBanners({ slug }: { slug: string }) {
   const toast = useToast()
-  const { paymentsOn } = useFeatures()
+  const { ready, paymentsOn } = useFeatures()
+  // Fixed when the shell mounts: a banner that flips while someone reads it would only be noise.
+  const [now] = useState(() => Date.now())
   const creator = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator : null))
   const checkoutStatus = useCreatorStore((s) => s.checkoutStatus)
   const startCreatorCheckout = useCreatorStore((s) => s.startCreatorCheckout)
@@ -24,6 +31,9 @@ export function WorkspaceBanners({ slug }: { slug: string }) {
   }
 
   const status = creator.status.toLowerCase()
+  // Closed beta: a plan the owner granted runs out on a date; say so for a week before it does.
+  const grantEnds = creator.planGrant ? new Date(creator.planGrant.expiresAt).getTime() : null
+  const grantEndsSoon = !paymentsOn && ready && grantEnds !== null && grantEnds > now && grantEnds - now <= GRANT_WARNING_MS
   const planName = creator.planName
 
   const completePayment = async () => {
@@ -38,6 +48,16 @@ export function WorkspaceBanners({ slug }: { slug: string }) {
 
   return (
     <>
+      {grantEndsSoon && creator.planGrant && (
+        <Banner
+          tone="warning"
+          icon={Sparkles}
+          title={`Your beta access ends on ${date(creator.planGrant.expiresAt)} — ask us to extend it.`}
+          action={SUPPORT_EMAIL ? { label: 'Write to us', variant: 'secondary', href: `mailto:${SUPPORT_EMAIL}` } : undefined}
+        >
+          After that your workspace moves to the Free plan and its limits.
+        </Banner>
+      )}
       {paymentsOn && status === 'pendingpayment' && (
         <Banner
           tone="warning"
