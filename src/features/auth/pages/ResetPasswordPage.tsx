@@ -27,7 +27,7 @@ type Inspection =
 async function inspect(token: string): Promise<Inspection> {
   try {
     const result = await inspectResetToken(token)
-    return result.status === 'Valid' ? { status: 'valid', email: result.email, requiresTerms: result.requiresTermsAcceptance === true } : { status: 'expired' }
+    return result.status === 'Valid' ? { status: 'valid', email: result.email, requiresTerms: result.termsRequired === true } : { status: 'expired' }
   } catch (error) {
     if (error instanceof ApiError && error.status === 400) return { status: 'expired' }
     return { status: 'failed', text: requestFailedTextFor(error) }

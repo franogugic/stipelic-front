@@ -16,7 +16,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { PRIVACY_URL, TERMS_URL, isLinked } from '../../../shared/lib/legal-links'
+import { PRIVACY_URL, TERMS_URL, isFooterLinked } from '../../../shared/lib/legal-links'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { useFeatures } from '../../../shared/model/features-store'
 import { JoinCta } from '../components/JoinCta'
@@ -441,11 +441,11 @@ export function LumaHomePage() {
             {registrationOpen && <Link to="/register">Create account</Link>}
             <Link to="/forgot-password">Forgot password</Link>
           </nav>
-          {(isLinked(TERMS_URL) || isLinked(PRIVACY_URL) || SUPPORT_EMAIL) && (
+          {(isFooterLinked(TERMS_URL) || isFooterLinked(PRIVACY_URL) || SUPPORT_EMAIL) && (
             <nav className="mk-footer__col" aria-label="Legal">
               <p className="eyebrow">Legal</p>
-              {isLinked(TERMS_URL) && <a href={TERMS_URL}>Terms of Service</a>}
-              {isLinked(PRIVACY_URL) && <a href={PRIVACY_URL}>Privacy Policy</a>}
+              {isFooterLinked(TERMS_URL) && <a href={TERMS_URL}>Terms of Service</a>}
+              {isFooterLinked(PRIVACY_URL) && <a href={PRIVACY_URL}>Privacy Policy</a>}
               {SUPPORT_EMAIL && <a href={`mailto:${SUPPORT_EMAIL}`}>Contact</a>}
             </nav>
           )}
