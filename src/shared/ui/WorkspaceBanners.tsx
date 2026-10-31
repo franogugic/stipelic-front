@@ -1,14 +1,16 @@
 import { CalendarClock, CircleAlert, CreditCard, Landmark, ShieldAlert } from 'lucide-react'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { date } from '../lib/format'
+import { useFeatures } from '../model/features-store'
 import { Banner, useToast } from './ledger'
 
 /**
  * Workspace banners shown above every shell page, in this order: unpaid, cancelling, payouts missing,
- * suspended. Everything comes from the creator already in the store — no requests of its own.
+ * suspended. Everything about money (payment, cancelling, payouts) is left out while payments are off (closed beta). Everything comes from the creator already in the store — no requests of its own.
  */
 export function WorkspaceBanners({ slug }: { slug: string }) {
   const toast = useToast()
+  const { paymentsOn } = useFeatures()
   const creator = useCreatorStore((s) => (s.currentCreator?.slug === slug ? s.currentCreator : null))
   const checkoutStatus = useCreatorStore((s) => s.checkoutStatus)
   const startCreatorCheckout = useCreatorStore((s) => s.startCreatorCheckout)
@@ -36,7 +38,7 @@ export function WorkspaceBanners({ slug }: { slug: string }) {
 
   return (
     <>
-      {status === 'pendingpayment' && (
+      {paymentsOn && status === 'pendingpayment' && (
         <Banner
           tone="warning"
           icon={CreditCard}
@@ -51,7 +53,7 @@ export function WorkspaceBanners({ slug }: { slug: string }) {
           Publishing pages is paused until the {planName} subscription is paid.
         </Banner>
       )}
-      {creator.subscriptionStatus === 'PastDue' && (
+      {paymentsOn && creator.subscriptionStatus === 'PastDue' && (
         <Banner
           tone="danger"
           icon={CircleAlert}
@@ -61,7 +63,7 @@ export function WorkspaceBanners({ slug }: { slug: string }) {
           Update your payment method to keep the {planName} plan.
         </Banner>
       )}
-      {creator.cancelAtPeriodEnd && (
+      {paymentsOn && creator.cancelAtPeriodEnd && (
         <Banner
           tone="info"
           icon={CalendarClock}
@@ -71,7 +73,7 @@ export function WorkspaceBanners({ slug }: { slug: string }) {
           After that, your workspace moves to the Free plan and its limits.
         </Banner>
       )}
-      {!creator.payoutReady && (
+      {paymentsOn && !creator.payoutReady && (
         <Banner
           tone="accent"
           icon={Landmark}

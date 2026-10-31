@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { initials, monogram } from '../lib/format'
+import { useFeatures } from '../model/features-store'
 import { Avatar, Brand, Button, ThemeSwitch } from './ledger'
 import { NAV_SECTION_LABELS } from './nav-sections'
 import type { NavSection } from './nav-sections'
@@ -50,8 +51,12 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-function NavGroupList({ group, slug, active }: { group: NavGroup; slug: string; active: string }) {
+/** Sections that only exist while payments are on (the closed beta has no payouts). */
+const PAYMENT_SECTIONS: readonly NavSection[] = ['payouts']
+
+function NavGroupList({ group, slug, active, paymentsOn }: { group: NavGroup; slug: string; active: string; paymentsOn: boolean }) {
   const labelId = `nav-label-${group.id}`
+  const items = group.items.filter((item) => paymentsOn || !PAYMENT_SECTIONS.includes(item.section))
   return (
     <div className="nav__group">
       {group.label && (
@@ -60,7 +65,7 @@ function NavGroupList({ group, slug, active }: { group: NavGroup; slug: string; 
         </p>
       )}
       <ul className="nav__list" role="list" aria-labelledby={group.label ? labelId : undefined}>
-        {group.items.map(({ section, label, icon: Icon, href }) => (
+        {items.map(({ section, label, icon: Icon, href }) => (
           <li key={section}>
             <Link className="nav__link" to={href(slug)} aria-current={section === active ? 'page' : undefined}>
               <Icon />
@@ -74,6 +79,7 @@ function NavGroupList({ group, slug, active }: { group: NavGroup; slug: string; 
 }
 
 export function Sidebar({ slug, activeSection, onCloseDrawer }: SidebarProps) {
+  const { paymentsOn } = useFeatures()
   const user = useAuthStore((s) => s.currentUser)
   const logout = useAuthStore((s) => s.logout)
   const isLoggingOut = useAuthStore((s) => s.logoutStatus === 'submitting')
@@ -101,7 +107,7 @@ export function Sidebar({ slug, activeSection, onCloseDrawer }: SidebarProps) {
         </div>
       )}
       <nav className="nav" aria-label="Main">
-        {slug && NAV_GROUPS.map((group) => <NavGroupList key={group.id} group={group} slug={slug} active={activeSection} />)}
+        {slug && NAV_GROUPS.map((group) => <NavGroupList key={group.id} group={group} slug={slug} active={activeSection} paymentsOn={paymentsOn} />)}
       </nav>
       <div className="sidebar__foot">
         <ThemeSwitch />

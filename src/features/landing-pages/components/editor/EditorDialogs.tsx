@@ -80,6 +80,7 @@ export function SectionPickerModal({
 export type PublishBlock =
   | { code: 'SUBSCRIPTION_INACTIVE' }
   | { code: 'PAYOUTS_NOT_READY' }
+  | { code: 'PAYMENTS_DISABLED' }
   | { code: 'PLAN_LIMIT_REACHED'; used: number; limit: number }
 
 export function PublishBlockedModal({
@@ -129,6 +130,19 @@ export function PublishBlockedModal({
                 Set up payouts
               </Button>
             </>
+          ),
+        }
+      case 'PAYMENTS_DISABLED':
+        return {
+          title: 'Sales pages are off in the beta',
+          description:
+            'Luma’s closed beta has no payments: every product is free and pages collect emails. A page that sells a paid product cannot go live yet.',
+          icon: Landmark,
+          body: <p className="text-sm text-secondary">Lead capture pages with a free document can be published as usual.</p>,
+          actions: (
+            <Button variant="primary" onClick={onClose}>
+              Got it
+            </Button>
           ),
         }
       case 'PLAN_LIMIT_REACHED':
