@@ -208,6 +208,8 @@ export type Contact = {
   isUnsubscribed: boolean
   /** When a CSV import created the contact (its source is "Import"); null for everyone else. */
   importedAt: string | null
+  /** Set once Amazon SES reported the address: a permanent bounce, or a spam complaint. Such contacts are skipped when sending. */
+  deliveryIssue?: 'Bounced' | 'Complained' | null
 }
 
 export type ContactsPage = {
