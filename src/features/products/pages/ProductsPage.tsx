@@ -160,7 +160,7 @@ export function ProductsPage() {
   const header = (
     <PageHeader
       title={<em>Products</em>}
-      subtitle="Documents you sell or give away — people download them right away."
+      subtitle={paymentsOn ? 'Documents you sell or give away — people download them right away.' : 'Documents you give away — people download them right away.'}
       actions={newProductButton}
     />
   )

@@ -188,9 +188,9 @@ function ProductForm({
       : null
   const hasFile = file !== null || fileUpload.uploading
   const statusChoices: Array<[ProductStatus, string]> = [
-    ['Active', hasFile ? 'Can be sold or given away on landing pages' : 'Upload the file first'],
+    ['Active', hasFile ? (paymentsOn ? 'Can be sold or given away on landing pages' : 'Can be given away on landing pages') : 'Upload the file first'],
     ['Draft', 'Hidden while you work on it'],
-    ['Archived', 'No longer for sale'],
+    ['Archived', paymentsOn ? 'No longer for sale' : 'No longer available'],
   ]
 
   // Creating needs room under the plan's product limit (archived products don't count).
