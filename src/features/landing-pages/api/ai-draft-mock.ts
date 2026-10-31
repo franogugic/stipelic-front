@@ -10,6 +10,14 @@ import { getLandingPage, getSectionTemplates, saveEditor } from './landing-pages
 const USED_KEY = 'cp.mockAi.used'
 const LIMIT = 20
 
+const readStored = (key: string) => {
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
 const wait = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     const timer = window.setTimeout(resolve, ms)
@@ -51,8 +59,9 @@ const countOne = () => {
 }
 
 export async function mockGenerateAiDraft(slug: string, pageId: string, brief: AiBrief, signal: AbortSignal): Promise<LandingPageWithSections> {
-  const mode = String(import.meta.env.VITE_MOCK_AI)
-  await wait((Number(import.meta.env.VITE_MOCK_AI_SECONDS) || 12) * 1000, signal)
+  // `localStorage['cp.mockAi.mode']` overrides the env value, so every answer can be tried without a restart.
+  const mode = readStored('cp.mockAi.mode') ?? String(import.meta.env.VITE_MOCK_AI)
+  await wait((Number(readStored('cp.mockAi.seconds')) || Number(import.meta.env.VITE_MOCK_AI_SECONDS) || 12) * 1000, signal)
   if (mode === 'refused') {
     throw new ApiError(422, { code: 'AI_REFUSED', message: 'The third benefit promises an income — Luma doesn’t write earnings claims. Change it and try again.' })
   }
