@@ -34,6 +34,7 @@ import { OrdersPage } from '../../features/orders/pages/OrdersPage'
 import { NotFoundPage } from '../../shared/ui/NotFoundPage'
 import { AuthBootstrap } from './AuthBootstrap'
 import { HomeRoute } from './HomeRoute'
+import { PaymentsOnlyRoute } from './PaymentsOnlyRoute'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
 
@@ -66,7 +67,6 @@ export function AppRouter() {
           <Route path="/app/:slug/products/new" element={<ProductFormPage />} />
           <Route path="/app/:slug/products/:productId" element={<ProductDetailPage />} />
           <Route path="/app/:slug/products/:productId/edit" element={<ProductFormPage />} />
-          <Route path="/app/:slug/orders" element={<OrdersPage />} />
           <Route path="/app/:slug/landing-pages" element={<LandingPagesPage />} />
           <Route path="/app/:slug/landing-pages/:pageId" element={<LandingPageAnalyticsPage />} />
           <Route path="/app/:slug/landing-pages/:pageId/edit" element={<LandingPageEditorPage />} />
@@ -78,7 +78,10 @@ export function AppRouter() {
           <Route path="/app/:slug/emails/campaigns/:campaignId" element={<CampaignDetailPage />} />
           <Route path="/app/:slug/subscribers" element={<SubscribersPage />} />
           <Route path="/app/:slug/subscribers/import" element={<ContactImportPage />} />
-          <Route path="/app/:slug/payouts" element={<CreatorPayoutsPage />} />
+          <Route element={<PaymentsOnlyRoute />}>
+            <Route path="/app/:slug/orders" element={<OrdersPage />} />
+            <Route path="/app/:slug/payouts" element={<CreatorPayoutsPage />} />
+          </Route>
           <Route path="/app/:slug/settings" element={<CreatorSettingsPage />} />
           <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/creators/new" element={<CreateCreatorPage />} />

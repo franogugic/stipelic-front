@@ -52,19 +52,21 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 /** Sections that only exist while payments are on (the closed beta has no payouts). */
-const PAYMENT_SECTIONS: readonly NavSection[] = ['payouts']
+const PAYMENT_SECTIONS: readonly NavSection[] = ['orders', 'payouts']
 
 function NavGroupList({ group, slug, active, paymentsOn }: { group: NavGroup; slug: string; active: string; paymentsOn: boolean }) {
   const labelId = `nav-label-${group.id}`
   const items = group.items.filter((item) => paymentsOn || !PAYMENT_SECTIONS.includes(item.section))
+  // The Sell group has no selling in it without payments (owner: label it for what is left).
+  const heading = group.id === 'sell' && !paymentsOn ? 'Products' : group.label
   return (
     <div className="nav__group">
-      {group.label && (
+      {heading && (
         <p className="nav__label eyebrow" id={labelId}>
-          {group.label}
+          {heading}
         </p>
       )}
-      <ul className="nav__list" role="list" aria-labelledby={group.label ? labelId : undefined}>
+      <ul className="nav__list" role="list" aria-labelledby={heading ? labelId : undefined}>
         {items.map(({ section, label, icon: Icon, href }) => (
           <li key={section}>
             <Link className="nav__link" to={href(slug)} aria-current={section === active ? 'page' : undefined}>

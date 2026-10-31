@@ -4,12 +4,14 @@ import { Link } from 'react-router-dom'
 import { useHasSession } from '../../features/auth/model/use-has-session'
 import { useCreatorStore } from '../../features/creators/model/creator-store'
 import { useDocumentTitle } from '../lib/use-document-title'
+import { useFeatures } from '../model/features-store'
 import { Button } from './ledger'
 import { SoloLayout } from './SoloLayout'
 
 /** The catch-all route — the prototype's `SCREENS['not-found']`. */
 export function NotFoundPage() {
   const hasSession = useHasSession()
+  const { paymentsOn } = useFeatures()
   const currentCreator = useCreatorStore((s) => s.currentCreator)
   const currentCreatorStatus = useCreatorStore((s) => s.currentCreatorStatus)
   const loadCurrentCreator = useCreatorStore((s) => s.loadCurrentCreator)
@@ -48,9 +50,11 @@ export function NotFoundPage() {
           <Link className="link" to={`${base}/products`}>
             Products
           </Link>
-          <Link className="link" to={`${base}/orders`}>
-            Orders
-          </Link>
+          {paymentsOn && (
+            <Link className="link" to={`${base}/orders`}>
+              Orders
+            </Link>
+          )}
           <Link className="link" to={`${base}/settings`}>
             Settings
           </Link>
