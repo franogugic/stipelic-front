@@ -1,0 +1,80 @@
+# Deploys the web app to the production host: runs the backend repository's deploy.sh there over SSH (pull, replace the
+# web container, check it answers, roll back on failure). Called by CI after a push to main; run it by hand to deploy or
+# roll back any published tag. The host and its secrets are set up as in the backend repository's deploy/README.md.
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag to deploy (the full commit SHA of a main build, or "latest")
+        required: true
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy-production-web
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy web app
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 15
+    env:
+      TAG: ${{ inputs.tag }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/luma' }}
+      PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+    steps:
+      - name: Check inputs
+        run: |
+          [[ "$TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]] || { echo "::error::invalid tag"; exit 1; }
+          [[ "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "::error::invalid DEPLOY_PATH"; exit 1; }
+          [[ -n "$DEPLOY_HOST" && -n "$DEPLOY_USER" ]] || { echo "::error::DEPLOY_HOST / DEPLOY_USER missing"; exit 1; }
+
+      # The host key is pinned from a secret; never trust-on-first-use.
+      - name: SSH setup
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<CONFIG
+          Host luma-production
+            HostName $DEPLOY_HOST
+            User $DEPLOY_USER
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 15
+          CONFIG
+
+      # The workflow token pulls the image (packages: read); it goes over stdin, never as an argument.
+      - name: Deploy
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ssh luma-production "test -x '$DEPLOY_PATH/deploy.sh'" \
+            || { echo "::error::$DEPLOY_PATH/deploy.sh is missing: deploy the backend first"; exit 1; }
+          printf '%s' "$GHCR_TOKEN" | ssh luma-production "GHCR_USER='${GITHUB_ACTOR}' '$DEPLOY_PATH/deploy.sh' web '$TAG'"
+
+      - name: Check from outside
+        if: env.PUBLIC_URL != ''
+        run: curl --fail --silent --show-error --output /dev/null --retry 10 --retry-delay 3 --retry-all-errors "$PUBLIC_URL/"
+
+      - name: Clean up
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
