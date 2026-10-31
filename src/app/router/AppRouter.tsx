@@ -31,6 +31,7 @@ import { ProductDetailPage } from '../../features/products/pages/ProductDetailPa
 import { ProductFormPage } from '../../features/products/pages/ProductFormPage'
 import { ProductsPage } from '../../features/products/pages/ProductsPage'
 import { OrdersPage } from '../../features/orders/pages/OrdersPage'
+import { LegalPage } from '../../features/legal/pages/LegalPage'
 import { NotFoundPage } from '../../shared/ui/NotFoundPage'
 import { AuthBootstrap } from './AuthBootstrap'
 import { HomeRoute } from './HomeRoute'
@@ -51,6 +52,8 @@ export function AppRouter() {
         <Route path="/check-inbox" element={<CheckInboxPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/terms" element={<LegalPage page="terms" />} />
+        <Route path="/privacy" element={<LegalPage page="privacy" />} />
         <Route path="/payment/success" element={<PaymentSuccessPage />} />
         <Route path="/payment/cancel" element={<PaymentCancelledPage />} />
 

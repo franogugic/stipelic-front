@@ -85,12 +85,14 @@ export function inspectResetToken(token: string) {
   })
 }
 
-export function resetPassword(token: string, newPassword: string) {
+export function resetPassword(token: string, newPassword: string, acceptTerms = false) {
   return apiRequest<ResetPasswordResponse>('/api/auth/reset-password', {
     method: 'POST',
     body: {
       token: token.trim(),
       newPassword,
+      // Only an invited account that has not accepted the terms sends it.
+      ...(acceptTerms ? { acceptTerms: true } : {}),
     },
   })
 }

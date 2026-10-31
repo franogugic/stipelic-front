@@ -133,7 +133,7 @@ type AuthState = {
   resendVerificationEmail: (email?: string) => Promise<void>
   verifyEmailToken: (token: string) => Promise<void>
   requestPasswordResetForEmail: (email: string) => Promise<void>
-  resetPasswordWithToken: (token: string, newPassword: string) => Promise<boolean>
+  resetPasswordWithToken: (token: string, newPassword: string, acceptTerms?: boolean) => Promise<boolean>
   resetLoginFeedback: () => void
   resetRegisterFeedback: () => void
   resetResendFeedback: () => void
@@ -430,7 +430,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       })
     }
   },
-  resetPasswordWithToken: async (token, newPassword) => {
+  resetPasswordWithToken: async (token, newPassword, acceptTerms) => {
     set({
       resetPasswordStatus: 'submitting',
       resetPasswordMessage: null,
@@ -439,7 +439,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     })
 
     try {
-      const response = await resetPassword(token, newPassword)
+      const response = await resetPassword(token, newPassword, acceptTerms)
       set({
         resetPasswordStatus: 'success',
         resetPasswordMessage: response.message,

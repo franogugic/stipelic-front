@@ -83,7 +83,10 @@ export type ResetPasswordResponse = {
 }
 
 /** `POST /api/auth/reset-password/inspect`: whether a reset link can still be used, and for which address. */
-export type InspectResetTokenResponse = { status: 'Valid'; email: string } | { status: 'Expired' }
+export type InspectResetTokenResponse =
+  /** `requiresTermsAcceptance`: an invited account that has not accepted the terms yet (the invite link opens this screen). */
+  | { status: 'Valid'; email: string; requiresTermsAcceptance?: boolean }
+  | { status: 'Expired' }
 
 export type UpdateProfileRequest = {
   firstName: string
