@@ -18,6 +18,8 @@ import {
 import { Link } from 'react-router-dom'
 import { PRIVACY_URL, TERMS_URL, isLinked } from '../../../shared/lib/legal-links'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
+import { useFeatures } from '../../../shared/model/features-store'
+import { JoinCta } from '../components/JoinCta'
 import { Brand, Button, ThemeToggleButton } from '../../../shared/ui/ledger'
 import { AnalyticsVisual, AudienceVisual, EmailVisual, HeroMock } from '../components/MockVisuals'
 import { PricingPlans } from '../components/PricingPlans'
@@ -26,6 +28,7 @@ import { usePageChrome, useScrollReveal } from '../model/use-page-chrome'
 
 /** The public marketing page of Luma at `/`, for logged-out visitors. Markup and classes from designer-prototype/app/home.html. */
 export function LumaHomePage() {
+  const { registrationOpen } = useFeatures()
   useDocumentTitle('Luma — Sell what you make. Keep what you earn.')
   usePageChrome()
   useScrollReveal(null)
@@ -51,12 +54,12 @@ export function LumaHomePage() {
           </nav>
           <div className="mk-nav__actions">
             <ThemeToggleButton size="sm" />
-            <Button to="/login" variant="ghost" size="sm" className="mk-hide-sm">
-              Log in
-            </Button>
-            <Button to="/register" variant="accent" size="sm">
-              Start free
-            </Button>
+            {registrationOpen && (
+              <Button to="/login" variant="ghost" size="sm" className="mk-hide-sm">
+                Log in
+              </Button>
+            )}
+            <JoinCta size="sm" note={false} />
           </div>
         </div>
       </header>
@@ -81,10 +84,7 @@ export function LumaHomePage() {
               business, built for creators in Croatia and the EU.
             </p>
             <div className="mk-hero__ctas" data-reveal>
-              <Button to="/register" variant="accent" size="lg">
-                <span>Start free</span>
-                <ArrowRight />
-              </Button>
+              <JoinCta size="lg" arrow />
               <Button href="#how" variant="secondary" size="lg" icon={Play}>
                 See how it works
               </Button>
@@ -410,13 +410,12 @@ export function LumaHomePage() {
             </h2>
             <p className="mk-head__lead">Free to start. Your first page is five minutes away.</p>
             <div className="mk-hero__ctas">
-              <Button to="/register" variant="accent" size="lg">
-                <span>Start free</span>
-                <ArrowRight />
-              </Button>
-              <Link className="btn btn--lg mk-btn-ghost-ink" to="/login">
-                Log in
-              </Link>
+              <JoinCta size="lg" arrow />
+              {registrationOpen && (
+                <Link className="btn btn--lg mk-btn-ghost-ink" to="/login">
+                  Log in
+                </Link>
+              )}
             </div>
           </div>
         </section>
@@ -439,7 +438,7 @@ export function LumaHomePage() {
           <nav className="mk-footer__col" aria-label="Account">
             <p className="eyebrow">Account</p>
             <Link to="/login">Log in</Link>
-            <Link to="/register">Create account</Link>
+            {registrationOpen && <Link to="/register">Create account</Link>}
             <Link to="/forgot-password">Forgot password</Link>
           </nav>
           {(isLinked(TERMS_URL) || isLinked(PRIVACY_URL) || SUPPORT_EMAIL) && (
