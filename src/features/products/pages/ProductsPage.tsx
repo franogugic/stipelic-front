@@ -20,6 +20,7 @@ import { useLandingPageStore } from '../../landing-pages/model/landing-page-stor
 import { ProductCard } from '../components/ProductCard'
 import { ProductSummary } from '../components/ProductSummary'
 import { ProductsTable } from '../components/ProductsTable'
+import { useFeatures } from '../../../shared/model/features-store'
 import { sellingPagesOf } from '../model/catalogue'
 import { useProductStore } from '../model/product-store'
 import type { Product } from '../model/types'
@@ -39,6 +40,7 @@ function storedView(): View | null {
 
 /** The products catalogue: an overview, filters, and the products as cards or a table. */
 export function ProductsPage() {
+  const { paymentsOn } = useFeatures()
   const toast = useToast()
   const { slug = '' } = useParams<{ slug: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -116,8 +118,8 @@ export function ProductsPage() {
   const limitReason =
     atLimit && creator
       ? maxProducts === 1
-        ? `You’ve used your 1 product on the ${creator.planName} plan. Upgrade to add more.`
-        : `You’ve used all ${number(maxProducts)} products on the ${creator.planName} plan. Upgrade to add more.`
+        ? `You’ve used your 1 product on the ${creator.planName} plan. ${paymentsOn ? 'Upgrade to add more.' : 'Ask us if you need more room.'}`
+        : `You’ve used all ${number(maxProducts)} products on the ${creator.planName} plan. ${paymentsOn ? 'Upgrade to add more.' : 'Ask us if you need more room.'}`
       : undefined
 
   const inScope = useMemo(() => products.filter((product) => showArchived || product.status !== 'Archived'), [products, showArchived])

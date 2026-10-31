@@ -3,6 +3,7 @@ import { useId } from 'react'
 import { Badge, Button, ConfirmDialog, InputAddon, InputGroup, Meter, Modal, useToast } from '../../../../shared/ui/ledger'
 import { SECTION_KINDS, SINGLE_TYPES, variantsOf } from '../../model/section-library'
 import type { LandingPageType, SectionTemplate, SectionType } from '../../model/types'
+import { useFeatures } from '../../../../shared/model/features-store'
 import { Wireframe } from '../Wireframe'
 
 /** "Add a section": every type with its layouts. Types a page has only once are disabled when present. */
@@ -94,6 +95,7 @@ export function PublishBlockedModal({
   planName: string | null
   onClose: () => void
 }) {
+  const { paymentsOn } = useFeatures()
   const plan = planName ? `the ${planName} plan` : 'your plan'
   const content = (() => {
     switch (block?.code) {
@@ -153,7 +155,7 @@ export function PublishBlockedModal({
           body: (
             <div className="stack">
               <Meter label="Pages" used={block.used} limit={block.limit} />
-              <p className="text-sm text-secondary">Archive a page you no longer need, or upgrade your plan for more pages.</p>
+              <p className="text-sm text-secondary">{paymentsOn ? 'Archive a page you no longer need, or upgrade your plan for more pages.' : 'Archive a page you no longer need, or ask us if you need more room in the beta.'}</p>
             </div>
           ),
           actions: (
@@ -161,9 +163,11 @@ export function PublishBlockedModal({
               <Button variant="secondary" to={`/app/${slug}/landing-pages`}>
                 Manage pages
               </Button>
-              <Button variant="accent" to={`/app/${slug}/settings?tab=billing`}>
-                Upgrade plan
-              </Button>
+              {paymentsOn && (
+                <Button variant="accent" to={`/app/${slug}/settings?tab=billing`}>
+                  Upgrade plan
+                </Button>
+              )}
             </>
           ),
         }

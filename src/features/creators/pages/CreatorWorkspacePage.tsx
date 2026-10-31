@@ -104,6 +104,7 @@ export function CreatorWorkspacePage() {
       slug={slug}
       planName={creator.planName}
       renewsOn={renewsOn}
+      betaUntil={creator.planGrant?.expiresAt ?? null}
       products={{ used: usageData?.productCount ?? 0, limit: limit('max_products') }}
       pages={{ used: usageData?.landingPageCount ?? 0, limit: limit('max_landing_pages') }}
       emails={{ used: usageData?.emailsSentThisMonth ?? 0, limit: usageData?.emailsMonthlyLimit ?? limit('max_email_sends_per_month') }}

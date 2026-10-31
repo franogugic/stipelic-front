@@ -44,6 +44,16 @@ export type Creator = {
   stripeConnectPayoutsEnabled: boolean
   /** Stripe reports payouts enabled on the workspace's connected account. */
   payoutReady: boolean
+  /** A plan the owner granted without payment (closed beta); null when there is none. */
+  planGrant?: PlanGrant | null
+}
+
+export type PlanGrant = {
+  /** Who gave it, e.g. "beta". */
+  source: string
+  planCode: string
+  /** When the plan falls back to Free unless the owner extends it. */
+  expiresAt: string
 }
 
 export type ConnectOnboardingLinkResult = {

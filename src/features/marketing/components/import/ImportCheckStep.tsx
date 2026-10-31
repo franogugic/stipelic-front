@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 import { number, plural } from '../../../../shared/lib/format'
 import { Alert, Button, Card, Meter } from '../../../../shared/ui/ledger'
 import { fileSizeLabel } from '../../model/csv-check'
+import { useFeatures } from '../../../../shared/model/features-store'
 import type { CsvFacts } from '../../model/csv-check'
 import type { ContactImportSummary } from '../../model/types'
 
@@ -91,6 +92,7 @@ export function ImportCheckStep({
   onAnother: () => void
   upgradeTo: string
 }) {
+  const { paymentsOn } = useFeatures()
   const shown = result.invalid.slice(0, SHOWN_INVALID)
   const remaining = result.remainingContactLimit
   const overLimit = remaining !== null && remaining < 0
@@ -127,9 +129,11 @@ export function ImportCheckStep({
             <Meter label={`Active contacts after this import · ${planName} plan`} used={activeContacts + result.new} limit={limit} />
             <p className="field__hint">{UNSUBSCRIBED_FREE}</p>
             <div className="fill-stack__foot import-actions">
-              <Button variant="accent" icon={ArrowUpRight} to={upgradeTo}>
-                Upgrade plan
-              </Button>
+              {paymentsOn && (
+                <Button variant="accent" icon={ArrowUpRight} to={upgradeTo}>
+                  Upgrade plan
+                </Button>
+              )}
               {another}
             </div>
           </div>

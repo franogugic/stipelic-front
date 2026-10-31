@@ -2,6 +2,7 @@ import { ArrowUpRight, CloudOff, Gauge, Inbox, Plus, RotateCw, X } from 'lucide-
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { number } from '../../lib/format'
+import { useFeatures } from '../../model/features-store'
 import { Button } from './Button'
 import type { ButtonVariant } from './Button'
 import { Meter } from './Meter'
@@ -162,6 +163,7 @@ export function PlanLimit({
   limit: number
   upgradeTo: string
 }) {
+  const { paymentsOn } = useFeatures()
   return (
     <div className="limit" role="status">
       <span className="limit__icon">
@@ -173,12 +175,17 @@ export function PlanLimit({
             ? `You’ve used your 1 ${noun.replace(/s$/, '')} on the ${planName} plan`
             : `You’ve used all ${number(limit)} ${noun} on the ${planName} plan`}
         </p>
-        <p className="limit__text">Upgrade your plan to add more. Nothing you’ve already published is affected.</p>
+        <p className="limit__text">
+          {paymentsOn ? 'Upgrade your plan to add more.' : 'This is your limit in the beta. Ask us if you need more room.'} Nothing you’ve
+          already published is affected.
+        </p>
         <Meter label={`${noun[0].toUpperCase()}${noun.slice(1)}`} used={limit} limit={limit} />
       </div>
-      <Button variant="accent" icon={ArrowUpRight} to={upgradeTo}>
-        Upgrade plan
-      </Button>
+      {paymentsOn && (
+        <Button variant="accent" icon={ArrowUpRight} to={upgradeTo}>
+          Upgrade plan
+        </Button>
+      )}
     </div>
   )
 }
