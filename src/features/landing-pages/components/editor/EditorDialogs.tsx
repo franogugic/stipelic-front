@@ -3,6 +3,7 @@ import { useId } from 'react'
 import { Badge, Button, ConfirmDialog, InputAddon, InputGroup, Meter, Modal, useToast } from '../../../../shared/ui/ledger'
 import { SECTION_KINDS, SINGLE_TYPES, variantsOf } from '../../model/section-library'
 import type { LandingPageType, SectionTemplate, SectionType } from '../../model/types'
+import { useFeatures } from '../../../../shared/model/features-store'
 import { Wireframe } from '../Wireframe'
 
 /** "Add a section": every type with its layouts. Types a page has only once are disabled when present. */
@@ -80,6 +81,7 @@ export function SectionPickerModal({
 export type PublishBlock =
   | { code: 'SUBSCRIPTION_INACTIVE' }
   | { code: 'PAYOUTS_NOT_READY' }
+  | { code: 'PAYMENTS_DISABLED' }
   | { code: 'PLAN_LIMIT_REACHED'; used: number; limit: number }
 
 export function PublishBlockedModal({
@@ -93,6 +95,7 @@ export function PublishBlockedModal({
   planName: string | null
   onClose: () => void
 }) {
+  const { paymentsOn } = useFeatures()
   const plan = planName ? `the ${planName} plan` : 'your plan'
   const content = (() => {
     switch (block?.code) {
@@ -131,6 +134,19 @@ export function PublishBlockedModal({
             </>
           ),
         }
+      case 'PAYMENTS_DISABLED':
+        return {
+          title: 'Sales pages are off in the beta',
+          description:
+            'Luma’s closed beta has no payments: every product is free and pages collect emails. A page that sells a paid product cannot go live yet.',
+          icon: Landmark,
+          body: <p className="text-sm text-secondary">Lead capture pages with a free document can be published as usual.</p>,
+          actions: (
+            <Button variant="primary" onClick={onClose}>
+              Got it
+            </Button>
+          ),
+        }
       case 'PLAN_LIMIT_REACHED':
         return {
           title: 'You’ve reached your page limit',
@@ -139,7 +155,7 @@ export function PublishBlockedModal({
           body: (
             <div className="stack">
               <Meter label="Pages" used={block.used} limit={block.limit} />
-              <p className="text-sm text-secondary">Archive a page you no longer need, or upgrade your plan for more pages.</p>
+              <p className="text-sm text-secondary">{paymentsOn ? 'Archive a page you no longer need, or upgrade your plan for more pages.' : 'Archive a page you no longer need, or ask us if you need more room in the beta.'}</p>
             </div>
           ),
           actions: (
@@ -147,9 +163,11 @@ export function PublishBlockedModal({
               <Button variant="secondary" to={`/app/${slug}/landing-pages`}>
                 Manage pages
               </Button>
-              <Button variant="accent" to={`/app/${slug}/settings?tab=billing`}>
-                Upgrade plan
-              </Button>
+              {paymentsOn && (
+                <Button variant="accent" to={`/app/${slug}/settings?tab=billing`}>
+                  Upgrade plan
+                </Button>
+              )}
             </>
           ),
         }

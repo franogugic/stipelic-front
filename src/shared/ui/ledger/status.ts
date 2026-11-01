@@ -29,7 +29,12 @@ export const STATUS: Record<StatusKind, Record<string, StatusEntry>> = {
     failed: ['danger', 'Failed'],
     cancelled: ['outline', 'Cancelled'],
   },
-  subscriber: { active: ['success', 'Active'], unsubscribed: ['outline', 'Unsubscribed'] },
+  subscriber: {
+    active: ['success', 'Active'],
+    unsubscribed: ['outline', 'Unsubscribed'],
+    bounced: ['danger', 'Bounced'],
+    complained: ['warning', 'Complained'],
+  },
   template: { active: ['success', 'Active'], archived: ['outline', 'Archived'] },
   subscription: {
     active: ['success', 'Active'],
@@ -78,6 +83,10 @@ export const templateStatusKey = (apiValue: string) => lower(apiValue)
 
 /** Subscriber: the API sends `isUnsubscribed`. */
 export const subscriberStatusKey = (isUnsubscribed: boolean) => (isUnsubscribed ? 'unsubscribed' : 'active')
+
+/** A delivery problem SES reported for the address, as a status key; null when there is none. */
+export const deliveryIssueKey = (issue: string | null | undefined) =>
+  issue?.toLowerCase() === 'bounced' ? 'bounced' : issue?.toLowerCase() === 'complained' ? 'complained' : null
 
 /**
  * Campaign: Scheduled, Failed, Cancelled as-is; Queued is `sending` (label "Sending {sent}/{recipients}")

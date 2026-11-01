@@ -1,12 +1,13 @@
 import { Check, CircleAlert, KeyRound, Link2Off, LogIn, Send, X } from 'lucide-react'
 import type { FormEvent } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../../shared/api/http-client'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
 import { SoloLayout } from '../../../shared/ui/SoloLayout'
 import { StateArt } from '../../../shared/ui/StateArt'
-import { Alert, Button, Field, Input } from '../../../shared/ui/ledger'
+import { PRIVACY_URL, TERMS_URL } from '../../../shared/lib/legal-links'
+import { Alert, Button, Checkbox, Field, Input } from '../../../shared/ui/ledger'
 import { inspectResetToken } from '../api/auth-api'
 import { AuthSplitLayout } from '../components/AuthSplitLayout'
 import { PasswordChecklist } from '../components/PasswordChecklist'
@@ -18,7 +19,7 @@ import { useHasSession } from '../model/use-has-session'
 
 type Inspection =
   | { status: 'checking' }
-  | { status: 'valid'; email: string }
+  | { status: 'valid'; email: string; requiresTerms: boolean }
   | { status: 'expired' }
   | { status: 'failed'; text: string }
 
@@ -26,7 +27,7 @@ type Inspection =
 async function inspect(token: string): Promise<Inspection> {
   try {
     const result = await inspectResetToken(token)
-    return result.status === 'Valid' ? { status: 'valid', email: result.email } : { status: 'expired' }
+    return result.status === 'Valid' ? { status: 'valid', email: result.email, requiresTerms: result.termsRequired === true } : { status: 'expired' }
   } catch (error) {
     if (error instanceof ApiError && error.status === 400) return { status: 'expired' }
     return { status: 'failed', text: requestFailedTextFor(error) }
@@ -82,13 +83,15 @@ export function ResetPasswordPage() {
     return <SoloRequestFailed text={inspection.text} retrying={retrying} onRetry={() => void retry()} />
   }
 
-  return <ResetPasswordForm token={token} email={inspection.email} onExpired={() => setInspection({ status: 'expired' })} />
+  return <ResetPasswordForm token={token} email={inspection.email} requiresTerms={inspection.requiresTerms} onExpired={() => setInspection({ status: 'expired' })} />
 }
 
-function ResetPasswordForm({ token, email, onExpired }: { token: string; email: string; onExpired: () => void }) {
+function ResetPasswordForm({ token, email, requiresTerms, onExpired }: { token: string; email: string; requiresTerms: boolean; onExpired: () => void }) {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [touched, setTouched] = useState({ newPassword: false, confirmPassword: false })
+  const [touched, setTouched] = useState({ newPassword: false, confirmPassword: false, acceptTerms: false })
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const termsErrorId = useId()
 
   const resetPasswordStatus = useAuthStore((s) => s.resetPasswordStatus)
   const resetPasswordError = useAuthStore((s) => s.resetPasswordError)
@@ -101,15 +104,16 @@ function ResetPasswordForm({ token, email, onExpired }: { token: string; email: 
   const passwordError =
     touched.newPassword && !isPasswordValid ? 'Password does not meet all requirements.' : undefined
   const confirmError = touched.confirmPassword && !passwordsMatch ? 'Passwords do not match.' : undefined
+  const termsError = requiresTerms && touched.acceptTerms && !acceptTerms ? 'Accept the Terms and the Privacy Policy to continue.' : undefined
   const isSubmitting = resetPasswordStatus === 'submitting'
 
   // The button stays active (as in the prototype); an invalid submit only reveals the errors.
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setTouched({ newPassword: true, confirmPassword: true })
-    if (!isPasswordValid || !passwordsMatch || isSubmitting) return
+    setTouched({ newPassword: true, confirmPassword: true, acceptTerms: true })
+    if (!isPasswordValid || !passwordsMatch || (requiresTerms && !acceptTerms) || isSubmitting) return
 
-    const succeeded = await resetPasswordWithToken(token, newPassword)
+    const succeeded = await resetPasswordWithToken(token, newPassword, requiresTerms)
     // A 400 here means the link was used or expired since it was checked.
     if (!succeeded && useAuthStore.getState().resetPasswordErrorStatus === 400) {
       resetResetPasswordFeedback()
@@ -125,7 +129,7 @@ function ResetPasswordForm({ token, email, onExpired }: { token: string; email: 
   return (
     <AuthSplitLayout>
       <div className="stack stack--sm">
-        <h1 className="page-title">Choose a new <em>password</em></h1>
+        <h1 className="page-title">{requiresTerms ? <>Set your <em>password</em></> : <>Choose a new <em>password</em></>}</h1>
         <p className="text-secondary">For {email}</p>
       </div>
 
@@ -165,8 +169,35 @@ function ResetPasswordForm({ token, email, onExpired }: { token: string; email: 
             />
           )}
         </Field>
+        {requiresTerms && (
+          <div className="field">
+            <Checkbox
+              name="acceptTerms"
+              checked={acceptTerms}
+              aria-invalid={termsError ? true : undefined}
+              aria-describedby={termsError ? termsErrorId : undefined}
+              onBlur={() => setTouched((prev) => ({ ...prev, acceptTerms: true }))}
+              onChange={(e) => {
+                resetResetPasswordFeedback()
+                setAcceptTerms(e.target.checked)
+              }}
+              label={
+                <>
+                  I agree to the <Link className="link" to={TERMS_URL} target="_blank">Terms</Link> and{' '}
+                  <Link className="link" to={PRIVACY_URL} target="_blank">Privacy Policy</Link>
+                </>
+              }
+            />
+            {termsError && (
+              <p className="field__error" id={termsErrorId}>
+                <CircleAlert />
+                <span>{termsError}</span>
+              </p>
+            )}
+          </div>
+        )}
         <Button variant="primary" size="lg" block type="submit" loading={isSubmitting}>
-          Update password
+          {requiresTerms ? 'Set password' : 'Update password'}
         </Button>
       </form>
     </AuthSplitLayout>

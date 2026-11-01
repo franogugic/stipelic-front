@@ -32,6 +32,7 @@ import { BODY_MAX_LENGTH, CTA_LABEL_MAX_LENGTH, CTA_URL_MAX_LENGTH, SUBJECT_MAX_
 import { ESTIMATED_OPENS, nextResendRound, resendStateOf, suggestedResendSubject } from '../model/resend'
 import { footerReasonOf } from '../model/audience'
 import { nextReset } from '../model/schedule'
+import { useFeatures } from '../../../shared/model/features-store'
 import type { AudiencePreview, CampaignDetail } from '../model/types'
 import { RESEND_LIMIT } from '../model/types'
 
@@ -47,6 +48,7 @@ const STATE_CHANGED_CODES = ['LIMIT_REACHED', 'RESEND_PENDING', 'TOO_LATE', 'TOO
  * Whether a resend is possible, and for how many people, is the server's answer.
  */
 export function ResendCampaignPage({ slug, originalPublicId }: { slug: string; originalPublicId: string }) {
+  const { paymentsOn } = useFeatures()
   const toast = useToast()
   const navigate = useNavigate()
   const loadCampaigns = useCampaignStore((s) => s.loadCampaigns)
@@ -258,8 +260,8 @@ export function ResendCampaignPage({ slug, originalPublicId }: { slug: string; o
             <p>
               This resend needs {number(recipientCount ?? 0)} sends and you have {number(left)} left.{' '}
               {resetInsideWindow
-                ? `Schedule it for after your sends reset on ${date(resetAt)} — still inside the resend window — or upgrade your plan.`
-                : `Resends close on ${windowEnds ? dateTime(windowEnds) : 'the last day of the window'}, before your sends reset on ${date(resetAt)}. Upgrade your plan to send it in time.`}{' '}
+                ? `Schedule it for after your sends reset on ${date(resetAt)} — still inside the resend window${paymentsOn ? ' — or upgrade your plan' : ''}.`
+                : `Resends close on ${windowEnds ? dateTime(windowEnds) : 'the last day of the window'}, before your sends reset on ${date(resetAt)}.${paymentsOn ? ' Upgrade your plan to send it in time.' : ' Ask us if you need more sends.'}`}{' '}
               The limit is checked when the resend goes out.
             </p>
             {preview && <Meter label="Sent this month" used={preview.usedThisMonth} limit={preview.monthlyLimit} />}
@@ -269,9 +271,11 @@ export function ResendCampaignPage({ slug, originalPublicId }: { slug: string; o
                   Schedule after the reset
                 </Button>
               )}
-              <Button variant="accent" icon={ArrowUpRight} to={`/app/${slug}/settings?tab=billing`}>
-                Upgrade plan
-              </Button>
+              {paymentsOn && (
+                <Button variant="accent" icon={ArrowUpRight} to={`/app/${slug}/settings?tab=billing`}>
+                  Upgrade plan
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -468,6 +472,7 @@ export function ResendCampaignPage({ slug, originalPublicId }: { slug: string; o
           busy={busy}
           error={sendError}
           resend={{ round, limit: resend.limit }}
+          estimate={preview}
           onCancel={() => setConfirming(false)}
           onConfirm={() => void sendNow()}
         />

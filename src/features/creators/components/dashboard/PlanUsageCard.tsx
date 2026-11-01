@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { date, number } from '../../../../shared/lib/format'
+import { useFeatures } from '../../../../shared/model/features-store'
 import { Badge, Button } from '../../../../shared/ui/ledger'
 
 type Row = { icon: LucideIcon; label: string; used: number; limit: number | undefined; to: string }
@@ -12,6 +13,7 @@ export function PlanUsageCard({
   slug,
   planName,
   renewsOn,
+  betaUntil,
   products,
   pages,
   emails,
@@ -20,10 +22,13 @@ export function PlanUsageCard({
   planName: string
   /** The end of the current billing period; null on a plan that doesn't renew. */
   renewsOn: string | null
+  /** The end of a plan the owner granted without payment (closed beta); null when there is none. */
+  betaUntil?: string | null
   products: { used: number; limit: number | undefined }
   pages: { used: number; limit: number | undefined }
   emails: { used: number; limit: number | undefined }
 }) {
+  const { paymentsOn } = useFeatures()
   const rows: Row[] = [
     { icon: Package, label: 'Products', ...products, to: `/app/${slug}/products` },
     { icon: PanelsTopLeft, label: 'Landing pages', ...pages, to: `/app/${slug}/landing-pages` },
@@ -37,10 +42,11 @@ export function PlanUsageCard({
           <h2 className="card__title" id="plan-usage-title">
             Plan &amp; usage <Badge tone="solid-accent">{planName}</Badge>
           </h2>
-          {renewsOn && <p className="card__subtitle">Renews {date(renewsOn)}</p>}
+          {paymentsOn && renewsOn && <p className="card__subtitle">Renews {date(renewsOn)}</p>}
+          {!paymentsOn && betaUntil && <p className="card__subtitle">Beta access until {date(betaUntil)}</p>}
         </div>
         <Button variant="ghost" icon={ArrowUpRight} to={`/app/${slug}/settings?tab=billing`}>
-          Manage
+          {paymentsOn ? 'Manage' : 'Details'}
         </Button>
       </div>
       <div className="card__body fill-stack">

@@ -11,6 +11,7 @@ import {
   resetPassword,
   verifyEmail,
 } from '../api/auth-api'
+import { useFeaturesStore } from '../../../shared/model/features-store'
 import type { AccountStatus, AuthUser, LoginFormValues, RegisterFormValues, VerifyEmailOutcome } from './types'
 
 /** The 400 codes of a verification link that cannot be used, and the screen each one gets. */
@@ -132,7 +133,7 @@ type AuthState = {
   resendVerificationEmail: (email?: string) => Promise<void>
   verifyEmailToken: (token: string) => Promise<void>
   requestPasswordResetForEmail: (email: string) => Promise<void>
-  resetPasswordWithToken: (token: string, newPassword: string) => Promise<boolean>
+  resetPasswordWithToken: (token: string, newPassword: string, acceptTerms?: boolean) => Promise<boolean>
   resetLoginFeedback: () => void
   resetRegisterFeedback: () => void
   resetResendFeedback: () => void
@@ -242,6 +243,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const user = await getCurrentUser()
+      useFeaturesStore.getState().apply(user.features)
       set({
         currentUser: user,
         accountStatus: getAccountStatus(user),
@@ -282,6 +284,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         error instanceof ApiError
           ? error.message
           : 'We could not create your account. Please try again.'
+
+      // 403 REGISTRATION_CLOSED: the API says it is closed even though this page thought it was open (a cached answer).
+      if (error instanceof ApiError && error.code === 'REGISTRATION_CLOSED') {
+        useFeaturesStore.getState().apply({ ...useFeaturesStore.getState().features, openRegistration: false })
+      }
 
       set({ registerStatus: 'error', registerError: message })
       return null
@@ -423,7 +430,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       })
     }
   },
-  resetPasswordWithToken: async (token, newPassword) => {
+  resetPasswordWithToken: async (token, newPassword, acceptTerms) => {
     set({
       resetPasswordStatus: 'submitting',
       resetPasswordMessage: null,
@@ -432,7 +439,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     })
 
     try {
-      const response = await resetPassword(token, newPassword)
+      const response = await resetPassword(token, newPassword, acceptTerms)
       set({
         resetPasswordStatus: 'success',
         resetPasswordMessage: response.message,

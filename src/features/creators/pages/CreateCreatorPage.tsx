@@ -20,6 +20,7 @@ import {
 import { createSlug, validateCreateCreatorForm } from '../model/create-creator-validation'
 import type { CreateCreatorFieldName } from '../model/create-creator-validation'
 import { useCreatorStore } from '../model/creator-store'
+import { useFeatures } from '../../../shared/model/features-store'
 import { usePayoutStore } from '../model/payout-store'
 import { countryName } from '../components/payouts/payout-format'
 import type { CreateCreatorFormValues, CreatorPlan } from '../model/types'
@@ -68,7 +69,7 @@ const initialValues: CreateCreatorFormValues = {
 export function CreateCreatorPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>(1)
-  const [values, setValues] = useState<CreateCreatorFormValues>(initialValues)
+  const [formValues, setValues] = useState<CreateCreatorFormValues>(initialValues)
   const [touched, setTouched] = useState<Partial<Record<CreateCreatorFieldName, boolean>>>({})
   const [slugTakenError, setSlugTakenError] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -82,6 +83,12 @@ export function CreateCreatorPage() {
   const creatorPlans = useCreatorStore((s) => s.creatorPlans)
   const creatorPlansError = useCreatorStore((s) => s.creatorPlansError)
   const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
+
+  const { ready, paymentsEnabled } = useFeatures()
+  // Closed beta: nothing to pay, so only the Free plan is offered and there is no Stripe note.
+  const beta = ready && !paymentsEnabled
+  // In the beta every workspace starts on Free, whatever the form held.
+  const values = useMemo(() => (beta ? { ...formValues, planCode: 'free' } : formValues), [beta, formValues])
 
   const payoutCountries = usePayoutStore((s) => s.payoutCountries)
   const countriesFailed = usePayoutStore((s) => s.payoutCountriesStatus === 'error')
@@ -107,7 +114,7 @@ export function CreateCreatorPage() {
     [payoutCountries],
   )
   const selectedCountry = countries.find((country) => country.code === values.countryCode)
-  const activePlans = creatorPlans.filter((plan) => plan.status.toLowerCase() === 'active')
+  const activePlans = creatorPlans.filter((plan) => plan.status.toLowerCase() === 'active' && (!beta || plan.priceCents === 0))
 
   // Step 3 counts as configured when anything there was filled in or changed.
   const configureSettingsOnStart =
@@ -200,7 +207,10 @@ export function CreateCreatorPage() {
 
   const heading: Record<Step, { title: ReactNode; text: string }> = {
     1: { title: <>Name your <em>workspace</em></>, text: 'This is the name and address your customers will see.' },
-    2: { title: <>Choose your <em>plan</em></>, text: 'You can change it any time.' },
+    2: {
+      title: <>Choose your <em>plan</em></>,
+      text: beta ? 'Luma is in a closed beta, so there is nothing to pay.' : 'You can change it any time.',
+    },
     3: { title: <>Make it <em>yours</em></>, text: 'Optional — you can change all of this later in Settings.' },
   }
 
@@ -326,7 +336,7 @@ export function CreateCreatorPage() {
                 />
               ))}
             </div>
-            {selectedCountry && <PayoutAlert country={selectedCountry.name} />}
+            {!beta && selectedCountry && <PayoutAlert country={selectedCountry.name} />}
           </>
         )}
 

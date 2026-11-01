@@ -33,6 +33,7 @@ import { SendingPanel } from '../components/SendingPanel'
 import { audienceLabel, footerReasonOf, isBuyersAudience, selectionFromUrl, urlFromSelection } from '../model/audience'
 import { nextReset } from '../model/schedule'
 import { BODY_MAX_LENGTH, CTA_LABEL_MAX_LENGTH, CTA_URL_MAX_LENGTH, SUBJECT_MAX_LENGTH } from '../model/mail-content-rules'
+import { useFeatures } from '../../../shared/model/features-store'
 import { useCampaignComposer } from '../model/use-campaign-composer'
 import type { CampaignAudienceType, CampaignDetail } from '../model/types'
 
@@ -117,6 +118,7 @@ export function NewCampaignPage() {
 }
 
 function NewCampaignForm() {
+  const { paymentsOn } = useFeatures()
   const toast = useToast()
   const navigate = useNavigate()
   const { slug = '' } = useParams<{ slug: string }>()
@@ -240,16 +242,18 @@ function NewCampaignForm() {
             <p className="alert__title">Not enough sends left to send it now</p>
             <p>
               This campaign needs {number(recipientCount ?? 0)} sends and you have {number(left)} left. Schedule it for after your sends
-              reset on {date(nextReset(openedAt))}, or upgrade your plan. The limit is checked when the campaign goes out.
+              reset on {date(nextReset(openedAt))}{paymentsOn ? ', or upgrade your plan' : ''}. The limit is checked when the campaign goes out.
             </p>
             {composer.preview && <Meter label="Sent this month" used={composer.preview.usedThisMonth} limit={composer.preview.monthlyLimit} />}
             <div className="cluster">
               <Button variant="primary" icon={CalendarClock} onClick={() => askSchedule(true)}>
                 Schedule after the reset
               </Button>
-              <Button variant="accent" icon={ArrowUpRight} to={`/app/${slug}/settings?tab=billing`}>
-                Upgrade plan
-              </Button>
+              {paymentsOn && (
+                <Button variant="accent" icon={ArrowUpRight} to={`/app/${slug}/settings?tab=billing`}>
+                  Upgrade plan
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -477,6 +481,7 @@ function NewCampaignForm() {
         subject={content.subject.trim()}
         audienceTitle={selectedLabel}
         noun={noun}
+        estimate={composer.preview}
         from={supportEmail ? `${brandName} <${supportEmail}>` : null}
         sendsLeftAfter={remaining === null ? null : Math.max(0, left - (recipientCount ?? 0))}
         busy={composer.isSending}

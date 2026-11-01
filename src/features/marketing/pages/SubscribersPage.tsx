@@ -19,6 +19,7 @@ import {
   StatusBadge,
   TableFilterBar,
   TableFooter,
+  deliveryIssueKey,
   subscriberStatusKey,
   useToast,
 } from '../../../shared/ui/ledger'
@@ -256,7 +257,10 @@ export function SubscribersPage() {
                     {date(contact.firstCapturedAt)}
                   </td>
                   <td data-label="Status">
-                    <StatusBadge kind="subscriber" value={subscriberStatusKey(contact.isUnsubscribed)} />
+                    <div className="cluster cluster--sm">
+                      <StatusBadge kind="subscriber" value={subscriberStatusKey(contact.isUnsubscribed)} />
+                      {deliveryIssueKey(contact.deliveryIssue) && <StatusBadge kind="subscriber" value={deliveryIssueKey(contact.deliveryIssue) ?? ''} />}
+                    </div>
                   </td>
                   <td className="is-actions">
                     <Button

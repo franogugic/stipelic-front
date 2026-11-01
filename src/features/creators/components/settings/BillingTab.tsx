@@ -2,6 +2,8 @@ import { ArrowUpRight, CalendarClock, CircleAlert, CreditCard, Gauge, Lock } fro
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { date, money, number, plural } from '../../../../shared/lib/format'
+import { useFeatures } from '../../../../shared/model/features-store'
+import { SUPPORT_EMAIL } from '../../../home/model/home-content'
 import {
   Alert,
   Badge,
@@ -9,6 +11,7 @@ import {
   Card,
   ConfirmDialog,
   Meter,
+  SkeletonCards,
   StatusBadge,
   subscriptionStatusKey,
   useToast,
@@ -30,6 +33,7 @@ function nextMonthStart() {
 /** Settings → Plan & billing: status banner, current plan, usage and the plan comparison. */
 export function BillingTab({ slug, creator }: { slug: string; creator: Creator }) {
   const toast = useToast()
+  const { ready, paymentsOn } = useFeatures()
   const plans = useCreatorStore((s) => s.creatorPlans)
   const loadCreatorPlans = useCreatorStore((s) => s.loadCreatorPlans)
   const openBillingPortal = useCreatorStore((s) => s.openBillingPortal)
@@ -184,6 +188,61 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
     contacts: summary?.subscriberCount ?? 0,
   }
 
+  const usageCard = (
+    <Card title="Usage this month" subtitle={`Email sends reset on ${date(nextMonthStart())}`}>
+      <div className="stack stack--md">
+        <Meter label="Landing pages" used={used.pages} limit={limitOf(plan, 'max_landing_pages')} />
+        <Meter label="Products" used={used.products} limit={limitOf(plan, 'max_products')} />
+        <Meter
+          label="Emails sent"
+          used={used.emails}
+          limit={summary?.emailsMonthlyLimit ?? limitOf(plan, 'max_email_sends_per_month')}
+        />
+        <Meter label="Contacts" used={used.contacts} limit={limitOf(plan, 'max_contacts')} />
+      </div>
+    </Card>
+  )
+
+  // The closed beta has no billing: the plan is a grant. Show it, its usage and who to ask — no buttons, no prices.
+  if (!ready) return <SkeletonCards count={2} />
+  if (!paymentsOn) {
+    return (
+      <div className="stack stack--lg">
+        <div className="settings-grid">
+          <article className="card card--feature">
+            <div className="card__body stack stack--lg">
+              <div className="cluster cluster--between">
+                <span className="metric__label">
+                  <Gauge />
+                  Current plan
+                </span>
+                <Badge tone="solid-accent">Beta</Badge>
+              </div>
+              <div className="metric metric--hero">
+                <span className="metric__value">{planName}</span>
+                <span className="metric__meta">Beta access</span>
+              </div>
+              <p className="text-secondary">
+                {creator.planGrant ? `${planName} — beta access until ${date(creator.planGrant.expiresAt)}` : `${planName} — beta access`}
+              </p>
+              <p className="text-muted">
+                Luma is in a closed beta, so there is nothing to pay.{' '}
+                {SUPPORT_EMAIL ? (
+                  <>
+                    To extend your access, write to <a className="link" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+                  </>
+                ) : (
+                  'Ask us if you need your access extended.'
+                )}
+              </p>
+            </div>
+          </article>
+          {usageCard}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="stack stack--lg">
       {banner && (
@@ -236,18 +295,7 @@ export function BillingTab({ slug, creator }: { slug: string; creator: Creator }
             </div>
           </div>
         </article>
-        <Card title="Usage this month" subtitle={`Email sends reset on ${date(nextMonthStart())}`}>
-          <div className="stack stack--md">
-            <Meter label="Landing pages" used={used.pages} limit={limitOf(plan, 'max_landing_pages')} />
-            <Meter label="Products" used={used.products} limit={limitOf(plan, 'max_products')} />
-            <Meter
-              label="Emails sent"
-              used={used.emails}
-              limit={summary?.emailsMonthlyLimit ?? limitOf(plan, 'max_email_sends_per_month')}
-            />
-            <Meter label="Contacts" used={used.contacts} limit={limitOf(plan, 'max_contacts')} />
-          </div>
-        </Card>
+        {usageCard}
       </div>
       <section ref={compareRef} aria-label="Compare plans">
         <Card title="Compare plans">

@@ -119,7 +119,7 @@ function SaveStatus({ saving, dirty, savedAt }: { saving: boolean; dirty: boolea
 
 const publishBlockOf = (error: unknown): PublishBlock | null => {
   if (!(error instanceof ApiError) || error.status !== 409) return null
-  if (error.code === 'SUBSCRIPTION_INACTIVE' || error.code === 'PAYOUTS_NOT_READY') return { code: error.code }
+  if (error.code === 'SUBSCRIPTION_INACTIVE' || error.code === 'PAYOUTS_NOT_READY' || error.code === 'PAYMENTS_DISABLED') return { code: error.code }
   if (error.code === 'PLAN_LIMIT_REACHED') {
     const details = (error.details ?? {}) as { used?: number; limit?: number }
     return { code: 'PLAN_LIMIT_REACHED', used: details.used ?? 0, limit: details.limit ?? 0 }

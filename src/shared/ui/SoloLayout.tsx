@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/model/auth-store'
 import { initials } from '../lib/format'
-import { HELP_URL, PRIVACY_URL, isLinked } from '../lib/legal-links'
+import { HELP_URL, PRIVACY_URL, isFooterLinked, isLinked } from '../lib/legal-links'
 import { Avatar, Brand, Button, ThemeToggleButton } from './ledger'
 
 /**
@@ -31,7 +31,7 @@ export function SoloLayout({ wide, user, children }: { wide?: boolean; user?: bo
             <a className="link" href={HELP_URL}>Help</a>
           </>
         )}
-        {isLinked(PRIVACY_URL) && (
+        {isFooterLinked(PRIVACY_URL) && (
           <>
             {' · '}
             <a className="link" href={PRIVACY_URL}>Privacy</a>

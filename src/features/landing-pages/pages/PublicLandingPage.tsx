@@ -104,6 +104,8 @@ function LivePage({ creatorSlug, pageSlug, page }: { creatorSlug: string; pageSl
     } catch (error) {
       setRedirecting(false)
       if (error instanceof ApiError && error.status === 409) {
+        // The deployment takes no payments at all (closed beta).
+        if (error.code === 'PAYMENTS_DISABLED') return 'This page can’t take payments yet.'
         // The creator hasn't finished connecting Stripe, so the sale has nowhere to go yet.
         return error.code === PAYOUTS_NOT_READY
           ? 'This creator isn’t taking payments yet. Please try again later.'

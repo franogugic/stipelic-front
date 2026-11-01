@@ -181,6 +181,27 @@
   gap: var(--space-3);
 }
 
+.mk-join {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mk-join:has(.btn--block) {
+  display: flex;
+}
+
+.mk-join__note {
+  font-size: var(--text-xs);
+  opacity: 0.7;
+}
+
+/* A note under one button must not stretch its neighbour. */
+.mk-hero__ctas:has(.mk-join__note) {
+  align-items: flex-start;
+}
+
 .mk-hero__ctas .btn--lg {
   --btn-height: 52px;
   --btn-pad: var(--space-6);

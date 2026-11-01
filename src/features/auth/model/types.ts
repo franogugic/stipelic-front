@@ -20,6 +20,8 @@ export type AuthUser = {
   isEmailVerified?: boolean
   status?: string
   roles?: string[]
+  /** The deployment's switches, repeated in `/auth/me` (the same object as `GET /api/features`). */
+  features?: { paymentsEnabled: boolean; openRegistration: boolean }
 }
 
 export type AccountStatus = 'pendingVerification' | 'active'
@@ -81,7 +83,10 @@ export type ResetPasswordResponse = {
 }
 
 /** `POST /api/auth/reset-password/inspect`: whether a reset link can still be used, and for which address. */
-export type InspectResetTokenResponse = { status: 'Valid'; email: string } | { status: 'Expired' }
+export type InspectResetTokenResponse =
+  /** `termsRequired`: an invited account that has not accepted the terms yet (the invite link opens this screen). */
+  | { status: 'Valid'; email: string; termsRequired?: boolean }
+  | { status: 'Expired' }
 
 export type UpdateProfileRequest = {
   firstName: string

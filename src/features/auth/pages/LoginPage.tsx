@@ -2,6 +2,7 @@ import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useDocumentTitle } from '../../../shared/lib/use-document-title'
+import { useFeatures } from '../../../shared/model/features-store'
 import { Button, Field, Input } from '../../../shared/ui/ledger'
 import { AuthSplitLayout } from '../components/AuthSplitLayout'
 import { LoginAlert } from '../components/LoginAlert'
@@ -16,6 +17,7 @@ const initialValues: LoginFormValues = import.meta.env.DEV
   : { email: '', password: '' }
 
 export function LoginPage() {
+  const { registrationOpen } = useFeatures()
   const location = useLocation()
   const successMessage = (location.state as { message?: string } | null)?.message
 
@@ -99,7 +101,13 @@ export function LoginPage() {
       </form>
 
       <p className="text-sm text-secondary">
-        New here? <Link className="link" to="/register">Create an account</Link>
+        {registrationOpen ? (
+          <>
+            New here? <Link className="link" to="/register">Create an account</Link>
+          </>
+        ) : (
+          'Luma is in private beta — by invitation.'
+        )}
       </p>
     </AuthSplitLayout>
   )

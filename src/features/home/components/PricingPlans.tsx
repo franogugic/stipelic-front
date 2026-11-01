@@ -3,8 +3,9 @@ import { useEffect } from 'react'
 import { useCreatorStore } from '../../creators/model/creator-store'
 import type { CreatorPlan } from '../../creators/model/types'
 import { money, number } from '../../../shared/lib/format'
-import { Badge, Button, ErrorState, SkeletonCards } from '../../../shared/ui/ledger'
+import { Badge, ErrorState, SkeletonCards } from '../../../shared/ui/ledger'
 import { activePlansByPrice } from '../model/plan-figures'
+import { JoinCta } from './JoinCta'
 import { useScrollReveal } from '../model/use-page-chrome'
 
 const RECOMMENDED_PLAN_CODE = 'pro'
@@ -48,9 +49,7 @@ function PlanCard({ plan }: { plan: CreatorPlan }) {
           </li>
         ))}
       </ul>
-      <Button to="/register" variant={recommended ? 'accent' : 'secondary'} block>
-        {paid ? `Choose ${plan.name}` : 'Start free'}
-      </Button>
+      <JoinCta variant={recommended ? 'accent' : 'secondary'} block label={paid ? `Choose ${plan.name}` : 'Start free'} note={false} />
     </article>
   )
 }

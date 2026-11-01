@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { currencySymbol, number } from '../../../shared/lib/format'
+import { useFeatures } from '../../../shared/model/features-store'
 import { formatPriceInput, parsePriceInput } from '../../../shared/lib/price-input'
 import { useImageUpload } from '../../../shared/lib/use-image-upload'
 import { AppShell } from '../../../shared/ui/AppShell'
@@ -160,6 +161,8 @@ function ProductForm({
   const creatorPlans = useCreatorStore((s) => s.creatorPlans)
   const products = useProductStore((s) => s.products)
 
+  // Closed beta: every product is free, so the price field is gone and the product is saved with price 0.
+  const { paymentsOn } = useFeatures()
   const isEditing = product !== null
   // Archived products can't be edited (the API refuses), so the form only shows them.
   const readOnly = product?.status === 'Archived'
@@ -185,9 +188,9 @@ function ProductForm({
       : null
   const hasFile = file !== null || fileUpload.uploading
   const statusChoices: Array<[ProductStatus, string]> = [
-    ['Active', hasFile ? 'Can be sold or given away on landing pages' : 'Upload the file first'],
+    ['Active', hasFile ? (paymentsOn ? 'Can be sold or given away on landing pages' : 'Can be given away on landing pages') : 'Upload the file first'],
     ['Draft', 'Hidden while you work on it'],
-    ['Archived', 'No longer for sale'],
+    ['Archived', paymentsOn ? 'No longer for sale' : 'No longer available'],
   ]
 
   // Creating needs room under the plan's product limit (archived products don't count).
@@ -211,9 +214,10 @@ function ProductForm({
     event.preventDefault()
     if (saving || readOnly) return
     setSubmitted(true)
-    const found = validate(name, price)
+    const priceText = paymentsOn ? price : '0'
+    const found = validate(name, priceText)
     setErrors(found)
-    const parsed = parsePriceInput(price)
+    const parsed = parsePriceInput(priceText)
     if (Object.keys(found).length > 0 || !parsed.ok) return
     if (fileUpload.uploading) {
       setRequestError('The file is still uploading. Save once it has finished.')
@@ -340,6 +344,7 @@ function ProductForm({
                       />
                     )}
                   </Field>
+                  {paymentsOn && (
                   <Field label="Price" error={errors.price} hint="0 makes it free — for giving away on a lead page.">
                     {(control) => (
                       <InputGroup>
@@ -358,6 +363,7 @@ function ProductForm({
                       </InputGroup>
                     )}
                   </Field>
+                  )}
                 </div>
               </Card>
 
